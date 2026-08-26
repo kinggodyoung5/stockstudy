@@ -1,0 +1,90 @@
+[
+    {
+        "ticker":  "005930.KS",
+        "name":  "삼성전자",
+        "market":  "KR",
+        "from":  "2015-01-02",
+        "to":  "2026-08-26",
+        "count":  2855
+    },
+    {
+        "ticker":  "000660.KS",
+        "name":  "SK하이닉스",
+        "market":  "KR",
+        "from":  "2015-01-02",
+        "to":  "2026-08-26",
+        "count":  2855
+    },
+    {
+        "ticker":  "035420.KS",
+        "name":  "NAVER",
+        "market":  "KR",
+        "from":  "2015-01-02",
+        "to":  "2026-08-26",
+        "count":  2855
+    },
+    {
+        "ticker":  "005380.KS",
+        "name":  "현대차",
+        "market":  "KR",
+        "from":  "2015-01-02",
+        "to":  "2026-08-26",
+        "count":  2855
+    },
+    {
+        "ticker":  "035720.KS",
+        "name":  "카카오",
+        "market":  "KR",
+        "from":  "2015-01-02",
+        "to":  "2026-08-26",
+        "count":  2855
+    },
+    {
+        "ticker":  "051910.KS",
+        "name":  "LG화학",
+        "market":  "KR",
+        "from":  "2015-01-02",
+        "to":  "2026-08-26",
+        "count":  2855
+    },
+    {
+        "ticker":  "247540.KQ",
+        "name":  "에코프로비엠",
+        "market":  "KR",
+        "from":  "2019-03-05",
+        "to":  "2026-08-26",
+        "count":  1835
+    },
+    {
+        "ticker":  "AAPL",
+        "name":  "Apple",
+        "market":  "US",
+        "from":  "2015-01-02",
+        "to":  "2026-08-25",
+        "count":  2928
+    },
+    {
+        "ticker":  "MSFT",
+        "name":  "Microsoft",
+        "market":  "US",
+        "from":  "2015-01-02",
+        "to":  "2026-08-25",
+        "count":  2928
+    },
+    {
+        "ticker":  "NVDA",
+        "name":  "NVIDIA",
+        "market":  "US",
+        "from":  "2015-01-02",
+        "to":  "2026-08-25",
+        "count":  2928
+    },
+    {
+        "ticker":  "TSLA",
+        "name":  "Tesla",
+        "market":  "US",
+        "from":  "2015-01-02",
+        "to":  "2026-08-25",
+        "count":  2928
+    }
+]

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>차트 읽는 법 — 기술적 분석 학습</title>
+<meta name="description" content="개념을 배우고, 가상 차트로 감을 익히고, 실제 과거 데이터로 눈을 훈련하고, 퀴즈로 검증하는 기술적 분석 학습 도구" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📈</text></svg>" />
+<link rel="stylesheet" href="./styles.css" />
+<script src="./vendor/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/learn">
+      <span class="brand-mark">📈</span>
+      <span>
+        <strong>차트 읽는 법</strong>
+        <em>기술적 분석 학습 도구</em>
+      </span>
+    </a>
+    <nav id="nav" class="nav"></nav>
+  </header>
+
+  <main id="app" class="app"></main>
+
+  <footer class="foot">
+    학습용 도구입니다. 종목 추천·매매 신호를 제공하지 않으며, 과거 데이터는 미래를 보장하지 않습니다.
+    · 패턴 판정 규칙은 <code>src/lib/patterns.js</code> 에 전부 공개되어 있습니다.
+  </footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

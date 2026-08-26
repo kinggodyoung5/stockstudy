@@ -1,0 +1,16 @@
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 에디터
+.vscode/
+.idea/
+
+# 로그 / 임시
+*.log
+tmp/
+
+# 나중에 Node 를 도입하면 사용
+node_modules/
+dist/
