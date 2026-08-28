@@ -218,3 +218,79 @@ select {
   .case-foot { grid-template-columns: 1fr; }
   .case-foot > div + div { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+/* ── 학습 탭 사이드바 그룹 ─────────────────────────────── */
+.nav-group {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  color: var(--muted); opacity: .7; padding: 14px 12px 4px; text-transform: uppercase;
+}
+.lesson-nav a:first-child { margin-top: 0; }
+
+/* ── 오실레이터 패널 ──────────────────────────────────── */
+.panels { display: block; }
+.osc-wrap { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 10px; }
+.osc-box { width: 100%; }
+.panel-head {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 12px; color: var(--muted); padding: 0 2px 2px;
+}
+.panel-head a { text-decoration: underline; text-underline-offset: 2px; }
+.case-body .osc-box { border-top: 1px solid var(--line); }
+
+/* ── 매물대 ───────────────────────────────────────────── */
+.chart-with-profile { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: stretch; }
+.profile { width: 150px; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+.profile-title, .profile-note { font-size: 11px; color: var(--muted); padding: 2px 0; }
+.profile-note { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; }
+.profile-row { position: relative; height: 13px; display: flex; align-items: center; }
+.profile-bar { height: 9px; background: rgba(91,141,239,.4); border-radius: 2px; min-width: 1px; }
+.profile-row.poc .profile-bar { background: rgba(242,177,52,.65); }
+.profile-label {
+  position: absolute; right: 2px; font-size: 9.5px; color: var(--muted);
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+
+/* ── 지표 파라미터 ────────────────────────────────────── */
+.param-details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.param-details summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.param-details summary:hover { color: var(--text); }
+.params { gap: 14px; }
+.param { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.num-input {
+  width: 68px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+  padding: 5px 8px; border-radius: 7px; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+
+/* ── 통계 표 ──────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.stats-table th {
+  text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line);
+  color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  position: sticky; top: 60px; background: var(--panel);
+}
+.stats-table th:hover { color: var(--text); }
+.stats-table th.sorted { color: var(--accent); }
+.stats-table td { padding: 10px 12px; border-bottom: 1px solid rgba(38,44,57,.6); vertical-align: top; }
+.stats-table td.num, .stats-table th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stats-table tbody tr:hover { background: var(--panel-2); }
+.stats-table tr.dim td { opacity: .5; }
+.stats-table a { text-decoration: underline; text-underline-offset: 2px; }
+.stats-table a:hover { color: var(--accent); }
+.stats-table td .small { max-width: 320px; }
+
+.panel.caution { border-color: rgba(242,177,52,.3); }
+.panel.caution li { color: #cbd3e1; margin-bottom: 4px; }
+
+/* ── 퀴즈 체크리스트 그룹 ─────────────────────────────── */
+.check-group {
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--muted);
+  margin-top: 10px; padding-left: 2px;
+}
+.check-group:first-child { margin-top: 0; }
+
+@media (max-width: 940px) {
+  .chart-with-profile { grid-template-columns: 1fr; }
+  .profile { width: 100%; flex-direction: column; }
+  .stats-table th { position: static; }
+}

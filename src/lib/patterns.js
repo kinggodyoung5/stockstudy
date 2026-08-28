@@ -9,8 +9,9 @@
 
 import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct } from './indicators.js';
 
-/** 신호 이후 성과를 확인할 기간(거래일) — "그래서 실제로 어떻게 됐나"용. 판정에는 쓰지 않는다. */
-export const OUTCOME_DAYS = 20;
+import { OUTCOME_DAYS, outcomeAt, windowRange, round } from './outcome.js';
+
+export { OUTCOME_DAYS };
 
 /**
  * 패턴 정의. rules 배열은 학습 탭에 "판정 기준"으로 그대로 노출된다.
@@ -19,6 +20,7 @@ export const PATTERNS = {
   'golden-cross': {
     name: '골든크로스',
     lesson: 'cross',
+    bias: 'up',
     summary: '단기 이동평균선이 장기 이동평균선을 아래에서 위로 뚫는 지점',
     rules: [
       '20일 이동평균선이 60일 이동평균선을 아래→위로 교차',
@@ -29,6 +31,7 @@ export const PATTERNS = {
   'dead-cross': {
     name: '데드크로스',
     lesson: 'cross',
+    bias: 'down',
     summary: '단기 이동평균선이 장기 이동평균선을 위에서 아래로 뚫는 지점',
     rules: [
       '20일 이동평균선이 60일 이동평균선을 위→아래로 교차',
@@ -39,6 +42,7 @@ export const PATTERNS = {
   'ma-alignment': {
     name: '이동평균선 정배열 성립',
     lesson: 'moving-average',
+    bias: 'up',
     summary: '5일 > 20일 > 60일 순서로 이동평균선이 위에서부터 정렬되는 첫 지점',
     rules: [
       '당일 5일선 > 20일선 > 60일선 (정배열)',
@@ -49,6 +53,7 @@ export const PATTERNS = {
   'bollinger-breakout': {
     name: '볼린저밴드 상단 이탈',
     lesson: 'bollinger-bands',
+    bias: 'up',
     summary: '종가가 볼린저밴드 상단 바깥으로 벗어난 지점',
     rules: [
       '종가 > 볼린저밴드 상단 (20일, +2σ)',
@@ -59,6 +64,7 @@ export const PATTERNS = {
   'volume-spike': {
     name: '거래량 급증',
     lesson: 'volume',
+    bias: 'none',
     summary: '평소 거래량 대비 이상 급증이 나타난 날',
     rules: [
       '당일 거래량 ≥ 직전 20거래일 평균 거래량 × 3',
@@ -69,6 +75,7 @@ export const PATTERNS = {
   'cloud-breakout': {
     name: '일목균형표 구름대 상향 돌파',
     lesson: 'ichimoku',
+    bias: 'up',
     summary: '주가가 구름대(선행스팬1·2 사이) 위로 올라선 지점',
     rules: [
       '전일 종가 ≤ 전일 구름대 상단 이면서 당일 종가 > 당일 구름대 상단',
@@ -76,58 +83,7 @@ export const PATTERNS = {
       '돌파 이후 3거래일 동안 종가가 구름대 상단 위를 유지',
     ],
   },
-  'head-and-shoulders': {
-    name: '헤드앤숄더',
-    lesson: 'head-and-shoulders',
-    summary: '왼쪽 어깨 - 머리 - 오른쪽 어깨 형태의 세 고점이 만들어진 뒤 넥라인이 무너지는 형태',
-    rules: [
-      '연속된 세 고점이 왼쪽어깨 < 머리 > 오른쪽어깨 (고점은 좌우 5봉보다 높은 국소 고점)',
-      '머리가 양 어깨보다 각각 3% 이상 높음',
-      '두 어깨의 높이 차이가 10% 이내',
-      '두 저점(넥라인)의 높이 차이가 10% 이내 — 넥라인이 완만함',
-      '머리~왼쪽어깨 간격과 머리~오른쪽어깨 간격의 비율이 0.5 ~ 2.0 (좌우 대칭)',
-      '전체 폭 20 ~ 120 거래일',
-      '오른쪽 어깨 이후 20거래일 안에 종가가 넥라인(두 저점을 이은 직선) 아래로 이탈',
-    ],
-  },
 };
-
-// ── 내부 헬퍼 ─────────────────────────────────────────────────────────
-
-/** 소수 2자리로는 구분이 안 되는 저가 종목(액면분할 소급 조정)을 위해 작은 값은 자릿수를 늘린다 */
-const round = (v, d = 2) => {
-  if (v == null) return null;
-  const n = Number(v);
-  return +n.toFixed(d === 2 && Math.abs(n) < 10 ? 4 : d);
-};
-
-/** 신호일 이후 실제로 어떻게 움직였는지 (사실 확인용) */
-function outcomeAt(candles, i, days = OUTCOME_DAYS) {
-  const j = Math.min(i + days, candles.length - 1);
-  if (j <= i) return null;
-  const from = candles[i].close;
-  let hi = -Infinity;
-  let lo = Infinity;
-  for (let k = i + 1; k <= j; k++) {
-    if (candles[k].high > hi) hi = candles[k].high;
-    if (candles[k].low < lo) lo = candles[k].low;
-  }
-  return {
-    days: j - i,
-    fromDate: candles[i].date,
-    toDate: candles[j].date,
-    changePct: round(pct(from, candles[j].close)),
-    maxUpPct: round(pct(from, hi)),
-    maxDownPct: round(pct(from, lo)),
-  };
-}
-
-/** 차트에 보여줄 앞뒤 여유 구간 */
-function windowRange(candles, startIdx, endIdx, pad = 40) {
-  const a = Math.max(0, startIdx - pad);
-  const b = Math.min(candles.length - 1, endIdx + pad);
-  return { fromDate: candles[a].date, toDate: candles[b].date };
-}
 
 // ── 개별 탐지기 ───────────────────────────────────────────────────────
 
@@ -326,95 +282,6 @@ function detectCloudBreakout(stock) {
   return hits;
 }
 
-/** 좌우 w봉보다 높은(낮은) 국소 극점 인덱스 목록 */
-function pivots(candles, w = 5) {
-  const highs = [];
-  const lows = [];
-  for (let i = w; i < candles.length - w; i++) {
-    let isHigh = true;
-    let isLow = true;
-    for (let k = i - w; k <= i + w; k++) {
-      if (k === i) continue;
-      if (candles[k].high >= candles[i].high) isHigh = false;
-      if (candles[k].low <= candles[i].low) isLow = false;
-      if (!isHigh && !isLow) break;
-    }
-    if (isHigh) highs.push(i);
-    if (isLow) lows.push(i);
-  }
-  return { highs, lows };
-}
-
-function detectHeadAndShoulders(stock) {
-  const { candles } = stock;
-  const { highs, lows } = pivots(candles, 5);
-  const hits = [];
-
-  for (let a = 0; a + 2 < highs.length; a++) {
-    const iL = highs[a];
-    const iH = highs[a + 1];
-    const iR = highs[a + 2];
-    const L = candles[iL].high;
-    const H = candles[iH].high;
-    const R = candles[iR].high;
-
-    if (!(H > L * 1.03 && H > R * 1.03)) continue;            // 머리가 양 어깨보다 3% 이상 높음
-    if (Math.abs(L - R) / Math.max(L, R) > 0.1) continue;     // 두 어깨 높이 차 10% 이내
-
-    const t1 = lows.find((x) => x > iL && x < iH);
-    const t2 = lows.find((x) => x > iH && x < iR);
-    if (t1 == null || t2 == null) continue;
-
-    const N1 = candles[t1].low;
-    const N2 = candles[t2].low;
-    if (Math.abs(N1 - N2) / Math.min(N1, N2) > 0.1) continue; // 넥라인 완만
-
-    const symmetry = (iH - iL) / (iR - iH);
-    if (symmetry < 0.5 || symmetry > 2.0) continue;           // 좌우 대칭
-
-    const span = iR - iL;
-    if (span < 20 || span > 120) continue;                    // 전체 폭
-
-    // 넥라인(두 저점을 이은 직선)을 연장해 하향 이탈 확인
-    const slope = (N2 - N1) / (t2 - t1);
-    let breakIdx = null;
-    for (let k = iR + 1; k <= iR + 20 && k < candles.length; k++) {
-      const neck = N1 + slope * (k - t1);
-      if (candles[k].close < neck) { breakIdx = k; break; }
-    }
-    if (breakIdx == null) continue;
-
-    hits.push({
-      index: breakIdx,
-      date: candles[breakIdx].date,
-      evidence: [
-        { label: '왼쪽 어깨 고점', value: round(L) + ' (' + candles[iL].date + ')' },
-        { label: '머리 고점', value: round(H) + ' (' + candles[iH].date + ')' },
-        { label: '오른쪽 어깨 고점', value: round(R) + ' (' + candles[iR].date + ')' },
-        { label: '머리 ÷ 어깨 평균 비율', value: round(H / ((L + R) / 2), 3) },
-        { label: '두 어깨 높이 차(%)', value: round((Math.abs(L - R) / Math.max(L, R)) * 100) },
-        { label: '넥라인 두 저점', value: round(N1) + ' → ' + round(N2) },
-        { label: '좌우 대칭 비율', value: round(symmetry) },
-        { label: '전체 폭(거래일)', value: span },
-        { label: '넥라인 이탈일', value: candles[breakIdx].date },
-      ],
-      shape: {
-        leftShoulder: { date: candles[iL].date, price: round(L) },
-        head: { date: candles[iH].date, price: round(H) },
-        rightShoulder: { date: candles[iR].date, price: round(R) },
-        neckline: [
-          { date: candles[t1].date, value: round(N1) },
-          { date: candles[t2].date, value: round(N2) },
-        ],
-        breakout: { date: candles[breakIdx].date, price: round(candles[breakIdx].close) },
-      },
-      ...windowRange(candles, iL, breakIdx, 20),
-      outcome: outcomeAt(candles, breakIdx),
-    });
-  }
-  return hits;
-}
-
 const DETECTORS = {
   'golden-cross': (s) => detectCross(s, 1),
   'dead-cross': (s) => detectCross(s, -1),
@@ -422,7 +289,6 @@ const DETECTORS = {
   'bollinger-breakout': detectBollingerBreakout,
   'volume-spike': detectVolumeSpike,
   'cloud-breakout': detectCloudBreakout,
-  'head-and-shoulders': detectHeadAndShoulders,
 };
 
 export const PATTERN_IDS = Object.keys(DETECTORS);
@@ -441,14 +307,4 @@ export function detectStock(stock) {
     }));
   }
   return out;
-}
-
-/** 여러 종목의 탐지 결과를 패턴별로 합치기 */
-export function mergeDetections(list) {
-  const merged = {};
-  for (const id of PATTERN_IDS) merged[id] = [];
-  for (const per of list) {
-    for (const [id, hits] of Object.entries(per)) merged[id].push(...hits);
-  }
-  return merged;
 }

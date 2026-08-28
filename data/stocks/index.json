@@ -3,88 +3,135 @@
         "ticker":  "005930.KS",
         "name":  "삼성전자",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-26",
-        "count":  2855
+        "to":  "2026-08-28",
+        "count":  2857
     },
     {
         "ticker":  "000660.KS",
         "name":  "SK하이닉스",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-26",
-        "count":  2855
+        "to":  "2026-08-28",
+        "count":  2857
     },
     {
         "ticker":  "035420.KS",
         "name":  "NAVER",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-26",
-        "count":  2855
+        "to":  "2026-08-28",
+        "count":  2857
     },
     {
         "ticker":  "005380.KS",
         "name":  "현대차",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-26",
-        "count":  2855
+        "to":  "2026-08-28",
+        "count":  2857
     },
     {
         "ticker":  "035720.KS",
         "name":  "카카오",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-26",
-        "count":  2855
+        "to":  "2026-08-28",
+        "count":  2857
     },
     {
         "ticker":  "051910.KS",
         "name":  "LG화학",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-26",
-        "count":  2855
+        "to":  "2026-08-28",
+        "count":  2857
     },
     {
         "ticker":  "247540.KQ",
         "name":  "에코프로비엠",
         "market":  "KR",
+        "type":  "stock",
         "from":  "2019-03-05",
-        "to":  "2026-08-26",
-        "count":  1835
+        "to":  "2026-08-28",
+        "count":  1837
     },
     {
         "ticker":  "AAPL",
         "name":  "Apple",
         "market":  "US",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-25",
-        "count":  2928
+        "to":  "2026-08-27",
+        "count":  2930
     },
     {
         "ticker":  "MSFT",
         "name":  "Microsoft",
         "market":  "US",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-25",
-        "count":  2928
+        "to":  "2026-08-27",
+        "count":  2930
     },
     {
         "ticker":  "NVDA",
         "name":  "NVIDIA",
         "market":  "US",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-25",
-        "count":  2928
+        "to":  "2026-08-27",
+        "count":  2930
     },
     {
         "ticker":  "TSLA",
         "name":  "Tesla",
         "market":  "US",
+        "type":  "stock",
         "from":  "2015-01-02",
-        "to":  "2026-08-25",
-        "count":  2928
+        "to":  "2026-08-27",
+        "count":  2930
+    },
+    {
+        "ticker":  "^KS11",
+        "name":  "코스피",
+        "market":  "KR",
+        "type":  "index",
+        "from":  "2015-01-02",
+        "to":  "2026-08-28",
+        "count":  2856
+    },
+    {
+        "ticker":  "^KQ11",
+        "name":  "코스닥",
+        "market":  "KR",
+        "type":  "index",
+        "from":  "2015-01-02",
+        "to":  "2026-08-28",
+        "count":  2856
+    },
+    {
+        "ticker":  "^GSPC",
+        "name":  "S\u0026P 500",
+        "market":  "US",
+        "type":  "index",
+        "from":  "2015-01-02",
+        "to":  "2026-08-27",
+        "count":  2930
+    },
+    {
+        "ticker":  "^IXIC",
+        "name":  "나스닥 종합",
+        "market":  "US",
+        "type":  "index",
+        "from":  "2015-01-02",
+        "to":  "2026-08-27",
+        "count":  2930
     }
 ]

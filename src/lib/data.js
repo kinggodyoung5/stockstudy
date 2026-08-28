@@ -15,19 +15,35 @@ async function getJson(path) {
   return res.json();
 }
 
-/** 종목 목록 */
+/** '^KS11' 같은 지수 심볼은 파일명에서 ^ 를 _ 로 바꿔 저장한다 */
+const fileOf = (ticker) => ticker.replace(/\^/g, '_');
+
+/** 전체 목록 (종목 + 지수) */
 export async function loadIndex() {
   if (!indexCache) indexCache = await getJson('stocks/index.json');
   return indexCache;
 }
 
+/** 종목만 (지수 제외) — 선택 목록·퀴즈·탐지 대상 */
+export async function loadStockList() {
+  return (await loadIndex()).filter((r) => (r.type || 'stock') === 'stock');
+}
+
+/** 지수만 — 상대강도 비교 기준 */
+export async function loadIndexList() {
+  return (await loadIndex()).filter((r) => r.type === 'index');
+}
+
 /** 종목 하나의 전체 일봉 */
 export async function loadStock(ticker) {
   if (!stockCache.has(ticker)) {
-    stockCache.set(ticker, await getJson('stocks/' + ticker + '.json'));
+    stockCache.set(ticker, await getJson('stocks/' + fileOf(ticker) + '.json'));
   }
   return stockCache.get(ticker);
 }
+
+/** 시장에 맞는 기본 비교 지수 */
+export const defaultBenchmark = (market) => (market === 'KR' ? '^KS11' : '^GSPC');
 
 /** 미리 계산된 패턴 탐지 결과 */
 export async function loadPattern(patternId) {
@@ -35,6 +51,13 @@ export async function loadPattern(patternId) {
     patternCache.set(patternId, await getJson('patterns/' + patternId + '.json'));
   }
   return patternCache.get(patternId);
+}
+
+/** 전체 패턴 요약 (건수·승률·평균수익률) — 통계 탭에서 쓴다 */
+let patternIndexCache = null;
+export async function loadPatternIndex() {
+  if (!patternIndexCache) patternIndexCache = await getJson('patterns/_index.json');
+  return patternIndexCache;
 }
 
 /** 날짜 문자열로 캔들 인덱스 찾기 (없으면 -1) */

@@ -9,15 +9,15 @@
   p.hint { color:#8892a6; }
   button { background:#4dd0a7; border:0; color:#0d1017; font-weight:700; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:14px; }
   button:disabled { opacity:.5; cursor:default; }
-  pre { background:#0d1017; border:1px solid #232935; border-radius:8px; padding:16px; white-space:pre-wrap; margin-top:20px; max-height:60vh; overflow:auto; }
+  pre { background:#0d1017; border:1px solid #232935; border-radius:8px; padding:16px; white-space:pre-wrap; margin-top:20px; max-height:60vh; overflow:auto; font-size:12.5px; }
   code { color:#f2b134; }
 </style>
 </head>
 <body>
 <h1>패턴 자동 탐지 — 배치 실행</h1>
 <p class="hint">
-  <code>data/stocks/</code> 의 모든 종목에 <code>src/lib/patterns.js</code> 의 규칙을 적용해,
-  결과를 <code>data/patterns/{pattern-id}.json</code> 으로 저장합니다.<br />
+  <code>data/stocks/</code> 의 모든 종목에 탐지 엔진(<code>src/lib/engine.js</code>)의 모든 규칙을 적용해,
+  결과를 <code>data/patterns/{pattern-id}.json</code> 과 요약 <code>data/patterns/_index.json</code> 으로 저장합니다.<br />
   데이터를 새로 받았거나 탐지 규칙을 고쳤을 때 다시 실행하세요.
   (<code>tools/serve.ps1</code> 로 띄운 로컬 서버에서만 저장이 동작합니다)
 </p>
@@ -25,23 +25,53 @@
 <pre id="log">대기 중…</pre>
 
 <script type="module">
-import { loadIndex, loadStock } from '../src/lib/data.js';
-import { detectStock, mergeDetections, PATTERN_IDS, PATTERNS, OUTCOME_DAYS } from '../src/lib/patterns.js';
+import { loadStockList, loadStock } from '../src/lib/data.js';
+import { detectStock, mergeDetections, ALL_PATTERNS, ALL_PATTERN_IDS, groupOf } from '../src/lib/engine.js';
+import { OUTCOME_DAYS } from '../src/lib/outcome.js';
+import { summarize, baseline } from '../src/lib/stats.js';
+
+/** 저장할 사례 최대 개수. 전체 건수는 count 에 그대로 남기고, 예시는 고르게 뽑아 담는다. */
+const MAX_HITS = 150;
 
 const logEl = document.getElementById('log');
 const lines = [];
 const log = (s) => { lines.push(s); logEl.textContent = lines.join('\n'); logEl.scrollTop = logEl.scrollHeight; };
 
+/** 종목이 한쪽으로 쏠리지 않게 고르게 샘플링 */
+function sample(hits, max) {
+  if (hits.length <= max) return hits;
+  const byTicker = new Map();
+  for (const h of hits) {
+    if (!byTicker.has(h.ticker)) byTicker.set(h.ticker, []);
+    byTicker.get(h.ticker).push(h);
+  }
+  const buckets = [...byTicker.values()];
+  const picked = [];
+  let round = 0;
+  while (picked.length < max && round < 10000) {
+    let added = false;
+    for (const b of buckets) {
+      if (round < b.length) { picked.push(b[round]); added = true; }
+      if (picked.length >= max) break;
+    }
+    if (!added) break;
+    round++;
+  }
+  return picked.sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
 document.getElementById('run').addEventListener('click', async (e) => {
   e.target.disabled = true;
   lines.length = 0;
   try {
-    const index = await loadIndex();
-    log(`종목 ${index.length}개 로드 시작…`);
+    const index = await loadStockList();
+    log(`규칙 ${ALL_PATTERN_IDS.length}개 · 종목 ${index.length}개`);
 
     const perStock = [];
+    const stocks = [];
     for (const row of index) {
       const stock = await loadStock(row.ticker);
+      stocks.push(stock);
       const t0 = performance.now();
       const res = detectStock(stock);
       const total = Object.values(res).reduce((a, b) => a + b.length, 0);
@@ -50,28 +80,69 @@ document.getElementById('run').addEventListener('click', async (e) => {
     }
 
     const merged = mergeDetections(perStock);
-    log('');
 
-    for (const id of PATTERN_IDS) {
+    // 비교 기준선: 아무 날이나 샀을 때의 20거래일 성과.
+    // 이게 없으면 어떤 패턴의 승률 55%가 좋은 건지 나쁜 건지 알 수 없다.
+    const base = baseline(stocks, OUTCOME_DAYS);
+    log(`\n기준선 (아무 날이나 매수, ${OUTCOME_DAYS}거래일 보유): 상승 비율 ${base.winRate}% · 평균 ${base.avgChange > 0 ? '+' : ''}${base.avgChange}% · 표본 ${base.samples.toLocaleString()}건\n`);
+
+    const summaryRows = [];
+    let totalBytes = 0;
+    let grandTotal = 0;
+
+    for (const id of ALL_PATTERN_IDS) {
+      const meta = ALL_PATTERNS[id];
       const hits = merged[id].sort((a, b) => (a.date < b.date ? -1 : 1));
+      grandTotal += hits.length;
+      const stats = summarize(hits);
+      const kept = sample(hits, MAX_HITS);
+
       const payload = {
         pattern: id,
-        name: PATTERNS[id].name,
-        lesson: PATTERNS[id].lesson,
-        summary: PATTERNS[id].summary,
-        rules: PATTERNS[id].rules,
+        name: meta.name,
+        lesson: meta.lesson,
+        group: groupOf(id),
+        bias: meta.bias || 'none',
+        summary: meta.summary,
+        rules: meta.rules,
         outcomeDays: OUTCOME_DAYS,
+        baseline: base,
         generatedAt: new Date().toISOString().slice(0, 10),
         count: hits.length,
-        hits,
+        sampled: kept.length < hits.length,
+        stats,
+        hits: kept,
       };
       const body = JSON.stringify(payload);
+      totalBytes += body.length;
       const r = await fetch(`/_write?path=data/patterns/${id}.json`, { method: 'POST', body });
-      log(`${r.ok ? '저장' : '실패'} ${id}.json — ${hits.length}건 (${(body.length / 1024).toFixed(0)} KB) ${r.ok ? '' : await r.text()}`);
+      log(`${r.ok ? '저장' : '실패'} ${id.padEnd(28)} ${String(hits.length).padStart(5)}건` +
+          (stats ? `  승률 ${String(stats.winRate).padStart(5)}%  평균 ${stats.avgChange > 0 ? '+' : ''}${stats.avgChange}%` : '') +
+          `  (${(body.length / 1024).toFixed(0)} KB)${r.ok ? '' : ' ' + await r.text()}`);
+
+      summaryRows.push({
+        pattern: id, name: meta.name, lesson: meta.lesson, group: groupOf(id),
+        bias: meta.bias || 'none', summary: meta.summary,
+        count: hits.length, stats,
+      });
     }
-    log('\n완료. data/patterns/ 를 확인하세요.');
+
+    const indexBody = JSON.stringify({
+      generatedAt: new Date().toISOString().slice(0, 10),
+      outcomeDays: OUTCOME_DAYS,
+      tickers: index.length,
+      tickerNames: index.map((r) => r.name),
+      from: index.reduce((m, r) => (r.from < m ? r.from : m), index[0].from),
+      to: index.reduce((m, r) => (r.to > m ? r.to : m), index[0].to),
+      totalHits: grandTotal,
+      baseline: base,
+      patterns: summaryRows,
+    });
+    const ri = await fetch('/_write?path=data/patterns/_index.json', { method: 'POST', body: indexBody });
+    log(`\n${ri.ok ? '저장' : '실패'} _index.json (요약 ${summaryRows.length}개)`);
+    log(`\n완료. 규칙 ${ALL_PATTERN_IDS.length}개, 총 ${grandTotal.toLocaleString()}건 검출, 저장 용량 ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
   } catch (err) {
-    log('오류: ' + err.message);
+    log('오류: ' + err.message + '\n' + err.stack);
     console.error(err);
   } finally {
     e.target.disabled = false;

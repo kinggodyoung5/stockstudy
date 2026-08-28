@@ -9,11 +9,13 @@ import { renderLearn, destroyCharts } from './views/learn.js';
 import { renderSandbox, destroySandbox } from './views/sandbox.js';
 import { renderViewer, destroyViewer } from './views/viewer.js';
 import { renderQuiz, destroyQuiz } from './views/quiz.js';
+import { renderStats, destroyStats } from './views/stats.js';
 
 const ROUTES = [
   { id: 'learn', label: '개념 학습', render: renderLearn },
-  { id: 'sandbox', label: '가상 차트', render: renderSandbox },
   { id: 'viewer', label: '데이터 뷰어', render: renderViewer },
+  { id: 'stats', label: '성과 통계', render: renderStats },
+  { id: 'sandbox', label: '가상 차트', render: renderSandbox },
   { id: 'quiz', label: '퀴즈', render: renderQuiz },
 ];
 
@@ -40,6 +42,7 @@ function teardown() {
   destroySandbox();
   destroyViewer();
   destroyQuiz();
+  destroyStats();
 }
 
 let renderToken = 0;

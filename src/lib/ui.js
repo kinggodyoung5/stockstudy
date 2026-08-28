@@ -35,9 +35,11 @@ export function clear(node) {
 /** 지표 on/off 토글 바 */
 export function overlayBar(state, onChange, keys) {
   const LABELS = {
-    ma5: ['5일선', '#f2b134'],
-    ma20: ['20일선', '#4dd0a7'],
-    ma60: ['60일선', '#a98bff'],
+    ma5: ['단기 이평', '#f2b134'],
+    ma20: ['중기 이평', '#4dd0a7'],
+    ma60: ['장기 이평', '#a98bff'],
+    ma120: ['120일선', '#5b8def'],
+    ma200: ['200일선', '#ff8a3d'],
     bollinger: ['볼린저밴드', '#5b8def'],
     ichimoku: ['일목균형표', '#4dd0a7'],
     volume: ['거래량', '#8b95a9'],

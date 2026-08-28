@@ -4,9 +4,10 @@
  * 정답 라벨을 따로 만들 필요가 없다 — 가려둔 미래 구간 자체가 정답이다.
  */
 
-import { loadIndex, loadStock } from '../lib/data.js';
+import { loadStockList, loadStock } from '../lib/data.js';
 import { createStockChart, COLORS } from '../lib/chart.js';
-import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct } from '../lib/indicators.js';
+import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct, disparity } from '../lib/indicators.js';
+import { rsi, macd, stochastic, adx } from '../lib/oscillators.js';
 import { el, clear, overlayBar, signed, dirClass } from '../lib/ui.js';
 
 const SETUP_BARS = 120;   // 보여줄 앞구간
@@ -39,9 +40,14 @@ function evaluateSignals(setup) {
   const m5 = sma(c, 5), m20 = sma(c, 20), m60 = sma(c, 60);
   const bb = bollinger(c, 20, 2);
   const cloud = cloudBounds(ichimoku(setup));
+  const r = rsi(c, 14);
+  const m = macd(c);
+  const st = stochastic(setup);
+  const ax = adx(setup, 14);
+  const dis = disparity(c, 20);
 
-  const recentCross = (dir, within) => {
-    for (let i = Math.max(1, last - within); i <= last; i++) if (crossAt(m20, m60, i) === dir) return true;
+  const recentCross = (a, b, dir, within) => {
+    for (let i = Math.max(1, last - within); i <= last; i++) if (crossAt(a, b, i) === dir) return true;
     return false;
   };
   const recentBand = (side, within) => {
@@ -60,26 +66,56 @@ function evaluateSignals(setup) {
     }
     return false;
   };
+  const near = (arr) => arr[last];
 
   return [
-    { id: 'golden', label: '최근 10일 안에 골든크로스(20일선이 60일선 상향 돌파)', bias: 'up', present: recentCross(1, 10) },
-    { id: 'dead', label: '최근 10일 안에 데드크로스(20일선이 60일선 하향 돌파)', bias: 'down', present: recentCross(-1, 10) },
-    { id: 'align', label: '이동평균선 정배열 (5일 > 20일 > 60일)', bias: 'up', present: m5[last] > m20[last] && m20[last] > m60[last] },
-    { id: 'revalign', label: '이동평균선 역배열 (5일 < 20일 < 60일)', bias: 'down', present: m5[last] < m20[last] && m20[last] < m60[last] },
-    { id: 'above20', label: '종가가 20일선 위', bias: 'up', present: m20[last] != null && c[last] > m20[last] },
-    { id: 'bbup', label: '최근 5일 안에 볼린저밴드 상단 이탈', bias: 'up', present: recentBand('upper', 5) },
-    { id: 'bbdown', label: '최근 5일 안에 볼린저밴드 하단 이탈', bias: 'down', present: recentBand('lower', 5) },
-    { id: 'cloudup', label: '주가가 일목 구름대 위', bias: 'up', present: cloud.top[last] != null && c[last] > cloud.top[last] },
-    { id: 'clouddown', label: '주가가 일목 구름대 아래', bias: 'down', present: cloud.bottom[last] != null && c[last] < cloud.bottom[last] },
-    { id: 'volspike', label: '최근 5일 안에 거래량 급증 (평균 3배 이상)', bias: 'none', present: recentVolumeSpike(5) },
+    // 추세
+    { id: 'golden', group: '추세', label: '최근 10일 안에 골든크로스 (20일선이 60일선 상향 돌파)', bias: 'up', present: recentCross(m20, m60, 1, 10) },
+    { id: 'dead', group: '추세', label: '최근 10일 안에 데드크로스 (20일선이 60일선 하향 돌파)', bias: 'down', present: recentCross(m20, m60, -1, 10) },
+    { id: 'align', group: '추세', label: '이동평균선 정배열 (5일 > 20일 > 60일)', bias: 'up', present: m5[last] > m20[last] && m20[last] > m60[last] },
+    { id: 'revalign', group: '추세', label: '이동평균선 역배열 (5일 < 20일 < 60일)', bias: 'down', present: m5[last] < m20[last] && m20[last] < m60[last] },
+    { id: 'above20', group: '추세', label: '종가가 20일선 위', bias: 'up', present: m20[last] != null && c[last] > m20[last] },
+    { id: 'adxtrend', group: '추세', label: 'ADX 25 이상 (뚜렷한 추세 국면)', bias: 'none', present: near(ax.adx) != null && near(ax.adx) >= 25 },
+    { id: 'diplus', group: '추세', label: '+DI 가 −DI 보다 위 (상승 방향 우위)', bias: 'up', present: near(ax.plusDI) != null && near(ax.plusDI) > near(ax.minusDI) },
+
+    // 모멘텀
+    { id: 'rsihigh', group: '모멘텀', label: 'RSI 70 이상 (과매수 구간)', bias: 'down', present: near(r) != null && near(r) >= 70 },
+    { id: 'rsilow', group: '모멘텀', label: 'RSI 30 이하 (과매도 구간)', bias: 'up', present: near(r) != null && near(r) <= 30 },
+    { id: 'macdup', group: '모멘텀', label: '최근 10일 안에 MACD 골든크로스', bias: 'up', present: recentCross(m.line, m.signal, 1, 10) },
+    { id: 'macddown', group: '모멘텀', label: '최근 10일 안에 MACD 데드크로스', bias: 'down', present: recentCross(m.line, m.signal, -1, 10) },
+    { id: 'macdpos', group: '모멘텀', label: 'MACD 히스토그램이 0 위 (단기 우위)', bias: 'up', present: near(m.hist) != null && near(m.hist) > 0 },
+    { id: 'stochlow', group: '모멘텀', label: '스토캐스틱 %K 20 이하 (침체 구간)', bias: 'up', present: near(st.k) != null && near(st.k) <= 20 },
+    { id: 'stochhigh', group: '모멘텀', label: '스토캐스틱 %K 80 이상 (과열 구간)', bias: 'down', present: near(st.k) != null && near(st.k) >= 80 },
+    { id: 'dishigh', group: '모멘텀', label: '이격도 110 이상 (20일선에서 크게 위로 벌어짐)', bias: 'down', present: near(dis) != null && near(dis) >= 110 },
+    { id: 'dislow', group: '모멘텀', label: '이격도 92 이하 (20일선에서 크게 아래로 벌어짐)', bias: 'up', present: near(dis) != null && near(dis) <= 92 },
+
+    // 변동성 · 위치
+    { id: 'bbup', group: '변동성', label: '최근 5일 안에 볼린저밴드 상단 이탈', bias: 'up', present: recentBand('upper', 5) },
+    { id: 'bbdown', group: '변동성', label: '최근 5일 안에 볼린저밴드 하단 이탈', bias: 'down', present: recentBand('lower', 5) },
+    { id: 'squeeze', group: '변동성', label: '밴드폭이 최근 60일 중 하위권 (스퀴즈 상태)', bias: 'none', present: (() => {
+      const w = bb.width.slice(Math.max(0, last - 60), last + 1).filter((x) => x != null);
+      if (w.length < 30 || bb.width[last] == null) return false;
+      const sorted = [...w].sort((x, y) => x - y);
+      return bb.width[last] <= sorted[Math.floor(sorted.length * 0.2)];
+    })() },
+    { id: 'cloudup', group: '변동성', label: '주가가 일목 구름대 위', bias: 'up', present: cloud.top[last] != null && c[last] > cloud.top[last] },
+    { id: 'clouddown', group: '변동성', label: '주가가 일목 구름대 아래', bias: 'down', present: cloud.bottom[last] != null && c[last] < cloud.bottom[last] },
+
+    // 거래량
+    { id: 'volspike', group: '거래량', label: '최근 5일 안에 거래량 급증 (평균 3배 이상)', bias: 'none', present: recentVolumeSpike(5) },
+    { id: 'voldry', group: '거래량', label: '최근 5일 평균 거래량이 20일 평균의 70% 이하 (거래 위축)', bias: 'none', present: (() => {
+      if (last < 25) return false;
+      const a5 = v.slice(last - 4, last + 1).reduce((x, y) => x + y, 0) / 5;
+      const a20 = v.slice(last - 19, last + 1).reduce((x, y) => x + y, 0) / 20;
+      return a20 > 0 && a5 / a20 <= 0.7;
+    })() },
   ];
 }
-
 export async function renderQuiz(app) {
   destroyQuiz();
   clear(app).append(el('p.loading', { text: '문제를 준비하는 중…' }));
 
-  const index = await loadIndex();
+  const index = await loadStockList();
   const session = { total: 0, correct: 0, notes: [] };
 
   const box = el('div.chart-box.tall');
@@ -229,7 +265,12 @@ export async function renderQuiz(app) {
 
   function signalChecklist(presentSignals) {
     const wrap = el('div.check-list');
+    let lastGroup = null;
     for (const s of current.signals) {
+      if (s.group !== lastGroup) {
+        wrap.append(el('div.check-group', { text: s.group }));
+        lastGroup = s.group;
+      }
       const input = el('input', { type: 'checkbox' });
       const verdict = el('span.verdict');
       const label = el('label', null, [input, el('span', null, [s.label, verdict])]);
@@ -264,7 +305,7 @@ export async function renderQuiz(app) {
       wrap.append(label);
     }
     wrap.append(
-      el('p.small.muted', { style: { margin: '8px 0 0' }, text: `이번 구간에 실제로 있던 신호는 ${presentSignals.length}개입니다. 신호가 있어도 방향이 빗나가는 경우가 흔하다는 점을 함께 확인하세요.` })
+      el('p.small.muted', { style: { margin: '8px 0 0' }, text: `이번 구간에 실제로 있던 신호는 ${current.signals.length}개 중 ${presentSignals.length}개입니다. 신호가 여러 개 있어도 방향이 빗나가는 경우가 흔하다는 점을 함께 확인하세요.` })
     );
     return wrap;
   }

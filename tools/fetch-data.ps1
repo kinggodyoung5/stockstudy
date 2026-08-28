@@ -23,7 +23,13 @@ $targets = @(
   @{ ticker = 'AAPL';      name = 'Apple';           market = 'US' },
   @{ ticker = 'MSFT';      name = 'Microsoft';       market = 'US' },
   @{ ticker = 'NVDA';      name = 'NVIDIA';          market = 'US' },
-  @{ ticker = 'TSLA';      name = 'Tesla';           market = 'US' }
+  @{ ticker = 'TSLA';      name = 'Tesla';           market = 'US' },
+
+  # 지수 — 상대강도(종목 ÷ 지수) 계산용. 종목 선택 목록에는 나오지 않는다.
+  @{ ticker = '^KS11';     name = '코스피';          market = 'KR'; type = 'index' },
+  @{ ticker = '^KQ11';     name = '코스닥';          market = 'KR'; type = 'index' },
+  @{ ticker = '^GSPC';     name = 'S&P 500';         market = 'US'; type = 'index' },
+  @{ ticker = '^IXIC';     name = '나스닥 종합';     market = 'US'; type = 'index' }
 )
 
 # 수집 기간: 2015-01-01 ~ 오늘
@@ -72,18 +78,21 @@ foreach ($t in $targets) {
     ticker   = $ticker
     name     = $t.name
     market   = $t.market
+    type     = $(if ($t.type) { $t.type } else { 'stock' })
     currency = $(if ($t.market -eq 'KR') { 'KRW' } else { 'USD' })
     candles  = $candles
   }
 
-  $path = Join-Path $outDir ($ticker + '.json')
+  # '^KS11' 같은 지수 심볼은 URL 에서 다루기 번거로워 파일명에서 ^ 를 _ 로 바꾼다
+  $path = Join-Path $outDir (($ticker -replace '\^', '_') + '.json')
   [System.IO.File]::WriteAllText($path, ($obj | ConvertTo-Json -Depth 6 -Compress), (New-Object System.Text.UTF8Encoding($false)))
-  Write-Host " $($candles.Count) candles -> data/stocks/$ticker.json"
+  Write-Host " $($candles.Count) candles -> $(Split-Path -Leaf $path)"
 
   $index += [ordered]@{
     ticker = $ticker
     name   = $t.name
     market = $t.market
+    type   = $(if ($t.type) { $t.type } else { 'stock' })
     from   = $candles[0].date
     to     = $candles[$candles.Count - 1].date
     count  = $candles.Count
