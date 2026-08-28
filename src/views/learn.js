@@ -4,6 +4,7 @@
  */
 
 import { LESSONS, LESSON_BY_ID, LESSON_GROUPS } from '../content/lessons.js';
+import { FIGURES, emphasize } from '../content/figures.js';
 import { loadPattern, loadStock, sliceByDate } from '../lib/data.js';
 import { createStockChart, createOscillatorPanel, syncTimeScales, COLORS } from '../lib/chart.js';
 import { OSCILLATORS } from '../lib/oscillators.js';
@@ -111,6 +112,15 @@ function drawShape(c, hit, patternName) {
   c.setMarkers(markers);
 }
 
+/** 개념 설명용 모식도 한 장 */
+function figureEl(id) {
+  const f = FIGURES[id];
+  return el('figure.fig', null, [
+    el('div.fig-svg', { html: f.svg() }),
+    el('figcaption', { text: f.caption }),
+  ]);
+}
+
 async function renderCase(hit, lesson, patternMeta) {
   const stock = await loadStock(hit.ticker);
   const view = sliceByDate(stock.candles, hit.fromDate, hit.toDate);
@@ -181,16 +191,23 @@ function statsBox(meta) {
   const stat = (label, value, cls) =>
     el('div.stat', null, [el('span', { text: label }), el('b', { class: cls || '', text: value })]);
 
+  // 레슨 본문이 계속 "기준선과 비교해보세요"라고 하므로, 비교 대상을 같은 자리에 둔다
+  const base = meta.baseline;
+  const edge = base ? +(s.winRate - base.winRate).toFixed(1) : null;
+
   row.append(
-    stat(`${meta.outcomeDays}일 뒤 상승 비율`, s.winRate + '%', s.winRate >= 50 ? 'up' : 'down'),
+    stat(`${meta.outcomeDays}일 뒤 오른 비율`, s.winRate + '%', s.winRate >= 50 ? 'up' : 'down'),
+    base ? stat('아무 날이나 샀다면', base.winRate + '%', 'muted') : null,
+    edge != null ? stat('신호가 보탠 몫', (edge > 0 ? '+' : '') + edge + '%p', dirClass(edge)) : null,
     stat('평균 수익률', signed(s.avgChange), dirClass(s.avgChange)),
-    stat('중앙값', signed(s.medianChange), dirClass(s.medianChange)),
-    stat('편차', s.stdev + '%p', 'muted'),
-    stat('최고 / 최저', signed(s.best) + ' / ' + signed(s.worst), 'muted')
+    stat('가장 나빴던 경우', signed(s.worst), 'down')
   );
   return el('div', null, [
     row,
-    el('p.muted.small', { style: { margin: '8px 0 0' }, text: conf.label + ' · 이 수치는 매매 전략의 백테스트가 아니라 단순 집계입니다 (수수료·분산투자 미반영).' }),
+    el('p.muted.small', { style: { margin: '8px 0 0' }, text:
+      conf.label + ' · "신호가 보탠 몫"이 0에 가까우면, 그 신호는 아무 날이나 사는 것과 구별되지 않는다는 뜻입니다.' }),
+    el('p.muted.small', { style: { margin: '4px 0 0' }, text:
+      '매매 전략의 백테스트가 아니라 단순 집계입니다 (수수료·세금·분산투자 미반영).' }),
   ]);
 }
 
@@ -271,7 +288,12 @@ export async function renderLearn(app, params) {
   const content = el('article.lesson');
   content.append(el('h2', { text: lesson.title }), el('p.tagline', { text: lesson.tagline }));
   for (const sec of lesson.body) {
-    content.append(el('section', null, [el('h3', { text: sec.h }), el('p', { text: sec.p })]));
+    const node = el('section', null, [
+      el('h3', { text: sec.h }),
+      el('p', { html: emphasize(sec.p) }),
+    ]);
+    if (sec.fig && FIGURES[sec.fig]) node.append(figureEl(sec.fig));
+    content.append(node);
   }
 
   clear(app).append(el('div.learn', null, [nav, content]));

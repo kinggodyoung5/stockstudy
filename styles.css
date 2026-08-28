@@ -410,3 +410,31 @@ select {
   .hero-stats { gap: 20px; }
   .hero-stats b { font-size: 21px; }
 }
+
+/* ── 개념 설명 그림 ───────────────────────────────────── */
+.fig {
+  margin: 16px 0 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px 12px;
+}
+.fig-svg { width: 100%; }
+.fig-svg svg { display: block; width: 100%; height: auto; }
+.fig figcaption {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.fig figcaption b, .lesson section p b { color: var(--text); font-weight: 700; }
+
+.lesson section { margin-bottom: 26px; }
+.lesson section p { line-height: 1.75; }
+
+@media (max-width: 720px) {
+  .fig { padding: 10px 12px 10px; }
+  .fig figcaption { font-size: 12.5px; }
+}
