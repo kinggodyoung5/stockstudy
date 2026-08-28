@@ -78,8 +78,26 @@ export async function renderViewer(app) {
   const meta = el('div.row', { style: { margin: '10px 0 4px' } });
 
   // ── 컨트롤 ────────────────────────────────────────────
+  // 시장별로 묶고 이름순으로 정렬한다. 그냥 나열하면 순서가 수집 스크립트의
+  // 배열 순서라 사용자 입장에서는 아무 규칙이 없어 보인다.
   const tickerSel = el('select');
-  for (const row of list) tickerSel.append(el('option', { value: row.ticker, text: `${row.name} (${row.ticker})` }));
+  const MARKET_GROUPS = [
+    { key: 'KR', label: '한국 주식' },
+    { key: 'US', label: '미국 주식' },
+  ];
+  for (const g of MARKET_GROUPS) {
+    const rows = list
+      .filter((r) => r.market === g.key)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    if (!rows.length) continue;
+    const og = el('optgroup', { label: `${g.label} (${rows.length})` });
+    for (const row of rows) {
+      og.append(el('option', { value: row.ticker, text: `${row.name} (${row.ticker})` }));
+    }
+    tickerSel.append(og);
+  }
+  // 정렬 후 첫 항목을 기본값으로 (select 표시와 state 가 어긋나지 않게)
+  state.ticker = tickerSel.querySelector('option').value;
   tickerSel.value = state.ticker;
   tickerSel.addEventListener('change', () => { state.ticker = tickerSel.value; state.end = null; rebuild(); });
 

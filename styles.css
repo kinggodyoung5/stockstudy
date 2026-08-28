@@ -123,8 +123,28 @@ select {
 .error { color: var(--up); padding: 20px; border: 1px solid rgba(224,75,75,.35); border-radius: var(--radius); }
 
 /* ── 학습 탭 ──────────────────────────────────────────── */
-.learn { display: grid; grid-template-columns: 210px 1fr; gap: 28px; align-items: start; }
-.lesson-nav { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 3px; }
+.learn { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+/* 레슨 목록은 본문과 따로 스크롤된다.
+   레슨이 29개라 목록 자체가 화면보다 길어서, 그냥 sticky 로 두면
+   본문을 끝까지 내려야 목록 아래쪽이 보였다. */
+.lesson-nav {
+  position: sticky;
+  top: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  overscroll-behavior: contain;   /* 목록 끝에서 본문으로 스크롤이 넘어가지 않게 */
+  min-width: 0;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.lesson-nav::-webkit-scrollbar { width: 8px; }
+.lesson-nav::-webkit-scrollbar-track { background: transparent; }
+.lesson-nav::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.lesson-nav::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .lesson-nav a {
   padding: 8px 12px; border-radius: 8px; font-size: 13.5px; color: var(--muted);
   border-left: 2px solid transparent;
@@ -215,8 +235,14 @@ select {
 .stat b { font-size: 17px; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 940px) {
-  .learn { grid-template-columns: 1fr; }
-  .lesson-nav { position: static; flex-direction: row; overflow-x: auto; }
+  .learn { grid-template-columns: minmax(0, 1fr); }
+  .lesson-nav {
+    position: static; flex-direction: row; overflow-x: auto;
+    max-height: none; padding-right: 0;
+    /* 그리드 항목은 기본 min-width 가 auto 라 내용 폭만큼 늘어난다.
+       가로 목록이 화면을 넘치지 않게 0 으로 눌러준다. */
+    min-width: 0;
+  }
   .quiz-grid { grid-template-columns: 1fr; }
   .case-foot { grid-template-columns: 1fr; }
   .case-foot > div + div { border-left: 0; border-top: 1px solid var(--line); }
@@ -499,3 +525,12 @@ select {
 }
 .thesis h3 { color: var(--text); }
 .thesis .fig { background: var(--panel-2); }
+
+/* 종목 선택 드롭다운의 시장 구분 */
+select optgroup {
+  background: var(--panel);
+  color: var(--group);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+select optgroup option { color: var(--text); font-weight: 400; }
