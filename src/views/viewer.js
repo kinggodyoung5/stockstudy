@@ -222,7 +222,7 @@ export async function renderViewer(app) {
 
     // 지지·저항선
     if (state.tools.levels) {
-      const levels = supportResistance(view, { window: 5, tolerancePct: 1.5, minTouches: 2, maxLevels: 6 });
+      const levels = supportResistance(view, { window: 5, tolerancePct: 1.5, minTouches: 3, maxLevels: 6 });
       chart.setPriceLines('levels', levels.map((l) => ({
         price: l.price,
         color: l.kind === 'support' ? COLORS.support : COLORS.resistance,

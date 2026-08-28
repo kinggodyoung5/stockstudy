@@ -147,10 +147,10 @@ function multiTopBottom(stock, count, isTop) {
     for (let k = 0; k < count; k++) idx.push(peaks[a + k]);
     const prices = idx.map(peakPrice);
 
-    // 봉우리(바닥) 높이가 서로 3% 이내로 나란해야 한다
+    // 봉우리(바닥) 높이가 서로 나란해야 한다. 3~5% 이내를 쓰는 자료가 많아 5%로 잡았다.
     const hi = Math.max(...prices);
     const lo = Math.min(...prices);
-    if ((hi - lo) / hi > 0.03) continue;
+    if ((hi - lo) / hi > 0.05) continue;
 
     // 간격 조건
     let okGap = true;
@@ -171,8 +171,9 @@ function multiTopBottom(stock, count, isTop) {
 
     const midPrices = mids.map(troughPrice);
     const neckline = isTop ? Math.min(...midPrices) : Math.max(...midPrices);
+    // 사이 골이 충분히 깊어야 별개의 봉우리다. 통상 10% 이상을 요구한다.
     const depth = Math.abs(pct(neckline, hi));
-    if (depth < 5) continue;
+    if (depth < 10) continue;
 
     // 직전 추세 (천장은 상승 뒤, 바닥은 하락 뒤에 나와야 반전이다)
     const t0 = trendBefore(candles, idx[0], 40);
@@ -317,7 +318,7 @@ function flags(stock) {
   const { candles } = stock;
   const out = { 'bull-flag': [], 'bear-flag': [] };
   const POLE = 15;        // 깃대 구간
-  const FLAG = 20;        // 깃발(눌림) 구간
+  const FLAG = 15;        // 깃발(눌림) 구간 — 통상 1~3주로 본다
   const MIN_POLE = 12;    // 깃대로 인정할 최소 등락률(%)
   const lastAt = {};
 
@@ -501,9 +502,9 @@ export const SHAPE_PATTERNS = {
     name: '이중천장', lesson: 'double-patterns', bias: 'down',
     summary: '거의 같은 높이의 고점 두 개를 만든 뒤 사이 저점을 무너뜨리는 형태',
     rules: [
-      '국소 고점 2개의 높이 차이가 3% 이내',
+      '국소 고점 2개의 높이 차이가 5% 이내',
       '두 고점 사이 간격이 15 ~ 90 거래일',
-      '두 고점 사이 저점(넥라인)이 고점 대비 5% 이상 아래',
+      '두 고점 사이 저점(넥라인)이 고점 대비 10% 이상 아래',
       '패턴 시작 전 40거래일 등락률 +10% 이상 (상승 뒤에 나와야 반전)',
       '두 번째 고점 이후 30거래일 안에 종가가 넥라인 아래로 이탈',
     ],
@@ -512,9 +513,9 @@ export const SHAPE_PATTERNS = {
     name: '이중바닥', lesson: 'double-patterns', bias: 'up',
     summary: '거의 같은 깊이의 저점 두 개를 만든 뒤 사이 고점을 뚫는 형태',
     rules: [
-      '국소 저점 2개의 깊이 차이가 3% 이내',
+      '국소 저점 2개의 깊이 차이가 5% 이내',
       '두 저점 사이 간격이 15 ~ 90 거래일',
-      '두 저점 사이 고점(넥라인)이 저점 대비 5% 이상 위',
+      '두 저점 사이 고점(넥라인)이 저점 대비 10% 이상 위',
       '패턴 시작 전 40거래일 등락률 −10% 이하',
       '두 번째 저점 이후 30거래일 안에 종가가 넥라인 위로 돌파',
     ],
@@ -523,9 +524,9 @@ export const SHAPE_PATTERNS = {
     name: '삼중천장', lesson: 'double-patterns', bias: 'down',
     summary: '이중천장에서 봉우리가 하나 더 늘어난 형태',
     rules: [
-      '국소 고점 3개의 높이 차이가 3% 이내',
+      '국소 고점 3개의 높이 차이가 5% 이내',
       '각 고점 사이 간격이 15 ~ 90 거래일',
-      '가장 낮은 중간 저점을 넥라인으로 삼고, 고점 대비 5% 이상 아래',
+      '가장 낮은 중간 저점을 넥라인으로 삼고, 고점 대비 10% 이상 아래',
       '패턴 시작 전 40거래일 등락률 +10% 이상',
       '마지막 고점 이후 30거래일 안에 넥라인 하향 이탈',
     ],
@@ -534,9 +535,9 @@ export const SHAPE_PATTERNS = {
     name: '삼중바닥', lesson: 'double-patterns', bias: 'up',
     summary: '이중바닥에서 바닥이 하나 더 늘어난 형태',
     rules: [
-      '국소 저점 3개의 깊이 차이가 3% 이내',
+      '국소 저점 3개의 깊이 차이가 5% 이내',
       '각 저점 사이 간격이 15 ~ 90 거래일',
-      '가장 높은 중간 고점을 넥라인으로 삼고, 저점 대비 5% 이상 위',
+      '가장 높은 중간 고점을 넥라인으로 삼고, 저점 대비 10% 이상 위',
       '패턴 시작 전 40거래일 등락률 −10% 이하',
       '마지막 저점 이후 30거래일 안에 넥라인 상향 돌파',
     ],
@@ -603,7 +604,7 @@ export const SHAPE_PATTERNS = {
     summary: '짧고 강한 급등(깃대) 뒤 좁게 눌린 구간(깃발)이 이어지다 다시 위로 뚫는 형태',
     rules: [
       '깃대: 직전 15거래일 등락률 +12% 이상',
-      '깃발: 이어지는 20거래일의 고저 폭이 깃대 크기의 70% 이하',
+      '깃발: 이어지는 15거래일(약 3주)의 고저 폭이 깃대 크기의 70% 이하',
       '깃발 구간 등락률이 +3% 이하 (쉬어가는 구간)이면서 깃대의 70% 넘게 반납하지 않음',
       '종가가 깃발 구간 고가를 상향 돌파',
     ],
@@ -613,7 +614,7 @@ export const SHAPE_PATTERNS = {
     summary: '짧고 강한 급락 뒤 좁은 반등이 이어지다 다시 아래로 무너지는 형태',
     rules: [
       '깃대: 직전 15거래일 등락률 −12% 이하',
-      '깃발: 이어지는 20거래일의 고저 폭이 깃대 크기의 70% 이하',
+      '깃발: 이어지는 15거래일(약 3주)의 고저 폭이 깃대 크기의 70% 이하',
       '깃발 구간 등락률이 −3% 이상이면서 깃대의 70% 넘게 회복하지 않음',
       '종가가 깃발 구간 저가를 하향 이탈',
     ],

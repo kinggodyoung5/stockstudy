@@ -83,3 +83,94 @@ export function confidence(samples) {
 /** 승률이 기준선 대비 얼마나 나은지 (퍼센트포인트) */
 export const edgeOver = (stats, base) =>
   stats && base ? round(stats.winRate - base.winRate, 1) : null;
+
+/**
+ * 종목 분류 (프로파일)
+ *
+ * "차트 분석이 어느 종목군에서 다르게 동작하는가"를 보려면 종목을 나눠야 한다.
+ * 시가총액이 먼저 떠오르지만, 시총은 간접 지표다. 패턴의 동작을 실제로 좌우하는 것은
+ *
+ *   1) 유동성 — 거래가 얇으면 호가가 띄엄띄엄해 가격이 계단처럼 움직이고,
+ *      돌파·이탈 판정이 쉽게 흔들린다. 시총이 커도 거래가 안 되는 종목이 있다.
+ *   2) 변동성 — 문턱값(2% 이상, 3배 이상 …)이 종목의 평소 폭에 대해 상대적으로
+ *      얼마나 큰 값인지가 달라진다. 잘 흔들리는 종목은 신호가 늘 켜져 있다.
+ *   3) 시장·제도 — 국내는 상·하한가(±30%)가 있고 호가 단위가 다르다.
+ *      코스닥은 코스피보다 개인 비중과 변동성이 높다.
+ *
+ * 시총은 1)과 2)의 대략적인 대리 변수일 뿐이고, 게다가 따로 수집해야 한다.
+ * 반면 유동성과 변동성은 지금 가진 OHLCV 만으로 바로 계산된다.
+ */
+
+const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+
+/** 최근 1년 기준 종목 프로파일 */
+export function profileOf(stock, atrPctSeries, lookback = 252) {
+  const c = stock.candles;
+  const tail = c.slice(-lookback);
+  const board = stock.ticker.endsWith('.KQ') ? 'KOSDAQ'
+    : stock.ticker.endsWith('.KS') ? 'KOSPI'
+    : 'US';
+  return {
+    ticker: stock.ticker,
+    name: stock.name,
+    board,
+    // 거래대금: 통화가 달라 시장 간 절대 비교는 안 되므로, 아래에서 시장 안 순위로 바꾼다
+    turnover: mean(tail.map((x) => x.close * x.volume)),
+    atrPct: round(mean(atrPctSeries.slice(-lookback).filter((v) => v != null))),
+    days: c.length,
+  };
+}
+
+/** 값을 3등분해 low / mid / high 로 (같은 시장 안에서 순위를 매길 수도 있다) */
+function tercile(items, valueOf, groupOf) {
+  const groups = new Map();
+  for (const it of items) {
+    const g = groupOf ? groupOf(it) : '_';
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(it);
+  }
+  const out = new Map();
+  for (const arr of groups.values()) {
+    const sorted = [...arr].sort((a, b) => valueOf(a) - valueOf(b));
+    sorted.forEach((it, i) => {
+      const r = i / Math.max(1, sorted.length - 1);
+      out.set(it.ticker, r < 1 / 3 ? 'low' : r < 2 / 3 ? 'mid' : 'high');
+    });
+  }
+  return out;
+}
+
+/**
+ * 프로파일 목록 → 분류 축별 버킷 배정
+ * 유동성은 통화가 다르므로 **같은 시장 안에서** 순위를 매긴다.
+ */
+export function assignBuckets(profiles) {
+  const liq = tercile(profiles, (p) => p.turnover, (p) => p.board);
+  const vol = tercile(profiles, (p) => p.atrPct);
+  for (const p of profiles) {
+    p.liquidity = liq.get(p.ticker);
+    p.volatility = vol.get(p.ticker);
+  }
+  return profiles;
+}
+
+export const AXES = {
+  liquidity: {
+    name: '유동성 (거래대금)',
+    why: '거래가 얇으면 가격이 띄엄띄엄 움직여 돌파·이탈 판정이 쉽게 흔들립니다. 같은 시장 안에서 일평균 거래대금 순위로 3등분했습니다.',
+    keys: ['high', 'mid', 'low'],
+    labels: { high: '상위 1/3 (활발)', mid: '중위 1/3', low: '하위 1/3 (한산)' },
+  },
+  volatility: {
+    name: '변동성 (ATR%)',
+    why: '평소 크게 흔들리는 종목에서는 "2% 이상 움직였다" 같은 조건이 평범한 하루에도 걸립니다. 최근 1년 평균 ATR%로 3등분했습니다.',
+    keys: ['low', 'mid', 'high'],
+    labels: { low: '하위 1/3 (얌전)', mid: '중위 1/3', high: '상위 1/3 (요동)' },
+  },
+  board: {
+    name: '시장',
+    why: '국내는 상·하한가(±30%) 제도가 있고 호가 단위가 다릅니다. 코스닥은 코스피보다 변동성이 큰 편입니다.',
+    keys: ['KOSPI', 'KOSDAQ', 'US'],
+    labels: { KOSPI: '코스피', KOSDAQ: '코스닥', US: '미국' },
+  },
+};

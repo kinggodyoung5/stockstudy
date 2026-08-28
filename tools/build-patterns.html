@@ -28,7 +28,8 @@
 import { loadStockList, loadStock } from '../src/lib/data.js';
 import { detectStock, mergeDetections, ALL_PATTERNS, ALL_PATTERN_IDS, groupOf } from '../src/lib/engine.js';
 import { OUTCOME_DAYS } from '../src/lib/outcome.js';
-import { summarize, baseline } from '../src/lib/stats.js';
+import { summarize, baseline, profileOf, assignBuckets, AXES } from '../src/lib/stats.js';
+import { atrPercent } from '../src/lib/oscillators.js';
 
 /** 저장할 사례 최대 개수. 전체 건수는 count 에 그대로 남기고, 예시는 고르게 뽑아 담는다. */
 const MAX_HITS = 150;
@@ -84,6 +85,26 @@ document.getElementById('run').addEventListener('click', async (e) => {
     // 비교 기준선: 아무 날이나 샀을 때의 20거래일 성과.
     // 이게 없으면 어떤 패턴의 승률 55%가 좋은 건지 나쁜 건지 알 수 없다.
     const base = baseline(stocks, OUTCOME_DAYS);
+
+    // 종목 분류 — 유동성·변동성·시장 3축.
+    // 신호가 주로 어느 종목군에서 터지는지, 그 종목군의 기준선은 얼마인지 봐야
+    // 승률 비교가 의미를 갖는다.
+    const profiles = assignBuckets(stocks.map((s) => profileOf(s, atrPercent(s.candles, 14))));
+    const bucketOf = Object.fromEntries(profiles.map((p) => [p.ticker, p]));
+    const stockOf = Object.fromEntries(stocks.map((s) => [s.ticker, s]));
+
+    const axisBaselines = {};
+    for (const [axis, def] of Object.entries(AXES)) {
+      axisBaselines[axis] = {};
+      for (const key of def.keys) {
+        const subset = profiles.filter((p) => p[axis] === key).map((p) => stockOf[p.ticker]);
+        axisBaselines[axis][key] = subset.length ? baseline(subset, OUTCOME_DAYS) : null;
+      }
+      const line = def.keys
+        .map((k) => `${def.labels[k]} ${axisBaselines[axis][k] ? axisBaselines[axis][k].winRate + '%' : '-'}`)
+        .join('  ·  ');
+      log(`  ${def.name} 기준선 → ${line}`);
+    }
     log(`\n기준선 (아무 날이나 매수, ${OUTCOME_DAYS}거래일 보유): 상승 비율 ${base.winRate}% · 평균 ${base.avgChange > 0 ? '+' : ''}${base.avgChange}% · 표본 ${base.samples.toLocaleString()}건\n`);
 
     const summaryRows = [];
@@ -95,6 +116,16 @@ document.getElementById('run').addEventListener('click', async (e) => {
       const hits = merged[id].sort((a, b) => (a.date < b.date ? -1 : 1));
       grandTotal += hits.length;
       const stats = summarize(hits);
+
+      // 이 신호가 어느 종목군에서 나왔고, 그 안에서 성과가 어땠는지
+      const byAxis = {};
+      for (const [axis, def] of Object.entries(AXES)) {
+        byAxis[axis] = {};
+        for (const key of def.keys) {
+          const sub = hits.filter((h) => bucketOf[h.ticker] && bucketOf[h.ticker][axis] === key);
+          byAxis[axis][key] = sub.length ? { count: sub.length, stats: summarize(sub) } : null;
+        }
+      }
       const kept = sample(hits, MAX_HITS);
 
       const payload = {
@@ -111,6 +142,7 @@ document.getElementById('run').addEventListener('click', async (e) => {
         count: hits.length,
         sampled: kept.length < hits.length,
         stats,
+        byAxis,
         hits: kept,
       };
       const body = JSON.stringify(payload);
@@ -123,7 +155,7 @@ document.getElementById('run').addEventListener('click', async (e) => {
       summaryRows.push({
         pattern: id, name: meta.name, lesson: meta.lesson, group: groupOf(id),
         bias: meta.bias || 'none', summary: meta.summary,
-        count: hits.length, stats,
+        count: hits.length, stats, byAxis,
       });
     }
 
@@ -136,6 +168,9 @@ document.getElementById('run').addEventListener('click', async (e) => {
       to: index.reduce((m, r) => (r.to > m ? r.to : m), index[0].to),
       totalHits: grandTotal,
       baseline: base,
+      axes: AXES,
+      axisBaselines,
+      profiles,
       patterns: summaryRows,
     });
     const ri = await fetch('/_write?path=data/patterns/_index.json', { method: 'POST', body: indexBody });

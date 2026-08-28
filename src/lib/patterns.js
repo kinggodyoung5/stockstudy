@@ -65,9 +65,9 @@ export const PATTERNS = {
     name: '거래량 급증',
     lesson: 'volume',
     bias: 'none',
-    summary: '평소 거래량 대비 이상 급증이 나타난 날',
+    summary: '평소 거래량의 2배 이상이 거래된 날',
     rules: [
-      '당일 거래량 ≥ 직전 20거래일 평균 거래량 × 3',
+      '당일 거래량 ≥ 직전 20거래일 평균 거래량 × 2',
       '당일 등락률의 절대값 ≥ 2% (거래량만 늘고 가격은 그대로인 경우 제외)',
       '직전 10거래일 안에 다른 급증일이 없었음',
     ],
@@ -210,7 +210,7 @@ function detectVolumeSpike(stock) {
     if (avg <= 0) continue;
 
     const ratio = v[i] / avg;
-    if (ratio < 3) continue;
+    if (ratio < 2) continue;   // 2배가 가장 널리 쓰이는 기준
 
     const chg = pct(candles[i - 1].close, candles[i].close);
     if (Math.abs(chg) < 2) continue;

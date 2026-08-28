@@ -259,13 +259,13 @@ export const OSC_PATTERNS = {
   },
   'stochastic-oversold-cross': {
     name: '스토캐스틱 과매도 반등', lesson: 'stochastic', bias: 'up',
-    summary: '침체 구간(20 이하)에서 %K가 %D를 위로 뚫는 지점',
-    rules: ['%K가 %D를 상향 교차', '교차 시점의 %K, %D 모두 25 이하', '직전 15거래일 안에 같은 신호가 없었음'],
+    summary: '과매도 구간(20 이하)에서 %K가 %D를 위로 뚫는 지점',
+    rules: ['%K가 %D를 상향 교차', '교차 시점의 %K, %D 모두 20 이하 (표준 과매도선)', '직전 15거래일 안에 같은 신호가 없었음'],
   },
   'stochastic-overbought-cross': {
     name: '스토캐스틱 과열 꺾임', lesson: 'stochastic', bias: 'down',
-    summary: '과열 구간(80 이상)에서 %K가 %D를 아래로 뚫는 지점',
-    rules: ['%K가 %D를 하향 교차', '교차 시점의 %K, %D 모두 75 이상', '직전 15거래일 안에 같은 신호가 없었음'],
+    summary: '과매수 구간(80 이상)에서 %K가 %D를 아래로 뚫는 지점',
+    rules: ['%K가 %D를 하향 교차', '교차 시점의 %K, %D 모두 80 이상 (표준 과매수선)', '직전 15거래일 안에 같은 신호가 없었음'],
   },
   'adx-uptrend-start': {
     name: 'ADX 상승추세 발생', lesson: 'adx', bias: 'up',
@@ -279,13 +279,13 @@ export const OSC_PATTERNS = {
   },
   'disparity-overheat': {
     name: '이격도 과열', lesson: 'disparity', bias: 'down',
-    summary: '종가가 20일선보다 15% 이상 위로 벌어진 지점',
-    rules: ['이격도(종가 ÷ 20일선 × 100) ≥ 115', '직전 20거래일 안에 같은 신호가 없었음'],
+    summary: '종가가 20일선보다 10% 이상 위로 벌어진 지점',
+    rules: ['이격도(종가 ÷ 20일선 × 100) ≥ 110', '직전 20거래일 안에 같은 신호가 없었음'],
   },
   'disparity-oversold': {
     name: '이격도 침체', lesson: 'disparity', bias: 'up',
-    summary: '종가가 20일선보다 12% 이상 아래로 벌어진 지점',
-    rules: ['이격도 ≤ 88', '직전 20거래일 안에 같은 신호가 없었음'],
+    summary: '종가가 20일선보다 10% 이상 아래로 벌어진 지점',
+    rules: ['이격도 ≤ 90', '직전 20거래일 안에 같은 신호가 없었음'],
   },
   'squeeze-breakout-up': {
     name: '볼린저 스퀴즈 상향 돌파', lesson: 'squeeze', bias: 'up',
@@ -366,7 +366,7 @@ export function detectOscillatorPatterns(stock) {
     'obv-bearish-divergence': divergence(stock, o, false, 'OBV'),
 
     'stochastic-oversold-cross': lineCross(stock, st.k, st.d, true, {
-      guard: (i) => st.k[i] <= 25 && st.d[i] <= 25,
+      guard: (i) => st.k[i] <= 20 && st.d[i] <= 20,
       evidence: (i) => [
         { label: '%K', value: round(st.k[i]) },
         { label: '%D', value: round(st.d[i]) },
@@ -376,7 +376,7 @@ export function detectOscillatorPatterns(stock) {
       ],
     }),
     'stochastic-overbought-cross': lineCross(stock, st.k, st.d, false, {
-      guard: (i) => st.k[i] >= 75 && st.d[i] >= 75,
+      guard: (i) => st.k[i] >= 80 && st.d[i] >= 80,
       evidence: (i) => [
         { label: '%K', value: round(st.k[i]) },
         { label: '%D', value: round(st.d[i]) },
@@ -409,7 +409,7 @@ export function detectOscillatorPatterns(stock) {
     }).filter((h) => ax.minusDI[h.index] > ax.plusDI[h.index]),
 
     'disparity-overheat': thresholdCross(stock, dis, {
-      above: true, level: 115,
+      above: true, level: 110,
       evidence: (i) => [
         { label: '이격도 (20일)', value: round(dis[i]) },
         { label: '당일 종가', value: round(c[i]) },
@@ -418,7 +418,7 @@ export function detectOscillatorPatterns(stock) {
       ],
     }),
     'disparity-oversold': thresholdCross(stock, dis, {
-      above: false, level: 88,
+      above: false, level: 90,
       evidence: (i) => [
         { label: '이격도 (20일)', value: round(dis[i]) },
         { label: '당일 종가', value: round(c[i]) },

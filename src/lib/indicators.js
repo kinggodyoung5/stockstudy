@@ -192,7 +192,8 @@ export function pivots(candles, w = 5) {
  * "몇 번 건드렸는가(touches)"가 그 선의 신뢰도 근거가 된다.
  */
 export function supportResistance(candles, opt = {}) {
-  const p = { window: 5, tolerancePct: 1.5, minTouches: 2, maxLevels: 6, ...opt };
+  // 두 점이면 어떤 선이든 그을 수 있다. 세 번 이상 반응해야 선으로 인정하는 것이 통상적인 관례.
+  const p = { window: 5, tolerancePct: 1.5, minTouches: 3, maxLevels: 6, ...opt };
   const { highs, lows } = pivots(candles, p.window);
 
   const points = [

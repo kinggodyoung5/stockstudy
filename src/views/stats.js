@@ -29,7 +29,13 @@ export async function renderStats(app) {
   const data = await loadPatternIndex();
   const base = data.baseline;
 
-  const state = { sort: 'winRate', desc: true, group: 'all', minSamples: 20, q: '' };
+  const state = { sort: 'winRate', desc: true, group: 'all', minSamples: 20, q: '', axis: 'all', bucket: null };
+
+  const AXES = data.axes || {};
+  /** 지금 보고 있는 종목군의 기준선 (전체이면 전체 기준선) */
+  const curBase = () => (state.axis === 'all' ? base : (data.axisBaselines?.[state.axis]?.[state.bucket] || null));
+  /** 지금 보고 있는 종목군에서의 그 규칙 성과 */
+  const curStats = (r) => (state.axis === 'all' ? { count: r.count, stats: r.stats } : (r.byAxis?.[state.axis]?.[state.bucket] || { count: 0, stats: null }));
 
   const tableWrap = el('div.table-wrap');
 
@@ -47,16 +53,18 @@ export async function renderStats(app) {
 
   const valueOf = (row, key) => {
     if (key === 'name' || key === 'group' || key === 'bias') return row[key];
-    if (key === 'count') return row.count;
-    if (key === 'edge') return row.stats && base ? row.stats.winRate - base.winRate : null;
-    return row.stats ? row.stats[key] : null;
+    const cur = curStats(row);
+    const b = curBase();
+    if (key === 'count') return cur.count;
+    if (key === 'edge') return cur.stats && b ? cur.stats.winRate - b.winRate : null;
+    return cur.stats ? cur.stats[key] : null;
   };
 
   function draw() {
     const q = state.q.trim().toLowerCase();
     const rows = data.patterns
       .filter((r) => state.group === 'all' || r.group === state.group)
-      .filter((r) => r.count >= state.minSamples)
+      .filter((r) => curStats(r).count >= state.minSamples)
       .filter((r) => !q || (r.name + ' ' + r.summary + ' ' + r.pattern).toLowerCase().includes(q));
 
     rows.sort((a, b) => {
@@ -87,10 +95,12 @@ export async function renderStats(app) {
     table.append(thead);
 
     const tbody = el('tbody');
+    const b = curBase();
     for (const r of rows) {
-      const s = r.stats;
-      const edge = s && base ? +(s.winRate - base.winRate).toFixed(1) : null;
-      const conf = confidence(r.count);
+      const cur = curStats(r);
+      const s = cur.stats;
+      const edge = s && b ? +(s.winRate - b.winRate).toFixed(1) : null;
+      const conf = confidence(cur.count);
       const lesson = LESSON_BY_ID[r.lesson];
 
       const nameCell = el('td', null, [
@@ -105,7 +115,7 @@ export async function renderStats(app) {
           nameCell,
           el('td.small.muted', { text: GROUP_NAMES[r.group] || r.group }),
           el('td.small', null, [el('span', { class: 'pill ' + (r.bias === 'up' ? 'up' : r.bias === 'down' ? 'down' : ''), text: BIAS_NAMES[r.bias] })]),
-          el('td.num', { text: r.count.toLocaleString() }),
+          el('td.num', { text: cur.count.toLocaleString() }),
           el('td.num', { class: s ? (s.winRate >= 50 ? 'up' : 'down') : '', text: s ? s.winRate + '%' : '—' }),
           el('td.num', { class: dirClass(edge), text: edge == null ? '—' : (edge > 0 ? '+' : '') + edge + '%p' }),
           el('td.num', { class: s ? dirClass(s.avgChange) : '', text: s ? signed(s.avgChange) : '—' }),
@@ -134,24 +144,108 @@ export async function renderStats(app) {
   const search = el('input.search', { type: 'search', placeholder: '규칙 이름·설명으로 찾기 (예: 다이버전스, RSI, 헤드앤숄더)' });
   search.addEventListener('input', () => { state.q = search.value; draw(); });
 
+  // ── 종목군 분류 ──────────────────────────────────────
+  const axisSel = el('select');
+  axisSel.append(el('option', { value: 'all', text: '전체 종목' }));
+  for (const [k, def] of Object.entries(AXES)) axisSel.append(el('option', { value: k, text: def.name + '으로 나누기' }));
+
+  const bucketRow = el('div.row', { style: { marginTop: '10px' } });
+  const axisPanel = el('div.panel.axis-panel', { style: { marginTop: '18px' } });
+
+  function drawAxis() {
+    clear(bucketRow);
+    clear(axisPanel);
+
+    if (state.axis === 'all') {
+      axisPanel.style.display = 'none';
+      return;
+    }
+    axisPanel.style.display = '';
+    const def = AXES[state.axis];
+    if (!state.bucket || !def.keys.includes(state.bucket)) state.bucket = def.keys[0];
+
+    for (const key of def.keys) {
+      const bl = data.axisBaselines?.[state.axis]?.[key];
+      const btn = el('button.btn', {
+        class: key === state.bucket ? 'primary' : '',
+        text: def.labels[key] + (bl ? ` · 기준선 ${bl.winRate}%` : ''),
+        onclick: () => { state.bucket = key; drawAxis(); drawBase(); draw(); },
+      });
+      bucketRow.append(btn);
+    }
+
+    // 이 축의 기준선이 얼마나 벌어지는지가 핵심이다
+    const bls = def.keys.map((k) => data.axisBaselines?.[state.axis]?.[k]).filter(Boolean);
+    const spread = bls.length > 1
+      ? +(Math.max(...bls.map((x) => x.winRate)) - Math.min(...bls.map((x) => x.winRate))).toFixed(1)
+      : null;
+
+    axisPanel.append(
+      el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: def.name + ' 으로 나눈 기준선' }),
+      el('p.small.muted', { style: { margin: '0 0 12px' }, text: def.why }),
+      el('div.stat-row', null, def.keys.map((k) => {
+        const bl = data.axisBaselines?.[state.axis]?.[k];
+        const n = (data.profiles || []).filter((p) => p[state.axis] === k).length;
+        return el('div.stat', { class: k === state.bucket ? 'on' : '' }, [
+          el('span', { text: def.labels[k] + ` · 종목 ${n}개` }),
+          el('b', { class: bl ? (bl.winRate >= base.winRate ? 'up' : 'down') : '', text: bl ? bl.winRate + '%' : '—' }),
+          el('span.small.muted', { text: bl ? `평균 ${signed(bl.avgChange)}` : '' }),
+        ]);
+      })),
+      spread != null
+        ? el('p.small', { style: { margin: '12px 0 0' }, html:
+            `종목군에 따라 <b>아무 날이나 샀을 때의 승률이 ${spread}%p 벌어집니다.</b> ` +
+            `어떤 신호가 주로 한쪽 종목군에서만 나온다면, 그 신호의 승률은 전체 기준선이 아니라 ` +
+            `<b>그 종목군의 기준선</b>과 비교해야 합니다. 위 버튼으로 종목군을 골라 표를 다시 보세요.` })
+        : null
+    );
+  }
+
+  axisSel.addEventListener('change', () => {
+    state.axis = axisSel.value;
+    state.bucket = null;
+    drawAxis();
+    drawBase();
+    draw();
+  });
+
+  const baseCard = el('div');
+  function drawBase() {
+    const b = curBase();
+    const label = state.axis === 'all'
+      ? '전체 종목'
+      : AXES[state.axis].name + ' · ' + AXES[state.axis].labels[state.bucket];
+    clear(baseCard).append(
+      el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: `먼저 기준선을 보세요 — ${label}` }),
+      el('p.small.muted', { style: { margin: '0 0 12px' }, text: '같은 종목·같은 기간에서 아무 날이나 사서 20거래일 들고 있었을 때의 결과입니다. 어떤 신호의 승률은 이 숫자와 비교해야 의미가 생깁니다.' }),
+      b
+        ? el('div.stat-row', null, [
+            el('div.stat', null, [el('span', { text: '아무 날이나 매수 시 상승 비율' }), el('b', { text: b.winRate + '%' })]),
+            el('div.stat', null, [el('span', { text: '평균 수익률' }), el('b', { class: dirClass(b.avgChange), text: signed(b.avgChange) })]),
+            el('div.stat', null, [el('span', { text: '중앙값' }), el('b', { class: dirClass(b.medianChange), text: signed(b.medianChange) })]),
+            el('div.stat', null, [el('span', { text: '표본' }), el('b', { text: b.samples.toLocaleString() + '건' })]),
+          ])
+        : el('p.muted.small', { text: '이 종목군의 기준선을 계산할 수 없습니다.' })
+    );
+  }
+
   clear(app).append(
     el('h1.page-title', { text: '패턴 성과 통계' }),
     el('p.page-sub', {
       text: `${data.tickers}개 종목 · ${data.from} ~ ${data.to} 기간에서 ${data.patterns.length}개 규칙이 찾아낸 ${data.totalHits.toLocaleString()}건의 신호를, 발생 ${data.outcomeDays}거래일 뒤 결과로 집계했습니다.`,
     }),
 
-    el('div.panel', null, [
-      el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: '먼저 기준선을 보세요' }),
-      el('p.small.muted', { style: { margin: '0 0 12px' }, text: '같은 종목·같은 기간에서 아무 날이나 사서 20거래일 들고 있었을 때의 결과입니다. 어떤 신호의 승률은 이 숫자와 비교해야 의미가 생깁니다.' }),
-      base
-        ? el('div.stat-row', null, [
-            el('div.stat', null, [el('span', { text: '아무 날이나 매수 시 상승 비율' }), el('b', { text: base.winRate + '%' })]),
-            el('div.stat', null, [el('span', { text: '평균 수익률' }), el('b', { class: dirClass(base.avgChange), text: signed(base.avgChange) })]),
-            el('div.stat', null, [el('span', { text: '중앙값' }), el('b', { class: dirClass(base.medianChange), text: signed(base.medianChange) })]),
-            el('div.stat', null, [el('span', { text: '표본' }), el('b', { text: base.samples.toLocaleString() + '건' })]),
-          ])
-        : el('p.muted.small', { text: '기준선 데이터가 없습니다. tools/build-patterns.html 을 다시 실행하세요.' }),
+    el('div.panel', null, [baseCard]),
+
+    el('div.panel', { style: { marginTop: '18px' } }, [
+      el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: '종목을 나눠서 보기' }),
+      el('p.small.muted', { style: { margin: '0 0 12px' }, text:
+        '모든 종목을 한 덩어리로 보면 중요한 차이가 묻힙니다. 거래가 활발한 종목과 한산한 종목, 잘 흔들리는 종목과 얌전한 종목은 같은 신호에도 다르게 반응합니다.' }),
+      el('div.row', null, [axisSel]),
+      bucketRow,
     ]),
+
+    axisPanel,
 
     el('div.panel', { style: { marginTop: '18px' } }, [
       el('div.row', { style: { marginBottom: '14px' } }, [
@@ -174,5 +268,7 @@ export async function renderStats(app) {
     ])
   );
 
+  drawAxis();
+  drawBase();
   draw();
 }
