@@ -294,3 +294,102 @@ select {
   .profile { width: 100%; flex-direction: column; }
   .stats-table th { position: static; }
 }
+
+/* ── 모바일 ───────────────────────────────────────────── */
+@media (max-width: 720px) {
+  /* 좁은 화면에서 탭 라벨이 세로로 접혀 헤더를 넘치던 문제.
+     헤더 높이를 풀고 네비를 가로 스크롤로 바꾼다. */
+  .topbar {
+    height: auto; flex-direction: column; align-items: stretch;
+    gap: 0; padding: 8px 0 0;
+  }
+  .brand { padding: 0 16px 8px; }
+  .nav {
+    gap: 2px; overflow-x: auto; padding: 0 16px 8px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; flex: 0 0 auto; padding: 6px 12px; font-size: 13.5px; }
+
+  .app { padding: 20px 16px 48px; }
+  .foot { padding: 16px 16px 32px; }
+  .page-title { font-size: 20px; }
+
+  .lesson-nav { gap: 4px; padding-bottom: 4px; }
+  .lesson-nav a { white-space: nowrap; flex: 0 0 auto; border-left: 0; border-bottom: 2px solid transparent; }
+  .lesson-nav a.on { border-left: 0; border-bottom-color: var(--accent); }
+  /* 가로 스크롤 목록에서는 그룹 이름이 구분자 역할을 한다 */
+  .nav-group { padding: 9px 4px 9px 10px; white-space: nowrap; flex: 0 0 auto; align-self: center; }
+  .nav-group:first-child { padding-left: 0; }
+
+  .chart-box { height: 320px; }
+  .chart-box.tall { height: 360px; }
+  .panel { padding: 16px; }
+  .case-head, .case-foot > div { padding: 12px 14px; }
+}
+
+/* ── 첫 화면 ──────────────────────────────────────────── */
+.hero { padding: 20px 0 34px; }
+.hero h1 { font-size: 34px; margin: 0 0 12px; letter-spacing: -.03em; line-height: 1.25; }
+.hero > p { color: #cbd3e1; max-width: 720px; margin: 0 0 24px; font-size: 15.5px; }
+.hero-stats { display: flex; gap: 34px; flex-wrap: wrap; }
+.hero-stats b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.hero-stats span { font-size: 12.5px; color: var(--muted); }
+
+.section-title { font-size: 18px; margin: 0 0 14px; letter-spacing: -.01em; }
+.step-section { margin-bottom: 22px; }
+.step-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.step {
+  display: block; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px; transition: border-color .12s, transform .12s;
+}
+.step:hover { border-color: var(--accent); transform: translateY(-2px); }
+.step-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 700;
+  background: var(--panel-2); color: var(--accent); border: 1px solid var(--line);
+}
+.step h3 { font-size: 15.5px; margin: 10px 0 6px; }
+.step p { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.65; }
+.step-cta { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+
+.thesis { margin-top: 18px; border-color: rgba(77,208,167,.28); }
+.thesis h2 { font-size: 18px; margin: 0 0 10px; }
+.thesis p { color: #cbd3e1; margin: 0 0 10px; font-size: 14.5px; }
+.thesis .btn { display: inline-block; margin-top: 6px; }
+
+.highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 16px 0; }
+.highlight {
+  display: block; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 12px 14px; transition: border-color .12s;
+}
+.highlight:hover { border-color: var(--accent); }
+.h-name { display: block; font-size: 13px; margin-bottom: 4px; }
+.h-edge { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.h-meta { display: block; font-size: 11.5px; color: var(--muted); }
+
+.toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px; }
+.toc-group h4 { margin: 0 0 6px; font-size: 12px; color: var(--accent); letter-spacing: .04em; }
+.toc-group ul { margin: 0; padding: 0; list-style: none; }
+.toc-group li { margin-bottom: 3px; }
+.toc-group a { font-size: 13.5px; color: var(--muted); }
+.toc-group a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── 검색 입력 ────────────────────────────────────────── */
+.search {
+  flex: 1 1 260px; min-width: 200px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+  padding: 8px 12px; border-radius: 8px; font-size: 13.5px; font-family: inherit;
+}
+.search:focus { outline: none; border-color: var(--accent); }
+.search::placeholder { color: var(--muted); }
+
+.btn.small { padding: 5px 10px; font-size: 12px; }
+.warn { color: var(--warn); }
+
+@media (max-width: 720px) {
+  .hero { padding: 10px 0 24px; }
+  .hero h1 { font-size: 25px; }
+  .hero-stats { gap: 20px; }
+  .hero-stats b { font-size: 21px; }
+}

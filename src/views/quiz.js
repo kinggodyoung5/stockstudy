@@ -9,14 +9,22 @@ import { createStockChart, COLORS } from '../lib/chart.js';
 import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct, disparity } from '../lib/indicators.js';
 import { rsi, macd, stochastic, adx } from '../lib/oscillators.js';
 import { el, clear, overlayBar, signed, dirClass } from '../lib/ui.js';
+import { createOscillatorPanel, syncTimeScales } from '../lib/chart.js';
+import { OSCILLATORS } from '../lib/oscillators.js';
+import * as storage from '../lib/storage.js';
 
 const SETUP_BARS = 120;   // 보여줄 앞구간
 const FUTURE_BARS = 20;   // 가려둘 미래 구간
 const FLAT_BAND = 3;      // ±3% 안이면 횡보로 본다
 
 let chart = null;
+let panels = [];
+let unsync = null;
 
 export function destroyQuiz() {
+  if (unsync) { try { unsync(); } catch (_) {} unsync = null; }
+  panels.forEach((p) => { try { p.destroy(); } catch (_) {} });
+  panels = [];
   if (chart) { try { chart.destroy(); } catch (_) {} chart = null; }
 }
 
@@ -116,9 +124,16 @@ export async function renderQuiz(app) {
   clear(app).append(el('p.loading', { text: '문제를 준비하는 중…' }));
 
   const index = await loadStockList();
-  const session = { total: 0, correct: 0, notes: [] };
+  // 기록은 브라우저에 남긴다 (새로고침·재방문해도 유지)
+  const saved = storage.load('quiz', null);
+  const session = saved && typeof saved.total === 'number'
+    ? { total: saved.total, correct: saved.correct, notes: saved.notes || [] }
+    : { total: 0, correct: 0, notes: [] };
+  const canSave = storage.available();
+  const persist = () => storage.save('quiz', session);
 
   const box = el('div.chart-box.tall');
+  const panelWrap = el('div.panels');
   const answerArea = el('div');
   const resultArea = el('div');
   const scoreArea = el('div.score');
@@ -155,6 +170,28 @@ export async function renderQuiz(app) {
     }
   }
 
+  /**
+   * 체크리스트에서 RSI·MACD를 근거로 물어보므로 그 차트도 함께 보여준다.
+   * createOscillatorPanel 은 생성 시점의 캔들로 그리기 때문에, 데이터가 바뀌면 다시 만든다.
+   */
+  function mountPanels(candles) {
+    if (unsync) { try { unsync(); } catch (_) {} unsync = null; }
+    panels.forEach((p) => { try { p.destroy(); } catch (_) {} });
+    panels = [];
+    clear(panelWrap);
+    const charts = [chart.chart];
+    for (const id of ['rsi', 'macd']) {
+      const def = OSCILLATORS[id];
+      const pbox = el('div.osc-box', { style: { height: def.height + 'px' } });
+      panelWrap.append(el('div.osc-wrap', null, [el('div.panel-head', null, [el('span', { text: def.name })]), pbox]));
+      const panel = createOscillatorPanel(pbox, def, candles);
+      panels.push(panel);
+      panel.fit();
+      charts.push(panel.chart);
+    }
+    unsync = syncTimeScales(charts);
+  }
+
   async function newQuestion() {
     clear(resultArea);
     const row = index[Math.floor(Math.random() * index.length)];
@@ -188,6 +225,7 @@ export async function renderQuiz(app) {
     chart.setCandles(setup);
     chart.setMarkers([]);
     chart.fit();
+    mountPanels(setup);
 
     renderAnswers();
   }
@@ -220,6 +258,7 @@ export async function renderQuiz(app) {
     // 가려뒀던 미래 구간을 이어 붙인다
     const full = current.setup.concat(current.future);
     chart.setCandles(full);
+    mountPanels(full);
     chart.setMarkers([
       { date: current.cutDate, position: 'belowBar', color: COLORS.neckline, shape: 'arrowUp', text: '여기까지 보였음' },
     ]);
@@ -238,6 +277,7 @@ export async function renderQuiz(app) {
         signals: presentSignals.map((s) => s.label),
       });
     }
+    persist();
     updateScore();
     updateNotes();
 
@@ -314,7 +354,7 @@ export async function renderQuiz(app) {
     el('h1.page-title', { text: '구간 맞히기 퀴즈' }),
     el('p.page-sub', { text: '실제 과거 데이터에서 무작위로 뽑은 구간입니다. 종목과 시기는 답을 공개할 때까지 가려집니다.' }),
     el('div.quiz-grid', null, [
-      el('div.panel', null, [questionMeta, box, resultArea]),
+      el('div.panel', null, [questionMeta, box, panelWrap, resultArea]),
       el('div', null, [
         el('div.panel', null, [
           answerArea,
@@ -327,8 +367,25 @@ export async function renderQuiz(app) {
           scoreArea,
         ]),
         el('div.panel', { style: { marginTop: '16px' } }, [
-          el('h3', { style: { margin: '0 0 10px', fontSize: '15px' }, text: '오답노트' }),
-          el('p.small.muted', { style: { margin: '0 0 10px' }, text: '새로고침하면 사라집니다 (영구 저장은 다음 단계).' }),
+          el('div.row', { style: { marginBottom: '8px' } }, [
+            el('h3', { style: { margin: 0, fontSize: '15px' }, text: '오답노트' }),
+            el('span.spacer'),
+            el('button.btn.small', {
+              text: '기록 지우기',
+              onclick: () => {
+                if (!confirm('지금까지의 점수와 오답노트를 모두 지웁니다. 계속할까요?')) return;
+                session.total = 0;
+                session.correct = 0;
+                session.notes.length = 0;
+                storage.remove('quiz');
+                updateScore();
+                updateNotes();
+              },
+            }),
+          ]),
+          el('p.small.muted', { style: { margin: '0 0 10px' }, text: canSave
+            ? '이 브라우저에 저장되어 새로고침하거나 나중에 다시 와도 남아 있습니다.'
+            : '이 브라우저에서는 저장이 차단돼 있어 새로고침하면 사라집니다.' }),
           notesArea,
         ]),
       ]),

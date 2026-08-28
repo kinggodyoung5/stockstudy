@@ -29,7 +29,7 @@ export async function renderStats(app) {
   const data = await loadPatternIndex();
   const base = data.baseline;
 
-  const state = { sort: 'winRate', desc: true, group: 'all', minSamples: 20 };
+  const state = { sort: 'winRate', desc: true, group: 'all', minSamples: 20, q: '' };
 
   const tableWrap = el('div.table-wrap');
 
@@ -53,9 +53,11 @@ export async function renderStats(app) {
   };
 
   function draw() {
+    const q = state.q.trim().toLowerCase();
     const rows = data.patterns
       .filter((r) => state.group === 'all' || r.group === state.group)
-      .filter((r) => r.count >= state.minSamples);
+      .filter((r) => r.count >= state.minSamples)
+      .filter((r) => !q || (r.name + ' ' + r.summary + ' ' + r.pattern).toLowerCase().includes(q));
 
     rows.sort((a, b) => {
       const va = valueOf(a, state.sort);
@@ -129,6 +131,9 @@ export async function renderStats(app) {
   minSel.value = '20';
   minSel.addEventListener('change', () => { state.minSamples = Number(minSel.value); draw(); });
 
+  const search = el('input.search', { type: 'search', placeholder: '규칙 이름·설명으로 찾기 (예: 다이버전스, RSI, 헤드앤숄더)' });
+  search.addEventListener('input', () => { state.q = search.value; draw(); });
+
   clear(app).append(
     el('h1.page-title', { text: '패턴 성과 통계' }),
     el('p.page-sub', {
@@ -150,7 +155,7 @@ export async function renderStats(app) {
 
     el('div.panel', { style: { marginTop: '18px' } }, [
       el('div.row', { style: { marginBottom: '14px' } }, [
-        groupSel, minSel,
+        search, groupSel, minSel,
         el('span.spacer'),
         el('span.small.muted', { text: '열 제목을 누르면 정렬됩니다' }),
       ]),
@@ -161,7 +166,7 @@ export async function renderStats(app) {
       el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '이 표를 읽을 때 반드시 감안할 것' }),
       el('ul.small', { style: { margin: '0', paddingLeft: '20px' } }, [
         el('li', { text: '매매 전략의 백테스트가 아닙니다. 수수료·세금·슬리피지·분산투자·자금관리가 전혀 반영돼 있지 않습니다.' }),
-        el('li', { text: `종목이 ${data.tickers}개뿐이고, 전부 지금 시점에서 잘 알려진 회사들입니다. 같은 기간에 사라진 회사들은 목록에 없습니다 (생존 편향). 그래서 대부분의 신호가 기준선처럼 플러스로 나옵니다.` }),
+        el('li', { text: `종목이 ${data.tickers}개입니다. 고점 대비 크게 밀린 종목과 오래 부진한 종목을 일부러 섞었지만, 여전히 '지금까지 상장을 유지한 회사들'만 들어 있습니다. 같은 기간에 상장폐지된 회사는 한 곳도 없습니다 (생존 편향). 실제보다 낙관적인 숫자라고 보는 편이 맞습니다.` }),
         el('li', { text: '표본이 20건 미만인 규칙은 흐리게 표시했습니다. 승률 100%라도 3건이면 아무 의미가 없습니다.' }),
         el('li', { text: '보유 기간을 20거래일로 고정했습니다. 기간을 바꾸면 순위가 달라집니다.' }),
         el('li', { text: '같은 데이터로 57개 규칙을 한꺼번에 평가하면, 순전히 우연으로 좋아 보이는 규칙이 몇 개는 나오게 돼 있습니다. 상위권 규칙을 곧바로 믿지 마세요.' }),

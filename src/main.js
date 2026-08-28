@@ -10,8 +10,10 @@ import { renderSandbox, destroySandbox } from './views/sandbox.js';
 import { renderViewer, destroyViewer } from './views/viewer.js';
 import { renderQuiz, destroyQuiz } from './views/quiz.js';
 import { renderStats, destroyStats } from './views/stats.js';
+import { renderHome, destroyHome } from './views/home.js';
 
 const ROUTES = [
+  { id: 'home', label: '시작하기', render: renderHome },
   { id: 'learn', label: '개념 학습', render: renderLearn },
   { id: 'viewer', label: '데이터 뷰어', render: renderViewer },
   { id: 'stats', label: '성과 통계', render: renderStats },
@@ -25,7 +27,7 @@ const nav = document.getElementById('nav');
 function parseHash() {
   const raw = location.hash.replace(/^#\/?/, '');
   const parts = raw.split('/').filter(Boolean);
-  const id = ROUTES.some((r) => r.id === parts[0]) ? parts[0] : 'learn';
+  const id = ROUTES.some((r) => r.id === parts[0]) ? parts[0] : 'home';
   return { id, params: parts.slice(1) };
 }
 
@@ -43,6 +45,7 @@ function teardown() {
   destroyViewer();
   destroyQuiz();
   destroyStats();
+  destroyHome();
 }
 
 let renderToken = 0;
@@ -81,5 +84,5 @@ async function route() {
 
 window.addEventListener('hashchange', route);
 
-if (!location.hash) location.hash = `#/learn/${LESSONS[0].id}`;
+if (!location.hash) location.hash = '#/home';
 route();
