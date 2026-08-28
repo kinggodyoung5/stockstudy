@@ -9,6 +9,7 @@
 import { LESSONS, LESSON_GROUPS } from '../content/lessons.js';
 import { loadPatternIndex } from '../lib/data.js';
 import { el, clear, signed, dirClass } from '../lib/ui.js';
+import { figureEl } from './learn.js';
 
 export function destroyHome() { /* 차트를 쓰지 않아 정리할 것이 없다 */ }
 
@@ -77,26 +78,75 @@ export async function renderHome(app) {
       : el('p.muted.small', { text: '탐지 결과가 아직 없습니다. tools/build-patterns.html 을 한 번 실행하세요.' }),
   ]);
 
+  // 설명에 쓸 실제 사례 하나 (골든크로스처럼 유명한데 기준선과 차이가 없는 것)
+  const demo = data
+    ? data.patterns.find((p) => p.pattern === 'golden-cross' && p.stats)
+    : null;
+
   const thesis = base
     ? el('div.panel.thesis', null, [
-        el('h2', { text: '이 앱이 가장 강조하는 숫자' }),
+        el('h2', { text: '"골든크로스가 나오면 오른다" — 정말일까?' }),
+
         el('p', { html:
-          `보유한 ${data.tickers}개 종목·${data.from}~${data.to} 기간에서 <b>아무 날이나 사서 ` +
-          `${data.outcomeDays}거래일 들고 있으면 상승 확률 ${base.winRate}%, 평균 ${signed(base.avgChange)}</b> 입니다.` }),
-        el('p', { text:
-          '어떤 신호의 승률이 55%라는 말은 이 숫자와 비교하기 전에는 아무 의미가 없습니다. ' +
-          '실제로 잘 알려진 신호 상당수가 이 기준선과 거의 차이가 없습니다. ' +
-          '성과 통계 탭은 57개 규칙 전부를 이 기준선과 나란히 놓고 보여줍니다.' }),
-        highlights.length
-          ? el('div.highlight-grid', null, highlights.map((h) =>
-              el('a.highlight', { href: `#/learn/${h.lesson}` }, [
-                el('span.h-name', { text: h.name }),
-                el('span.h-edge', { class: dirClass(h.edge), text: (h.edge > 0 ? '+' : '') + h.edge + '%p' }),
-                el('span.h-meta', { text: `승률 ${h.stats.winRate}% · ${h.count.toLocaleString()}건` }),
-              ]))
-            )
+          '이걸 확인하려면 <b>골든크로스 뒤에 산 결과만 봐서는 안 됩니다.</b> ' +
+          '왜냐하면 아무 날에나 사도 절반쯤은 오르기 때문입니다.' }),
+
+        el('div.analogy', null, [
+          el('p', { html:
+            '<b>감기약을 먹고 3일 뒤에 나았습니다. 약이 들은 걸까요?</b><br>' +
+            '감기는 약을 안 먹어도 대개 3일이면 낫습니다. "약 먹고 나았다"만으로는 알 수 없고, ' +
+            '<b>약을 안 먹은 사람들과 비교</b>해야 알 수 있습니다.' }),
+        ]),
+
+        el('p', { html:
+          `주식에서 "약을 안 먹은 사람들"에 해당하는 것이 <b>아무 날이나 사는 것</b>입니다. ` +
+          `이 앱의 ${data.tickers}개 종목·${data.from.slice(0, 4)}년~${data.to.slice(0, 4)}년 데이터로 계산하면 ` +
+          `아무 날이나 사서 ${data.outcomeDays}거래일 들고 있었을 때 <b>${base.winRate}%</b> 확률로 올랐습니다. ` +
+          `이 숫자를 <b>기준선</b>이라고 부르겠습니다.` }),
+
+        demo
+          ? figureEl('baseline-compare', {
+              sigName: `${demo.name} 뒤에 샀을 때 (${demo.count.toLocaleString()}번)`,
+              sigVal: demo.stats.winRate,
+              baseVal: base.winRate,
+            })
           : null,
-        el('a.btn.primary', { href: '#/stats', text: '성과 통계 전체 보기' }),
+
+        demo
+          ? el('p', { html:
+              `골든크로스 뒤에 산 ${demo.count.toLocaleString()}번의 결과는 <b>${demo.stats.winRate}%</b>였습니다. ` +
+              `기준선은 <b>${base.winRate}%</b>입니다. ` +
+              (Math.abs(demo.stats.winRate - base.winRate) < 0.5
+                ? '<b>사실상 똑같습니다.</b> 골든크로스를 보고 샀든 아무 날이나 샀든 결과가 다르지 않았다는 뜻입니다.'
+                : `차이는 ${(demo.stats.winRate - base.winRate).toFixed(1)}%p 입니다.`) })
+          : null,
+
+        el('p.pp-note', { html:
+          '<b>%p 는 무엇인가요?</b> 퍼센트끼리 뺀 차이라서 단위를 다르게 씁니다. ' +
+          `55% − ${base.winRate}% = ${(55 - base.winRate).toFixed(1)}<b>%p</b> 입니다. ` +
+          '"55% 좋다"가 아니라 "그만큼 포인트 차이가 난다"는 뜻입니다.' }),
+
+        el('h3', { style: { margin: '22px 0 6px', fontSize: '16px' }, text: '그래서 이 앱은 모든 신호를 이렇게 봅니다' }),
+        el('p', { text:
+          '57개 규칙 전부에 대해 "그 신호가 나온 뒤의 결과"와 "아무 날이나 샀을 때의 결과"를 나란히 계산해 뒀습니다. ' +
+          '둘의 차이가 0에 가까우면, 그 신호는 있으나 마나 한 것입니다. 실제로 유명한 신호 상당수가 그렇습니다.' }),
+
+        highlights.length
+          ? el('div', null, [
+              el('p.small.muted', { style: { margin: '14px 0 8px' }, text: '반대로 차이가 뚜렷하게 나는 것들도 있습니다 (표본 100건 이상):' }),
+              el('div.highlight-grid', null, highlights.map((h) =>
+                el('a.highlight', { href: `#/learn/${h.lesson}` }, [
+                  el('span.h-name', { text: h.name }),
+                  el('span.h-edge', { class: dirClass(h.edge), text: (h.edge > 0 ? '+' : '') + h.edge + '%p' }),
+                  el('span.h-meta', { text: `승률 ${h.stats.winRate}% · ${h.count.toLocaleString()}건` }),
+                ]))
+              ),
+            ])
+          : null,
+
+        el('p.small.muted', { style: { margin: '14px 0 12px' }, text:
+          '단, 이 숫자들도 어느 시기·어느 종목군이었는지에 따라 크게 달라집니다. 통계 탭에서 나눠 볼 수 있습니다.' }),
+        el('a.btn.primary', { href: '#/stats', text: '57개 규칙 전부 보기' }),
       ])
     : null;
 

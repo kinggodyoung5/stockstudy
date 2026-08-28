@@ -155,10 +155,10 @@ function settingsBox(lessonId) {
 }
 
 /** 개념 설명용 모식도 한 장 */
-function figureEl(id) {
+export function figureEl(id, opts) {
   const f = FIGURES[id];
   return el('figure.fig', null, [
-    el('div.fig-svg', { html: f.svg() }),
+    el('div.fig-svg', { html: f.svg(opts) }),
     el('figcaption', { text: f.caption }),
   ]);
 }

@@ -479,3 +479,23 @@ select {
 .axis-panel { border-color: rgba(91,141,239,.28); }
 .stat.on { border-color: var(--accent); background: rgba(77,208,167,.08); }
 .stat .small { display: block; margin-top: 2px; }
+
+/* ── 첫 화면: 기준선 설명 ─────────────────────────────── */
+.analogy {
+  background: var(--panel-2);
+  border-left: 3px solid var(--group);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+.analogy p { margin: 0; font-size: 14px; line-height: 1.75; color: #cbd3e1; }
+.pp-note {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px !important;
+  color: var(--muted) !important;
+}
+.thesis h3 { color: var(--text); }
+.thesis .fig { background: var(--panel-2); }
