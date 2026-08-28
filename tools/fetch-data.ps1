@@ -139,7 +139,6 @@ $targets = @(
   @{ ticker = '095610.KQ'; name = '테스';               market = 'KR' },
   @{ ticker = '104830.KQ'; name = '원익머트리얼즈';     market = 'KR' },
   @{ ticker = '073640.KQ'; name = '테크윙';             market = 'KR' },
-  @{ ticker = '108320.KQ'; name = 'LX세미콘';           market = 'KR' },
   @{ ticker = '131970.KQ'; name = '두산테스나';         market = 'KR' },
   @{ ticker = '178320.KQ'; name = '서진시스템';         market = 'KR' },
   @{ ticker = '032500.KQ'; name = '케이엠더블유';       market = 'KR' },
@@ -244,14 +243,22 @@ foreach ($t in $targets) {
     Write-Host " 이미 최신 " -NoNewline -ForegroundColor DarkGray
     $rows = $existingRows
   } else {
+    $resp = $null
     try {
       $resp = Get-Chart $ticker $period1 $period2
     } catch {
-      Write-Host " 실패 ($($_.Exception.Message))" -ForegroundColor Red
-      continue
+      # -Append 로 꼬리만 받는 중이라면, 새 봉 요청이 실패해도 기존 데이터는 멀쩡하다.
+      # 여기서 continue 해버리면 그 종목이 index.json 에서 통째로 빠진다.
+      if ($existingRows.Count -gt 0) {
+        Write-Host " 새 봉 요청 실패 — 기존 데이터 유지 " -NoNewline -ForegroundColor DarkYellow
+        $resp = $null
+      } else {
+        Write-Host " 실패 ($($_.Exception.Message))" -ForegroundColor Red
+        continue
+      }
     }
 
-    $res = $resp.chart.result[0]
+    $res = if ($resp) { $resp.chart.result[0] } else { $null }
     if ($null -eq $res -or $null -eq $res.timestamp) {
       if ($existingRows.Count -gt 0) {
         Write-Host " 새 봉 없음 " -NoNewline -ForegroundColor DarkGray
@@ -319,7 +326,9 @@ foreach ($t in $targets) {
   $processed++
   $totalBytes += $json.Length
   $totalCandles += $rows.Count
-  Write-Host (" {0,5}봉  {1,6:N0} KB" -f $rows.Count, ($json.Length / 1KB))
+  Write-Host (" {0,5}봉  {1,6:N0} KB" -f $rows.Count, ($json.Length / 1KB)) -NoNewline
+  # 데이터가 거의 없는 티커는 잘못된 종목코드일 가능성이 높다
+  if ($rows.Count -lt 300) { Write-Host "  ← 봉이 너무 적습니다. 종목코드를 확인하세요" -ForegroundColor Yellow } else { Write-Host "" }
 
   $index += [ordered]@{
     ticker = $ticker

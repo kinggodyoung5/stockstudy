@@ -28,7 +28,7 @@
 import { loadStockList, loadStock } from '../src/lib/data.js';
 import { detectStock, mergeDetections, ALL_PATTERNS, ALL_PATTERN_IDS, groupOf } from '../src/lib/engine.js';
 import { OUTCOME_DAYS } from '../src/lib/outcome.js';
-import { summarize, baseline, profileOf, assignBuckets, AXES } from '../src/lib/stats.js';
+import { summarize, baseline, baselineBy, profileOf, assignBuckets, periodAxis, AXES } from '../src/lib/stats.js';
 import { atrPercent } from '../src/lib/oscillators.js';
 
 /** 저장할 사례 최대 개수. 전체 건수는 count 에 그대로 남기고, 예시는 고르게 뽑아 담는다. */
@@ -38,29 +38,57 @@ const logEl = document.getElementById('log');
 const lines = [];
 const log = (s) => { lines.push(s); logEl.textContent = lines.join('\n'); logEl.scrollTop = logEl.scrollHeight; };
 
-/** 종목이 한쪽으로 쏠리지 않게 고르게 샘플링 */
+/**
+ * 저장할 사례 고르기 — 종목과 **시기** 양쪽으로 고르게.
+ *
+ * 예전 코드는 종목별로 "가장 오래된 것부터" 순서대로 담았다. hits 가 날짜 오름차순이라
+ * 결과적으로 저장된 사례가 데이터 시작 연도(2015년)에 몰렸고, 학습 탭에 보이는 예시가
+ * 전부 옛날 차트였다. 통계(전체 건수·승률)는 모든 사례로 계산하니 영향이 없었지만,
+ * "보이는 사례"가 특정 시기에 치우치는 건 그 자체로 잘못된 인상을 준다.
+ *
+ * 지금은 종목별로 배정된 개수만큼 **전 기간에 고르게 간격을 두고** 뽑는다.
+ */
 function sample(hits, max) {
   if (hits.length <= max) return hits;
+
   const byTicker = new Map();
   for (const h of hits) {
     if (!byTicker.has(h.ticker)) byTicker.set(h.ticker, []);
     byTicker.get(h.ticker).push(h);
   }
   const buckets = [...byTicker.values()];
-  const picked = [];
-  let round = 0;
-  while (picked.length < max && round < 10000) {
-    let added = false;
-    for (const b of buckets) {
-      if (round < b.length) { picked.push(b[round]); added = true; }
-      if (picked.length >= max) break;
+
+  // 종목마다 몇 개씩 가져갈지 (사례가 적은 종목은 가진 만큼만)
+  const quota = new Array(buckets.length).fill(0);
+  let remaining = max;
+  let active = buckets.map((b, i) => i);
+  while (remaining > 0 && active.length) {
+    const share = Math.max(1, Math.floor(remaining / active.length));
+    const next = [];
+    for (const i of active) {
+      if (remaining <= 0) break;
+      const room = buckets[i].length - quota[i];
+      const add = Math.min(share, room, remaining);
+      quota[i] += add;
+      remaining -= add;
+      if (buckets[i].length > quota[i]) next.push(i);
     }
-    if (!added) break;
-    round++;
+    if (next.length === active.length && share === 1 && remaining === max) break; // 더 못 담음
+    active = next;
+    if (!active.length) break;
   }
+
+  const picked = [];
+  buckets.forEach((b, i) => {
+    const take = quota[i];
+    for (let k = 0; k < take; k++) {
+      // (k + 0.5) / take 위치 → 처음·끝에 치우치지 않고 전 기간에 퍼진다
+      picked.push(b[Math.min(b.length - 1, Math.floor(((k + 0.5) * b.length) / take))]);
+    }
+  });
+
   return picked.sort((a, b) => (a.date < b.date ? -1 : 1));
 }
-
 document.getElementById('run').addEventListener('click', async (e) => {
   e.target.disabled = true;
   lines.length = 0;
@@ -93,18 +121,33 @@ document.getElementById('run').addEventListener('click', async (e) => {
     const bucketOf = Object.fromEntries(profiles.map((p) => [p.ticker, p]));
     const stockOf = Object.fromEntries(stocks.map((s) => [s.ticker, s]));
 
+    // 시기 축은 종목이 아니라 날짜로 나뉘므로 데이터에서 연도 목록을 만들어 붙인다
+    const years = new Set();
+    for (const s of stocks) for (const c of s.candles) years.add(c.date.slice(0, 4));
+    const allAxes = { ...AXES, period: periodAxis(years) };
+
     const axisBaselines = {};
-    for (const [axis, def] of Object.entries(AXES)) {
-      axisBaselines[axis] = {};
-      for (const key of def.keys) {
-        const subset = profiles.filter((p) => p[axis] === key).map((p) => stockOf[p.ticker]);
-        axisBaselines[axis][key] = subset.length ? baseline(subset, OUTCOME_DAYS) : null;
+    for (const [axis, def] of Object.entries(allAxes)) {
+      if (def.byDate) {
+        axisBaselines[axis] = baselineBy(stocks, OUTCOME_DAYS, (c) => c.date.slice(0, 4));
+      } else {
+        axisBaselines[axis] = {};
+        for (const key of def.keys) {
+          const subset = profiles.filter((p) => p[axis] === key).map((p) => stockOf[p.ticker]);
+          axisBaselines[axis][key] = subset.length ? baseline(subset, OUTCOME_DAYS) : null;
+        }
       }
+      const vals = def.keys.map((k) => axisBaselines[axis][k]).filter(Boolean).map((x) => x.winRate);
+      const spread = vals.length > 1 ? (Math.max(...vals) - Math.min(...vals)).toFixed(1) : '-';
       const line = def.keys
         .map((k) => `${def.labels[k]} ${axisBaselines[axis][k] ? axisBaselines[axis][k].winRate + '%' : '-'}`)
         .join('  ·  ');
-      log(`  ${def.name} 기준선 → ${line}`);
+      log(`  ${def.name} → ${line}   [폭 ${spread}%p]`);
     }
+
+    /** 어떤 사례가 어느 버킷에 속하는가 (종목 기준 축과 날짜 기준 축을 함께 다룬다) */
+    const keyOfHit = (axis, h) =>
+      allAxes[axis].byDate ? h.date.slice(0, 4) : (bucketOf[h.ticker] || {})[axis];
     log(`\n기준선 (아무 날이나 매수, ${OUTCOME_DAYS}거래일 보유): 상승 비율 ${base.winRate}% · 평균 ${base.avgChange > 0 ? '+' : ''}${base.avgChange}% · 표본 ${base.samples.toLocaleString()}건\n`);
 
     const summaryRows = [];
@@ -119,10 +162,10 @@ document.getElementById('run').addEventListener('click', async (e) => {
 
       // 이 신호가 어느 종목군에서 나왔고, 그 안에서 성과가 어땠는지
       const byAxis = {};
-      for (const [axis, def] of Object.entries(AXES)) {
+      for (const [axis, def] of Object.entries(allAxes)) {
         byAxis[axis] = {};
         for (const key of def.keys) {
-          const sub = hits.filter((h) => bucketOf[h.ticker] && bucketOf[h.ticker][axis] === key);
+          const sub = hits.filter((h) => keyOfHit(axis, h) === key);
           byAxis[axis][key] = sub.length ? { count: sub.length, stats: summarize(sub) } : null;
         }
       }
@@ -168,7 +211,7 @@ document.getElementById('run').addEventListener('click', async (e) => {
       to: index.reduce((m, r) => (r.to > m ? r.to : m), index[0].to),
       totalHits: grandTotal,
       baseline: base,
-      axes: AXES,
+      axes: allAxes,
       axisBaselines,
       profiles,
       patterns: summaryRows,

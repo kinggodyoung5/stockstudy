@@ -806,6 +806,33 @@ export const FIGURES = {
       ${txt(472, 148, '과매수 선을 언제 넘는가', 'ts', 'middle')}
     `),
   },
+
+  regime: {
+    caption: '"아무 날이나 사서 20거래일 들고 있기"의 결과를 해마다 따로 계산한 모습입니다. 신호를 쓰든 안 쓰든 출발선 자체가 해마다 다릅니다. 그래서 어떤 신호의 승률은 반드시 그 해의 출발선과 비교해야 합니다.',
+    alt: '해마다 달라지는 기준선',
+    svg: () => {
+      const years = [
+        ['2015', 47], ['2016', 51], ['2017', 58], ['2018', 45], ['2019', 54], ['2020', 60],
+        ['2021', 48], ['2022', 43], ['2023', 52], ['2024', 47], ['2025', 55], ['2026', 48],
+      ];
+      const x0 = 55, w = 40, gap = 8, base = 210;
+      const scale = (v) => (v - 40) * 4.2;
+      return svg(260, `
+        ${hline(base - scale(50), 40, 600, C.muted)}
+        ${txt(34, base - scale(50) + 4, '50%', 'ts', 'end')}
+        ${years.map(([y, v], i) => {
+          const x = x0 + i * (w + gap);
+          const h = scale(v);
+          const col = v >= 50 ? C.up : C.down;
+          return `<rect x="${x}" y="${base - h}" width="${w}" height="${h}" fill="${col}" opacity="0.55" rx="2"/>
+${txt(x + w / 2, base - h - 7, v + '%', 'ts', 'middle', col)}
+${txt(x + w / 2, base + 18, y.slice(2), 'ts', 'middle')}`;
+        }).join('')}
+        ${txt(45, 28, '아무 날이나 샀을 때 20거래일 뒤 오른 비율', 'tb', 'start')}
+        ${txt(320, 250, '같은 "아무 날이나 사기"인데 해마다 이만큼 다르다', 'ts', 'middle', C.warn)}
+      `);
+    },
+  },
 };
 
 /** 문단 텍스트의 **강조** 를 <b> 로 바꾼다 (내용은 전부 이 저장소가 작성한 것) */

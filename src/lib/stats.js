@@ -174,3 +174,52 @@ export const AXES = {
     labels: { KOSPI: '코스피', KOSDAQ: '코스닥', US: '미국' },
   },
 };
+
+/**
+ * 기준선을 그룹별로 나눠 계산한다.
+ * keyOf(candle, stock) 가 돌려주는 키마다 따로 집계한다.
+ *
+ * 시기(연도)처럼 **종목이 아니라 날짜로 나뉘는 축**을 다루려면 이 형태가 필요하다.
+ */
+export function baselineBy(stocks, days, keyOf) {
+  const groups = new Map();
+  for (const stock of stocks) {
+    const c = stock.candles;
+    for (let i = 0; i + days < c.length; i += 5) {
+      const k = keyOf(c[i], stock);
+      if (k == null) continue;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(((c[i + days].close - c[i].close) / c[i].close) * 100);
+    }
+  }
+  const out = {};
+  for (const [k, changes] of groups) {
+    if (!changes.length) continue;
+    const m = changes.reduce((a, b) => a + b, 0) / changes.length;
+    out[k] = {
+      samples: changes.length,
+      winRate: round((changes.filter((v) => v > 0).length / changes.length) * 100, 1),
+      avgChange: round(m),
+      medianChange: round(median(changes)),
+    };
+  }
+  return out;
+}
+
+/**
+ * 시기 축 정의를 데이터에서 만들어낸다.
+ *
+ * 시기를 왜 따로 두는가: 실측해보면 연도별 기준선의 폭이 유동성·시장 같은
+ * 종목 속성보다 크다. 즉 **"어떤 신호인가"보다 "어느 해였나"가 결과를 더 크게 가른다.**
+ * 그래서 특정 시기를 빼는 대신, 시기별로 나눠 볼 수 있게 한다.
+ */
+export function periodAxis(years) {
+  const keys = [...years].sort();
+  return {
+    name: '시기 (연도)',
+    why: '시장 전체가 오르는 해와 내리는 해는 결과가 통째로 다릅니다. 어떤 신호의 승률이 높아 보여도 그 신호가 상승장에 몰려 나왔다면 신호의 힘이 아니라 그 해의 힘입니다. 특정 시기를 빼는 대신 나눠서 보여줍니다.',
+    keys,
+    labels: Object.fromEntries(keys.map((y) => [y, y + '년'])),
+    byDate: true,
+  };
+}
