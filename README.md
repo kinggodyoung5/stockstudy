@@ -85,11 +85,14 @@ src/
   views/              ── 화면 (React 전환 시 이 폴더만 다시 씀)
   content/lessons.js  개념 설명 텍스트
 data/
-  stocks/{ticker}.json    원시 일봉 (2015~현재, 종목 65 + 지수 4)
+  stocks/{ticker}.json    원시 일봉 (2015~현재, 종목 65 + 지수 4, 압축 형식)
   patterns/{pattern}.json 미리 계산된 탐지 결과 (57개)
   patterns/_index.json    전체 요약 + 기준선
+docs/
+  CAPACITY.md         데이터 용량 계획 (종목을 늘릴 때 읽을 것)
 tools/
   serve.ps1           로컬 정적 서버
+  DEPLOY.md           배포 메모
   fetch-data.ps1      주가 데이터 수집
   build-patterns.html 패턴 탐지 배치 실행
 ```
@@ -105,11 +108,37 @@ tools/
 
 ## 데이터 갱신 절차
 
-1. `powershell -ExecutionPolicy Bypass -File tools\fetch-data.ps1` — Yahoo Finance에서 일봉 수집
+1. 최신 봉 이어붙이기 (평소에는 이것만):
+
+   ```bash
+   powershell -ExecutionPolicy Bypass -File tools\fetch-data.ps1 -Append
+   ```
+
+   종목을 몇 개만 새로 추가할 때는 `-Only '005490.KS,LLY'` 를 붙입니다.
+   전체 재수집(`-Append` 없이)은 수집 기간이나 저장 형식을 바꿨을 때만 하세요 —
+   모든 파일이 새로 쓰이면서 git 이력이 그만큼 커집니다.
 2. 로컬 서버를 띄우고 <http://localhost:8123/tools/build-patterns.html> 접속 → "탐지 실행 후 저장"
 3. 변경된 `data/` 를 커밋
 
 탐지 규칙(`src/lib/`)을 고쳤을 때도 2번을 다시 실행해야 학습 탭에 반영됩니다.
+
+## 데이터 용량
+
+캔들 1개 ≈ 48바이트, 종목 1개(11년치) ≈ 0.13 MB. 현재 69개 = 8.7 MB.
+탐지 결과(`data/patterns/`)는 사례를 패턴당 150건으로 상한을 둬서 종목이 늘어도 커지지 않습니다.
+
+브라우저는 한 번에 종목 하나만 내려받고 GitHub Pages 가 gzip 으로 보내므로,
+종목이 수백 개가 되어도 사용자 쪽 로딩 속도는 그대로입니다.
+
+자세한 한계선과 대응 방안은 [docs/CAPACITY.md](docs/CAPACITY.md) 참고.
+
+## 배포
+
+정적 사이트라 빌드 설정이 필요 없습니다. 자세한 절차는 [tools/DEPLOY.md](tools/DEPLOY.md).
+
+> 저장소 루트의 빈 `.nojekyll` 파일을 지우지 마세요. GitHub Pages 의 Jekyll 이
+> `_` 로 시작하는 파일을 결과물에서 제외해서, 통계 탭(`_index.json`)과
+> 상대강도용 지수 파일(`_KS11.json` 등)이 404 가 됩니다.
 
 ## 면책
 

@@ -18,6 +18,29 @@ async function getJson(path) {
 /** '^KS11' 같은 지수 심볼은 파일명에서 ^ 를 _ 로 바꿔 저장한다 */
 const fileOf = (ticker) => ticker.replace(/\^/g, '_');
 
+/**
+ * 저장 형식을 앱이 쓰는 형태로 되돌린다.
+ *
+ * format 2 는 캔들을 배열로 저장한다 — 키 이름이 캔들마다 반복되지 않아 용량이 절반이다.
+ * 종목을 계속 늘릴 계획이라 이 차이가 그대로 저장소 용량이 되기 때문에 이렇게 저장하고,
+ * 불러오는 이 시점에서 {date, open, high, low, close, volume} 객체로 펼친다.
+ * 그래서 지표·탐지·차트 코드는 형식이 바뀐 걸 알 필요가 없다.
+ *
+ * format 이 없는 예전 파일(객체 배열)도 그대로 통과시킨다.
+ */
+function expand(stock) {
+  if (stock.format !== 2 || !Array.isArray(stock.candles)) return stock;
+  const fields = stock.fields || ['date', 'open', 'high', 'low', 'close', 'volume'];
+  const candles = new Array(stock.candles.length);
+  for (let i = 0; i < stock.candles.length; i++) {
+    const row = stock.candles[i];
+    const c = {};
+    for (let k = 0; k < fields.length; k++) c[fields[k]] = row[k];
+    candles[i] = c;
+  }
+  return { ...stock, candles };
+}
+
 /** 전체 목록 (종목 + 지수) */
 export async function loadIndex() {
   if (!indexCache) indexCache = await getJson('stocks/index.json');
@@ -37,7 +60,7 @@ export async function loadIndexList() {
 /** 종목 하나의 전체 일봉 */
 export async function loadStock(ticker) {
   if (!stockCache.has(ticker)) {
-    stockCache.set(ticker, await getJson('stocks/' + fileOf(ticker) + '.json'));
+    stockCache.set(ticker, expand(await getJson('stocks/' + fileOf(ticker) + '.json')));
   }
   return stockCache.get(ticker);
 }

@@ -2,17 +2,37 @@
   주식 기술적 분석 학습 앱 - 과거 OHLCV 데이터 수집 스크립트
   (설명서 7번 "오프라인 데이터 수집" 단계. Python/yfinance 대신 PowerShell + Yahoo Finance chart API 사용)
 
-  사용법:  powershell -ExecutionPolicy Bypass -File tools\fetch-data.ps1
-  결과:    data/stocks/{ticker}.json  +  data/stocks/index.json
+  사용법
+    전체 재수집:  powershell -ExecutionPolicy Bypass -File tools\fetch-data.ps1
+    증분 갱신:    powershell -ExecutionPolicy Bypass -File tools\fetch-data.ps1 -Append
+    일부만:       powershell -ExecutionPolicy Bypass -File tools\fetch-data.ps1 -Only '005930.KS,AAPL'
+
+  결과: data/stocks/{ticker}.json  +  data/stocks/index.json
+
+  ── 저장 형식 (format 2) ─────────────────────────────────────────────
+  캔들을 객체가 아니라 배열로 저장한다. 필드 순서는 fields 에 적혀 있다.
+
+    {"ticker":"005930.KS", ..., "format":2,
+     "fields":["date","open","high","low","close","volume"],
+     "candles":[["2015-01-02",26800,26800,26540,26600,8774950], ...]}
+
+  객체 형식은 캔들 하나당 92바이트인데 키 이름이 매번 반복된다. 배열로 바꾸면 47바이트로
+  절반이 된다. 종목을 계속 늘릴 계획이라 이 차이가 그대로 저장소 용량이 된다.
+  앱 쪽은 src/lib/data.js 가 불러오는 시점에 객체로 되돌려주므로, 나머지 코드는
+  기존 {date, open, high, low, close, volume} 형태를 그대로 쓴다.
 #>
+param(
+  [switch]$Append,          # 기존 파일 뒤에 새 봉만 이어붙인다 (git 이력이 덜 커진다)
+  [string]$Only = '',       # 쉼표로 구분한 티커만 처리
+  [string]$From = '2015-01-01'
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $outDir = Join-Path $root 'data\stocks'
 New-Item -ItemType Directory -Force $outDir | Out-Null
 
-# 수집 대상. market: KR = 원화 정수 가격, US = 달러 소수 2자리
-# 수집 대상. market: KR = 원화 정수 가격, US = 달러 소수 4자리
+# 수집 대상. market: KR = 원화 정수 가격, US = 달러 (아래 Get-Digits 가 자릿수를 정함)
 #
 # 종목 선정 원칙: **일부러 부진했던 종목을 많이 섞는다.**
 # 지금 시점에서 유명한 회사만 고르면 "살아남아 크게 오른 회사들"만 남아(생존 편향)
@@ -101,74 +121,193 @@ $targets = @(
   @{ ticker = '^IXIC';     name = '나스닥 종합';       market = 'US'; type = 'index' }
 )
 
-# 수집 기간: 2015-01-01 ~ 오늘
-$period1 = [int][double]::Parse((Get-Date '2015-01-01Z' -UFormat %s))
-$period2 = [int][double]::Parse((Get-Date -UFormat %s))
+$allOrder = @($targets | ForEach-Object { $_.ticker })
+
+if ($Only) {
+  $wanted = $Only -split ',' | ForEach-Object { $_.Trim() }
+  $targets = @($targets | Where-Object { $wanted -contains $_.ticker })
+  Write-Host "대상 $($targets.Count)개만 처리합니다."
+}
 
 $epoch = [datetime]'1970-01-01Z'
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
+# '^KS11' 같은 지수 심볼은 URL 에서 다루기 번거로워 파일명에서 ^ 를 _ 로 바꾼다
+function Get-DataPath([string]$ticker) {
+  Join-Path $outDir (($ticker -replace '\^', '_') + '.json')
+}
+
+# 소수 자릿수: 액면분할 소급 조정 탓에 과거 주가가 $1 미만인 종목(NVDA 등)이 있어
+# 일률적으로 2자리로 줄이면 정밀도가 무너진다. 반대로 $200짜리 종목에 4자리는 낭비다.
+# 그래서 그 종목의 최저가를 보고 한 번만 정한다 (한 파일 안에서는 자릿수가 일정하다).
+function Get-Digits([string]$market, [double]$minPrice) {
+  if ($market -eq 'KR') { return 0 }
+  if ($minPrice -lt 10) { return 4 }
+  if ($minPrice -lt 100) { return 3 }
+  return 2
+}
+
+function Get-Chart([string]$ticker, [int]$p1, [int]$p2) {
+  $url = "https://query1.finance.yahoo.com/v8/finance/chart/$([uri]::EscapeDataString($ticker))?period1=$p1&period2=$p2&interval=1d"
+  Invoke-RestMethod -Uri $url -Headers @{ 'User-Agent' = 'Mozilla/5.0' }
+}
+
+$defaultP1 = [int][double]::Parse((Get-Date ($From + 'Z') -UFormat %s))
+$period2 = [int][double]::Parse((Get-Date -UFormat %s))
+
 $index = @()
+$processed = 0
+$totalBytes = 0
+$totalCandles = 0
 
 foreach ($t in $targets) {
   $ticker = $t.ticker
-  Write-Host "fetching $ticker ..." -NoNewline
-  $url = "https://query1.finance.yahoo.com/v8/finance/chart/$([uri]::EscapeDataString($ticker))?period1=$period1&period2=$period2&interval=1d"
+  $path = Get-DataPath $ticker
+  Write-Host ("{0,-12}" -f $ticker) -NoNewline
 
-  try {
-    $resp = Invoke-RestMethod -Uri $url -Headers @{ 'User-Agent' = 'Mozilla/5.0' }
-  } catch {
-    Write-Host " FAILED ($($_.Exception.Message))" -ForegroundColor Red
-    continue
+  # ── 증분 갱신: 기존 파일의 마지막 날짜 다음부터만 받는다 ──
+  $existingRows = @()
+  $period1 = $defaultP1
+  if ($Append -and (Test-Path $path)) {
+    try {
+      $old = Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($old.format -eq 2 -and $old.candles.Count -gt 0) {
+        $existingRows = @($old.candles)
+        $lastDate = [datetime]::ParseExact($existingRows[-1][0], 'yyyy-MM-dd', $null)
+        $period1 = [int]($lastDate.AddDays(1) - $epoch).TotalSeconds
+      }
+    } catch {
+      Write-Host " (기존 파일을 읽지 못해 전체 재수집)" -NoNewline -ForegroundColor DarkYellow
+      $existingRows = @()
+      $period1 = $defaultP1
+    }
   }
 
-  $res = $resp.chart.result[0]
-  $ts = $res.timestamp
-  $q  = $res.indicators.quote[0]
-  # 국내는 원 단위 정수. 해외는 액면분할 소급 조정 탓에 과거 주가가 $1 미만까지 내려가는
-  # 종목(NVDA 등)이 있어 소수 2자리로는 정밀도가 무너진다 → 4자리로 보관.
-  $digits = if ($t.market -eq 'KR') { 0 } else { 4 }
+  $rows = @()
+  if ($period1 -ge $period2) {
+    Write-Host " 이미 최신 " -NoNewline -ForegroundColor DarkGray
+    $rows = $existingRows
+  } else {
+    try {
+      $resp = Get-Chart $ticker $period1 $period2
+    } catch {
+      Write-Host " 실패 ($($_.Exception.Message))" -ForegroundColor Red
+      continue
+    }
 
-  $candles = New-Object System.Collections.ArrayList
-  for ($i = 0; $i -lt $ts.Count; $i++) {
-    # 휴장/결측 봉은 제외 (한 값이라도 null이면 버림)
-    if ($null -eq $q.open[$i] -or $null -eq $q.high[$i] -or $null -eq $q.low[$i] -or $null -eq $q.close[$i]) { continue }
-    $date = $epoch.AddSeconds($ts[$i]).ToString('yyyy-MM-dd')
-    $vol = if ($null -eq $q.volume[$i]) { 0 } else { [long]$q.volume[$i] }
-    [void]$candles.Add([ordered]@{
-      date   = $date
-      open   = [math]::Round([double]$q.open[$i],  $digits)
-      high   = [math]::Round([double]$q.high[$i],  $digits)
-      low    = [math]::Round([double]$q.low[$i],   $digits)
-      close  = [math]::Round([double]$q.close[$i], $digits)
-      volume = $vol
-    })
+    $res = $resp.chart.result[0]
+    if ($null -eq $res -or $null -eq $res.timestamp) {
+      if ($existingRows.Count -gt 0) {
+        Write-Host " 새 봉 없음 " -NoNewline -ForegroundColor DarkGray
+        $rows = $existingRows
+      } else {
+        Write-Host " 응답에 데이터 없음" -ForegroundColor Yellow
+        continue
+      }
+    } else {
+      $ts = $res.timestamp
+      $q = $res.indicators.quote[0]
+
+      # 자릿수를 정하려면 최저가를 먼저 알아야 한다
+      $minPrice = [double]::MaxValue
+      for ($i = 0; $i -lt $ts.Count; $i++) {
+        if ($null -ne $q.low[$i] -and [double]$q.low[$i] -lt $minPrice) { $minPrice = [double]$q.low[$i] }
+      }
+      # 이어붙이는 경우 기존 값까지 봐야 한 파일 안에서 정밀도가 일정하다
+      foreach ($r in $existingRows) { if ([double]$r[3] -lt $minPrice) { $minPrice = [double]$r[3] } }
+      $digits = Get-Digits $t.market $minPrice
+
+      $newRows = New-Object System.Collections.ArrayList
+      for ($i = 0; $i -lt $ts.Count; $i++) {
+        # 휴장/결측 봉은 제외 (한 값이라도 null 이면 버림)
+        if ($null -eq $q.open[$i] -or $null -eq $q.high[$i] -or $null -eq $q.low[$i] -or $null -eq $q.close[$i]) { continue }
+        $date = $epoch.AddSeconds($ts[$i]).ToString('yyyy-MM-dd')
+        $vol = if ($null -eq $q.volume[$i]) { 0 } else { [long]$q.volume[$i] }
+        [void]$newRows.Add(@(
+          $date,
+          [math]::Round([double]$q.open[$i],  $digits),
+          [math]::Round([double]$q.high[$i],  $digits),
+          [math]::Round([double]$q.low[$i],   $digits),
+          [math]::Round([double]$q.close[$i], $digits),
+          $vol
+        ))
+      }
+
+      if ($existingRows.Count -gt 0) {
+        $lastKept = $existingRows[-1][0]
+        $appendOnly = @($newRows | Where-Object { $_[0] -gt $lastKept })
+        $rows = @($existingRows) + $appendOnly
+        Write-Host (" +{0}봉 " -f $appendOnly.Count) -NoNewline -ForegroundColor DarkGreen
+      } else {
+        $rows = @($newRows)
+      }
+    }
   }
+
+  if ($rows.Count -eq 0) { Write-Host " 봉 없음" -ForegroundColor Yellow; continue }
 
   $obj = [ordered]@{
     ticker   = $ticker
     name     = $t.name
     market   = $t.market
-    type     = $(if ($t.type) { $t.type } else { 'stock' })
     currency = $(if ($t.market -eq 'KR') { 'KRW' } else { 'USD' })
-    candles  = $candles
+    type     = $(if ($t.type) { $t.type } else { 'stock' })
+    format   = 2
+    fields   = @('date', 'open', 'high', 'low', 'close', 'volume')
+    candles  = $rows
   }
 
-  # '^KS11' 같은 지수 심볼은 URL 에서 다루기 번거로워 파일명에서 ^ 를 _ 로 바꾼다
-  $path = Join-Path $outDir (($ticker -replace '\^', '_') + '.json')
-  [System.IO.File]::WriteAllText($path, ($obj | ConvertTo-Json -Depth 6 -Compress), (New-Object System.Text.UTF8Encoding($false)))
-  Write-Host " $($candles.Count) candles -> $(Split-Path -Leaf $path)"
+  $json = $obj | ConvertTo-Json -Depth 6 -Compress
+  [System.IO.File]::WriteAllText($path, $json, $utf8NoBom)
+
+  $processed++
+  $totalBytes += $json.Length
+  $totalCandles += $rows.Count
+  Write-Host (" {0,5}봉  {1,6:N0} KB" -f $rows.Count, ($json.Length / 1KB))
 
   $index += [ordered]@{
     ticker = $ticker
     name   = $t.name
     market = $t.market
     type   = $(if ($t.type) { $t.type } else { 'stock' })
-    from   = $candles[0].date
-    to     = $candles[$candles.Count - 1].date
-    count  = $candles.Count
+    from   = $rows[0][0]
+    to     = $rows[-1][0]
+    count  = $rows.Count
   }
 
-  Start-Sleep -Milliseconds 300
+  Start-Sleep -Milliseconds 250
 }
 
-[System.IO.File]::WriteAllText((Join-Path $outDir 'index.json'), ($index | ConvertTo-Json -Depth 4), (New-Object System.Text.UTF8Encoding($false)))
-Write-Host "`ndone. $($index.Count) tickers -> data/stocks/index.json"
+if ($index.Count -eq 0) {
+  Write-Host "`n처리된 종목이 없어 index.json 을 갱신하지 않습니다." -ForegroundColor Yellow
+  return
+}
+
+# -Only 로 일부만 돌린 경우, 기존 index 의 나머지 항목을 보존한다
+$indexPath = Join-Path $outDir 'index.json'
+if ($Only -and (Test-Path $indexPath)) {
+  $prev = Get-Content $indexPath -Raw -Encoding UTF8 | ConvertFrom-Json
+  $touched = $index | ForEach-Object { $_.ticker }
+  $kept = @($prev | Where-Object { $touched -notcontains $_.ticker })
+  $merged = @($kept) + @($index)
+  # 목록 순서는 $targets 를 따른다 (종목 선택 드롭다운 순서가 흔들리지 않게)
+  $index = @($merged | Sort-Object { $allOrder.IndexOf($_.ticker) })
+}
+
+[System.IO.File]::WriteAllText($indexPath, ($index | ConvertTo-Json -Depth 4 -Compress), $utf8NoBom)
+
+$avg = if ($totalCandles) { $totalBytes / $totalCandles } else { 0 }
+Write-Host ""
+Write-Host ("이번 실행: {0}개 · {1:N0}봉 · {2:N1} MB (캔들당 {3:N0} 바이트)" -f `
+  $processed, $totalCandles, ($totalBytes / 1MB), $avg)
+Write-Host ("목록 전체: {0}개 (index.json)" -f $index.Count)
+
+# 앞으로 종목을 늘릴 때를 대비해 예상 용량을 항상 알려준다
+$perTicker = if ($processed) { $totalBytes / $processed / 1MB } else { 0 }
+$allBytes = (Get-ChildItem (Join-Path $outDir "*.json") | Measure-Object Length -Sum).Sum
+Write-Host ("현재 data/stocks 총 {0:N1} MB · 종목당 평균 {1:N2} MB" -f ($allBytes / 1MB), $perTicker)
+Write-Host ("예상 용량 — 200개: 약 {0:N0} MB · 500개: 약 {1:N0} MB · 1000개: 약 {2:N0} MB" -f `
+  ($perTicker * 200), ($perTicker * 500), ($perTicker * 1000))
+if ($allBytes / 1MB -gt 200) {
+  Write-Host "경고: data/stocks 가 200MB 를 넘었습니다. 저장소 분리나 기간 단축을 검토하세요." -ForegroundColor Yellow
+}
