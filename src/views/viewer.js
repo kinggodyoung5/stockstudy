@@ -56,6 +56,14 @@ export async function renderViewer(app) {
       ma: { ma5: 5, ma20: 20, ma60: 60, ma120: 120, ma200: 200 },
       bb: { period: 20, mult: 2 },
     },
+    // 오실레이터 기간 — 전부 업계 표준 기본값에서 시작한다
+    osc: {
+      rsi: { period: 14 },
+      macd: { fast: 12, slow: 26, signal: 9 },
+      stochastic: { k: 14, kSmooth: 3, d: 3 },
+      atr: { period: 14 },
+      adx: { period: 14 },
+    },
   };
   const overlays = {
     ma5: true, ma20: true, ma60: true, ma120: false, ma200: false,
@@ -127,6 +135,8 @@ export async function renderViewer(app) {
   const paramRow = el('div.row.params');
   function numInput(label, get, set, min, max, step = 1) {
     const input = el('input.num-input', { type: 'number', min, max, step, value: get() });
+    // '표준 기본값으로 되돌리기' 를 누르면 화면 값도 함께 되돌린다
+    input.addEventListener('reset-value', () => { input.value = get(); });
     input.addEventListener('change', () => {
       const v = Number(input.value);
       if (!Number.isFinite(v) || v < min || v > max) { input.value = get(); return; }
@@ -142,6 +152,45 @@ export async function renderViewer(app) {
     numInput('볼린저 기간', () => state.params.bb.period, (v) => (state.params.bb.period = v), 5, 100),
     numInput('볼린저 배수 σ', () => state.params.bb.mult, (v) => (state.params.bb.mult = v), 0.5, 4, 0.5)
   );
+
+  const oscParamRow = el('div.row.params');
+  oscParamRow.append(
+    numInput('RSI 기간', () => state.osc.rsi.period, (v) => (state.osc.rsi.period = v), 2, 60),
+    numInput('MACD 빠른', () => state.osc.macd.fast, (v) => (state.osc.macd.fast = v), 2, 60),
+    numInput('MACD 느린', () => state.osc.macd.slow, (v) => (state.osc.macd.slow = v), 3, 120),
+    numInput('MACD 시그널', () => state.osc.macd.signal, (v) => (state.osc.macd.signal = v), 2, 40),
+    numInput('스토캐스틱 %K', () => state.osc.stochastic.k, (v) => (state.osc.stochastic.k = v), 3, 60),
+    numInput('ATR 기간', () => state.osc.atr.period, (v) => (state.osc.atr.period = v), 2, 60),
+    numInput('ADX 기간', () => state.osc.adx.period, (v) => (state.osc.adx.period = v), 2, 60)
+  );
+
+  const resetBtn = el('button.btn.small', {
+    text: '표준 기본값으로 되돌리기',
+    onclick: () => {
+      state.params.ma = { ma5: 5, ma20: 20, ma60: 60, ma120: 120, ma200: 200 };
+      state.params.bb = { period: 20, mult: 2 };
+      state.osc = {
+        rsi: { period: 14 },
+        macd: { fast: 12, slow: 26, signal: 9 },
+        stochastic: { k: 14, kSmooth: 3, d: 3 },
+        atr: { period: 14 },
+        adx: { period: 14 },
+      };
+      [...paramRow.querySelectorAll('input'), ...oscParamRow.querySelectorAll('input')].forEach((i) => i.dispatchEvent(new Event('reset-value')));
+      rebuild();
+    },
+  });
+
+  /** 패널 제목에 지금 적용된 설정을 그대로 보여준다 (기본값에서 바꿨는지 바로 알 수 있게) */
+  function oscLabel(id, def) {
+    const p = state.osc[id];
+    if (!p) return def.name;
+    const nums = id === 'macd' ? [p.fast, p.slow, p.signal]
+      : id === 'stochastic' ? [p.k, p.kSmooth, p.d]
+      : [p.period];
+    const base = def.name.replace(/\s*\(.*\)\s*$/, '');
+    return `${base} (${nums.join(', ')})`;
+  }
 
   // ── 그리기 ────────────────────────────────────────────
   async function rebuild() {
@@ -228,12 +277,12 @@ export async function renderViewer(app) {
       if (!on) continue;
       const def = OSCILLATORS[id];
       const head = el('div.panel-head', null, [
-        el('span', { text: def.name }),
+        el('span', { text: oscLabel(id, def) }),
         el('a.small.muted', { href: `#/learn/${def.lesson}`, text: '설명 보기' }),
       ]);
       const pbox = el('div.osc-box', { style: { height: def.height + 'px' } });
       panelWrap.append(el('div.osc-wrap', null, [head, pbox]));
-      const panel = createOscillatorPanel(pbox, def, view);
+      const panel = createOscillatorPanel(pbox, def, view, state.osc[id]);
       panels.push(panel);
       panel.fit();
       charts.push(panel.chart);
@@ -329,8 +378,15 @@ export async function renderViewer(app) {
       el('div.row', { style: { marginTop: '8px' } }, [oscBar]),
       el('details.param-details', null, [
         el('summary', { text: '지표 설정 직접 바꿔보기' }),
-        el('p.small.muted', { style: { margin: '4px 0 10px' }, text: '기간을 바꾸면 같은 데이터에서도 교차 시점과 밴드 폭이 달라집니다. 지표의 값은 절대적인 것이 아니라 설정에 따라 달라지는 계산 결과라는 점을 확인해보세요.' }),
+        el('p.small.muted', { style: { margin: '4px 0 10px' }, html:
+          '아래 값은 전부 <b>업계 표준 기본값</b>에서 시작합니다. 바꿔보면 같은 데이터에서도 교차 시점·밴드 폭·과매수 도달 횟수가 달라집니다. ' +
+          '지표 값은 사실이 아니라 <b>설정에 따라 달라지는 계산 결과</b>라는 점을 직접 확인해보세요. ' +
+          '(<a href="#/learn/indicator-settings">지표 설정값 읽는 법</a>)' }),
+        el('h4.param-head', { text: '가격 차트' }),
         paramRow,
+        el('h4.param-head', { text: '오실레이터 패널' }),
+        oscParamRow,
+        el('div.row', { style: { marginTop: '12px' } }, [resetBtn]),
       ]),
       meta,
       el('div.chart-with-profile', null, [el('div', { style: { minWidth: '0' } }, [box, panelWrap]), profileBox]),

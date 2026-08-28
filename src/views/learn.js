@@ -5,6 +5,7 @@
 
 import { LESSONS, LESSON_BY_ID, LESSON_GROUPS } from '../content/lessons.js';
 import { FIGURES, emphasize } from '../content/figures.js';
+import { LESSON_SETTINGS, SRC_LABEL, SRC_NOTE } from '../content/settings.js';
 import { loadPattern, loadStock, sliceByDate } from '../lib/data.js';
 import { createStockChart, createOscillatorPanel, syncTimeScales, COLORS } from '../lib/chart.js';
 import { OSCILLATORS } from '../lib/oscillators.js';
@@ -110,6 +111,47 @@ function drawShape(c, hit, patternName) {
     markers.push({ date: hit.date, position: 'aboveBar', color: COLORS.neckline, shape: 'arrowDown', text: patternName });
   }
   c.setMarkers(markers);
+}
+
+/**
+ * "이 앱이 쓴 설정값" 박스.
+ * 같은 지표라도 설정에 따라 신호가 달라지므로, 무슨 값을 썼고 그게 표준인지
+ * 이 앱이 정한 것인지를 밝힌다.
+ */
+function settingsBox(lessonId) {
+  const cfg = LESSON_SETTINGS[lessonId];
+  if (!cfg || !cfg.rows || !cfg.rows.length) return null;
+
+  const table = el('table.settings-table');
+  const tbody = el('tbody');
+  for (const [k, v, src] of cfg.rows) {
+    tbody.append(el('tr', null, [
+      el('td.set-k', { text: k }),
+      el('td.set-v', { text: v }),
+      el('td.set-src', null, [el('span', { class: 'src src-' + src, title: SRC_NOTE[src], text: SRC_LABEL[src] })]),
+    ]));
+  }
+  table.append(tbody);
+
+  const used = [...new Set(cfg.rows.map((r) => r[2]))];
+
+  return el('div.rulebox.settings', null, [
+    el('h3', { text: '이 앱이 쓴 설정값' }),
+    el('p.why', { text: '같은 지표라도 설정을 바꾸면 신호가 달라집니다. 그래서 무슨 값을 썼는지, 그 값이 어디서 온 것인지 밝혀둡니다.' }),
+    table,
+    el('ul.src-legend', null, used.map((sc) =>
+      el('li', null, [el('span', { class: 'src src-' + sc, text: SRC_LABEL[sc] }), ' ' + SRC_NOTE[sc]])
+    )),
+    cfg.effect ? el('div.set-effect', null, [
+      el('h4', { text: '이 값을 바꾸면' }),
+      ...String(cfg.effect).split('\n\n').map((para) => el('p', { html: emphasize(para) })),
+    ]) : null,
+    cfg.fig && FIGURES[cfg.fig] ? figureEl(cfg.fig) : null,
+    cfg.tryIt ? el('p.set-try', null, [
+      el('a.btn', { href: '#/viewer', text: '데이터 뷰어에서 바꿔보기' }),
+      el('span.small.muted', { text: ' ' + cfg.tryIt }),
+    ]) : null,
+  ]);
 }
 
 /** 개념 설명용 모식도 한 장 */
@@ -295,6 +337,9 @@ export async function renderLearn(app, params) {
     if (sec.fig && FIGURES[sec.fig]) node.append(figureEl(sec.fig));
     content.append(node);
   }
+
+  const setBox = settingsBox(lessonId);
+  if (setBox) content.append(setBox);
 
   clear(app).append(el('div.learn', null, [nav, content]));
 
