@@ -334,6 +334,30 @@ async function renderPatternSection(root, patternId, lesson) {
   await draw();
 }
 
+/**
+ * 레슨 본문에 넣는 작은 표.
+ *
+ * 본문에서 말로 늘어놓으면 안 읽히는 비교(같은 지표를 설정만 바꿔 잰 결과 같은 것)를
+ * 표로 보여준다. 데이터에서 계산한 값이 아니라 본문에 적어 둔 값이므로,
+ * 데이터를 다시 만들었으면 이 숫자도 같이 고쳐야 한다.
+ *
+ * @param {{ head: string[], rows: (string|number)[][], note?: string }} t
+ */
+function lessonTable(t) {
+  const table = el('table.lesson-table');
+  table.append(el('thead', null, [
+    el('tr', null, t.head.map((h, i) => el(i ? 'th.num' : 'th', { text: h }))),
+  ]));
+  const tbody = el('tbody');
+  for (const row of t.rows) {
+    tbody.append(el('tr', { class: /★/.test(String(row[0])) ? 'on' : '' }, row.map((c, i) =>
+      el(i ? 'td.num' : 'td', { text: String(c).replace(' ★', '') })
+    )));
+  }
+  table.append(tbody);
+  return el('div', null, [table, t.note ? el('p.small.muted', { text: t.note }) : null]);
+}
+
 export async function renderLearn(app, params) {
   destroyCharts();
   const lessonId = params[0] && LESSON_BY_ID[params[0]] ? params[0] : LESSONS[0].id;
@@ -356,6 +380,7 @@ export async function renderLearn(app, params) {
       el('h3', { text: sec.h }),
       el('p', { html: emphasize(sec.p) }),
     ]);
+    if (sec.table) node.append(lessonTable(sec.table));
     if (sec.fig && FIGURES[sec.fig]) node.append(figureEl(sec.fig));
     content.append(node);
   }

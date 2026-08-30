@@ -407,21 +407,6 @@ select {
 .step p { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.65; }
 .step-cta { font-size: 12.5px; color: var(--accent); font-weight: 600; }
 
-.thesis { margin-top: 18px; border-color: rgba(77,208,167,.28); }
-.thesis h2 { font-size: 18px; margin: 0 0 10px; }
-.thesis p { color: #cbd3e1; margin: 0 0 10px; font-size: 14.5px; }
-.thesis .btn { display: inline-block; margin-top: 6px; }
-
-.highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 16px 0; }
-.highlight {
-  display: block; background: var(--panel-2); border: 1px solid var(--line);
-  border-radius: 10px; padding: 12px 14px; transition: border-color .12s;
-}
-.highlight:hover { border-color: var(--accent); }
-.h-name { display: block; font-size: 13px; margin-bottom: 4px; }
-.h-edge { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.h-meta { display: block; font-size: 11.5px; color: var(--muted); }
-
 .toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px; }
 .toc-group h4 {
   margin: 0 0 8px; font-size: 16px; font-weight: 800; letter-spacing: -.01em;
@@ -494,6 +479,20 @@ select {
   line-height: 1.65;
 }
 .confirm-note b { color: #cbd3e1; }
+/* 레슨 본문 안의 비교표 */
+.lesson-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 6px 0 4px; }
+.lesson-table th {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.lesson-table td { padding: 8px 10px; border-bottom: 1px solid rgba(38,44,57,.7); }
+.lesson-table td.num, .lesson-table th.num {
+  text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.lesson-table tr:last-child td { border-bottom: 0; }
+.lesson-table tr.on td { background: rgba(77,208,167,.07); color: var(--text); }
+.lesson-table tr.on td:first-child { font-weight: 700; }
+
 .settings-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 4px 0 14px; }
 .settings-table td { padding: 8px 10px; border-bottom: 1px solid rgba(38,44,57,.7); vertical-align: middle; }
 .settings-table tr:last-child td { border-bottom: 0; }
@@ -532,26 +531,6 @@ select {
 .axis-panel { border-color: rgba(91,141,239,.28); }
 .stat.on { border-color: var(--accent); background: rgba(77,208,167,.08); }
 .stat .small { display: block; margin-top: 2px; }
-
-/* ── 첫 화면: 기준선 설명 ─────────────────────────────── */
-.analogy {
-  background: var(--panel-2);
-  border-left: 3px solid var(--group);
-  border-radius: 0 8px 8px 0;
-  padding: 14px 16px;
-  margin: 16px 0;
-}
-.analogy p { margin: 0; font-size: 14px; line-height: 1.75; color: #cbd3e1; }
-.pp-note {
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px 14px;
-  font-size: 13px !important;
-  color: var(--muted) !important;
-}
-.thesis h3 { color: var(--text); }
-.thesis .fig { background: var(--panel-2); }
 
 /* 종목 선택 드롭다운의 시장 구분 */
 select optgroup {

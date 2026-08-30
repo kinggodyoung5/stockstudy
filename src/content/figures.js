@@ -834,36 +834,6 @@ ${txt(x + w / 2, base + 18, y.slice(2), 'ts', 'middle')}`;
     },
   },
 
-  'baseline-compare': {
-    caption: '두 막대의 길이 차이가 그 신호가 실제로 보탠 몫입니다. 신호의 승률 숫자만 보면 커 보이지만, 아무것도 안 했을 때와 견줘봐야 진짜 크기가 나옵니다.',
-    alt: '신호 승률과 기준선 비교',
-    /** @param {{sigName,sigVal,baseVal,sigCount}} o */
-    svg: (o = {}) => {
-      const p = { sigName: '골든크로스 뒤에 샀을 때', sigVal: 50.7, baseVal: 50.7, sigCount: '2,131', ...o };
-      const x0 = 50, w = 430, scale = (v) => (v / 100) * w;
-      const diff = +(p.sigVal - p.baseVal).toFixed(1);
-      const same = Math.abs(diff) < 0.5;
-      return svg(250, `
-        ${txt(x0, 34, '① 그냥 아무 날이나 샀을 때', 'tb', 'start')}
-        <rect x="${x0}" y="46" width="${scale(p.baseVal)}" height="34" rx="5" fill="${C.muted}" opacity="0.45"/>
-        ${txt(x0 + scale(p.baseVal) + 10, 69, p.baseVal + '%', 'tb', 'start', C.muted)}
-
-        ${txt(x0, 122, '② ' + p.sigName, 'tb', 'start', C.accent)}
-        <rect x="${x0}" y="134" width="${scale(Math.min(p.baseVal, p.sigVal))}" height="34" rx="5" fill="${C.muted}" opacity="0.45"/>
-        ${p.sigVal > p.baseVal
-          ? `<rect x="${x0 + scale(p.baseVal)}" y="134" width="${scale(p.sigVal - p.baseVal)}" height="34" rx="5" fill="${C.accent}" opacity="0.9"/>`
-          : ''}
-        ${txt(x0 + scale(p.sigVal) + 10, 157, p.sigVal + '%', 'tb', 'start', C.accent)}
-
-        ${same
-          ? `${txt(x0, 205, '두 막대의 길이가 같습니다.', 'tb', 'start', C.warn)}
-             ${txt(x0, 228, '→ 이 신호가 보탠 몫: 0%p. 신호를 봤든 안 봤든 결과가 같다는 뜻입니다.', 'ts', 'start')}`
-          : `${arrow(x0 + scale(p.baseVal), 196, x0 + scale(p.sigVal), 196, C.accent)}
-             ${txt(x0 + scale((p.baseVal + p.sigVal) / 2), 216, `이 차이 = ${diff > 0 ? '+' : ''}${diff}%p`, 'tb', 'middle', C.accent)}
-             ${txt(x0, 240, '이만큼이 그 신호가 실제로 보탠 몫입니다.', 'ts', 'start')}`}
-      `);
-    },
-  },
 };
 
 /** 문단 텍스트의 **강조** 를 <b> 로 바꾼다 (내용은 전부 이 저장소가 작성한 것) */
