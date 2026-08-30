@@ -384,7 +384,7 @@ export async function renderViewer(app) {
   // ── 레이아웃 ──────────────────────────────────────────
   clear(app).append(
     el('h1.page-title', { text: '실제 과거 데이터 뷰어' }),
-    el('p.page-sub', { text: '지표를 다 끈 상태에서 먼저 눈으로 판단해보고, 그다음 하나씩 켜서 확인하는 순서를 권합니다. 파라미터를 바꾸면 같은 구간에서도 신호가 달라진다는 점도 함께 확인해보세요.' }),
+    el('p.page-sub', { text: '지표를 다 끈 상태에서 먼저 눈으로 판단해보고, 그다음 하나씩 켜서 확인하는 순서를 권합니다. 설정값을 바꾸면 같은 구간에서도 신호가 달라진다는 점도 함께 확인해보세요.' }),
 
     el('div.panel', null, [
       el('div.row', null, [tickerSel, rangeRow, unitRow, el('span.spacer'), el('label.small.muted', null, ['기준일 ', endInput])]),

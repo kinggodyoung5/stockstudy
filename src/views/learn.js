@@ -9,7 +9,7 @@ import { LESSON_SETTINGS, SRC_LABEL, SRC_NOTE } from '../content/settings.js';
 import { loadPattern, loadStock, sliceByDate } from '../lib/data.js';
 import { createStockChart, createOscillatorPanel, syncTimeScales, COLORS } from '../lib/chart.js';
 import { OSCILLATORS } from '../lib/oscillators.js';
-import { confidence } from '../lib/stats.js';
+import { confidence, directionalEdge } from '../lib/stats.js';
 import { el, clear, fmt, signed, dirClass } from '../lib/ui.js';
 
 let charts = [];
@@ -55,6 +55,20 @@ function formatEvidence(e, currency) {
   return fmt(e.value, currency);
 }
 
+/**
+ * 성과를 신호일이 아니라 "확인일"부터 잰 규칙에 붙는 안내.
+ *
+ * 판정에 뒷날 봉이 필요한 규칙이 있다. 그 사실을 감추면 승률이 부풀려지고,
+ * 읽는 사람은 실제로는 잡을 수 없었던 수익을 신호의 성과로 오해하게 된다.
+ */
+function confirmNote(meta) {
+  if (!meta.confirm) return el('span');
+  return el('p.confirm-note', null, [
+    el('b', { text: `성과는 신호 ${meta.confirm.lag}거래일 뒤부터 쟀습니다. ` }),
+    document.createTextNode(meta.confirm.why),
+  ]);
+}
+
 function outcomeCard(hit) {
   const o = hit.outcome;
   if (!o) return el('p.muted.small', { text: '이후 데이터가 부족해 결과를 확인할 수 없습니다.' });
@@ -64,7 +78,8 @@ function outcomeCard(hit) {
     [`${o.days}거래일 뒤 종가 변화`, el('span', { class: dirClass(o.changePct), text: signed(o.changePct) })],
     ['기간 중 최대 상승', el('span.up', { text: signed(o.maxUpPct) })],
     ['기간 중 최대 하락', el('span.down', { text: signed(o.maxDownPct) })],
-    ['확인 구간', `${o.fromDate} → ${o.toDate}`],
+    [hit.confirmLag ? `성과 측정 구간 (신호 ${hit.confirmLag}거래일 뒤부터)` : '성과 측정 구간',
+      `${o.fromDate} → ${o.toDate}`],
   ];
   for (const [k, v] of rows) dl.append(el('dt', { text: k }), el('dd', null, [v]));
   return dl;
@@ -235,21 +250,27 @@ function statsBox(meta) {
 
   // 레슨 본문이 계속 "기준선과 비교해보세요"라고 하므로, 비교 대상을 같은 자리에 둔다
   const base = meta.baseline;
-  const edge = base ? +(s.winRate - base.winRate).toFixed(1) : null;
+  // 하락 신호는 상승 비율이 기준선보다 **낮아야** 맞힌 것이다. 그냥 빼면 부호가 뒤집혀 보인다.
+  const hit = directionalEdge(s, base, meta.bias);
+  const raw = base ? +(s.winRate - base.winRate).toFixed(1) : null;
+  const edge = hit != null ? hit : raw;
+  const edgeLabel = hit != null ? '신호가 방향을 맞힌 몫' : '기준선 대비';
 
   row.append(
     stat(`${meta.outcomeDays}일 뒤 오른 비율`, s.winRate + '%', s.winRate >= 50 ? 'up' : 'down'),
     base ? stat('아무 날이나 샀다면', base.winRate + '%', 'muted') : null,
-    edge != null ? stat('신호가 보탠 몫', (edge > 0 ? '+' : '') + edge + '%p', dirClass(edge)) : null,
+    edge != null ? stat(edgeLabel, (edge > 0 ? '+' : '') + edge + '%p', dirClass(edge)) : null,
     stat('평균 수익률', signed(s.avgChange), dirClass(s.avgChange)),
     stat('가장 나빴던 경우', signed(s.worst), 'down')
   );
   return el('div', null, [
     row,
     el('p.muted.small', { style: { margin: '8px 0 0' }, text:
-      conf.label + ' · "신호가 보탠 몫"이 0에 가까우면, 그 신호는 아무 날이나 사는 것과 구별되지 않는다는 뜻입니다.' }),
+      conf.label + ' · ' + (hit != null
+        ? `이 신호는 ${meta.bias === 'down' ? '하락' : '상승'}을 가리킵니다. "${edgeLabel}"은 그 방향이 실제로 얼마나 더 맞았는지이고, 0에 가까우면 아무 날이나 사는 것과 구별되지 않는다는 뜻입니다.`
+        : '"기준선 대비"가 0에 가까우면, 그 신호는 아무 날이나 사는 것과 구별되지 않는다는 뜻입니다.') }),
     el('p.muted.small', { style: { margin: '4px 0 0' }, text:
-      '매매 전략의 백테스트가 아니라 단순 집계입니다 (수수료·세금·분산투자 미반영).' }),
+      '매매 전략을 과거에 돌려본 검증이 아니라 단순 집계입니다. 수수료·세금·분산투자는 들어 있지 않습니다.' }),
   ]);
 }
 
@@ -278,6 +299,7 @@ async function renderPatternSection(root, patternId, lesson) {
         return ol;
       })(),
       el('h3', { style: { marginTop: '18px' }, text: '이 신호의 실제 성과' }),
+      confirmNote(meta),
       statsBox(meta),
     ])
   );

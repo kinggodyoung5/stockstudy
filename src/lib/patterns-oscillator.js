@@ -8,9 +8,19 @@
 
 import { pivots, closes, pct, bollinger, disparity } from './indicators.js';
 import { rsi, macd, obv, stochastic, adx } from './oscillators.js';
-import { outcomeAt, windowRange, round } from './outcome.js';
+import { outcomeAt, confirmedOutcome, windowRange, round } from './outcome.js';
 
 // ── 다이버전스 (범용) ────────────────────────────────────────
+
+/**
+ * 스윙 고점·저점을 인정할 좌우 폭.
+ *
+ * 어떤 날이 저점인지는 그 뒤로 PIVOT_W 봉이 더 지나야 확정된다 — 그 전에는 더 떨어질 수
+ * 있기 때문이다. 그래서 성과는 저점 당일이 아니라 PIVOT_W 봉 뒤(확인일)부터 잰다.
+ * 저점의 정의가 "뒤 PIVOT_W 봉보다 낮다"이므로, 저점 당일부터 재면 그 구간은
+ * 반드시 위로 가 있다. 규칙이 스스로 만들어낸 수익을 성과로 착각하게 된다.
+ */
+const PIVOT_W = 5;
 
 /**
  * @param stock      종목
@@ -20,7 +30,7 @@ import { outcomeAt, windowRange, round } from './outcome.js';
  */
 function divergence(stock, series, bullish, label) {
   const { candles } = stock;
-  const { highs, lows } = pivots(candles, 5);
+  const { highs, lows } = pivots(candles, PIVOT_W);
   const points = bullish ? lows : highs;
   const priceAt = (i) => (bullish ? candles[i].low : candles[i].high);
   const hits = [];
@@ -61,6 +71,7 @@ function divergence(stock, series, bullish, label) {
         { label: `${label} 값 2`, value: round(series[i2], 3) },
         { label: `${label} 변화율(%)`, value: round((indDiff / indScale) * 100) },
         { label: '두 지점 간격(거래일)', value: gap },
+        { label: '신호를 알 수 있게 된 날', value: candles[Math.min(i2 + PIVOT_W, candles.length - 1)].date },
       ],
       shape: {
         divergence: {
@@ -70,8 +81,8 @@ function divergence(stock, series, bullish, label) {
           ],
         },
       },
-      ...windowRange(candles, i1, i2, 25),
-      outcome: outcomeAt(candles, i2),
+      ...windowRange(candles, i1, i2 + PIVOT_W, 25),
+      ...confirmedOutcome(candles, i2, PIVOT_W),
     });
   }
   return hits;
@@ -188,6 +199,10 @@ export const OSC_PATTERNS = {
       '같은 두 지점의 RSI는 두 번째가 더 높음',
       'RSI 차이가 5% 이상 (미미한 차이는 잡음으로 제외)',
     ],
+    confirm: {
+      lag: 5,
+      why: '어떤 날이 국소 저점·고점인지는 뒤로 5봉이 더 지나야 정해집니다. 그 전에는 더 갈 수 있기 때문입니다. 그래서 성과는 그 지점이 아니라 확정된 날부터 쟀습니다.',
+    },
   },
   'rsi-bearish-divergence': {
     name: 'RSI 약세 다이버전스', lesson: 'divergence', bias: 'down',
@@ -198,6 +213,10 @@ export const OSC_PATTERNS = {
       '같은 두 지점의 RSI는 두 번째가 더 낮음',
       'RSI 차이가 5% 이상',
     ],
+    confirm: {
+      lag: 5,
+      why: '어떤 날이 국소 저점·고점인지는 뒤로 5봉이 더 지나야 정해집니다. 그 전에는 더 갈 수 있기 때문입니다. 그래서 성과는 그 지점이 아니라 확정된 날부터 쟀습니다.',
+    },
   },
   'macd-golden-cross': {
     name: 'MACD 골든크로스', lesson: 'macd', bias: 'up',
@@ -226,6 +245,10 @@ export const OSC_PATTERNS = {
       '같은 두 지점의 MACD 히스토그램은 두 번째가 더 높음',
       '히스토그램 차이가 5% 이상',
     ],
+    confirm: {
+      lag: 5,
+      why: '어떤 날이 국소 저점·고점인지는 뒤로 5봉이 더 지나야 정해집니다. 그 전에는 더 갈 수 있기 때문입니다. 그래서 성과는 그 지점이 아니라 확정된 날부터 쟀습니다.',
+    },
   },
   'macd-bearish-divergence': {
     name: 'MACD 약세 다이버전스', lesson: 'divergence', bias: 'down',
@@ -236,6 +259,10 @@ export const OSC_PATTERNS = {
       '같은 두 지점의 MACD 히스토그램은 두 번째가 더 낮음',
       '히스토그램 차이가 5% 이상',
     ],
+    confirm: {
+      lag: 5,
+      why: '어떤 날이 국소 저점·고점인지는 뒤로 5봉이 더 지나야 정해집니다. 그 전에는 더 갈 수 있기 때문입니다. 그래서 성과는 그 지점이 아니라 확정된 날부터 쟀습니다.',
+    },
   },
   'obv-bullish-divergence': {
     name: 'OBV 강세 다이버전스', lesson: 'obv', bias: 'up',
@@ -246,6 +273,10 @@ export const OSC_PATTERNS = {
       '같은 두 지점의 OBV는 두 번째가 더 높음',
       'OBV 차이가 5% 이상',
     ],
+    confirm: {
+      lag: 5,
+      why: '어떤 날이 국소 저점·고점인지는 뒤로 5봉이 더 지나야 정해집니다. 그 전에는 더 갈 수 있기 때문입니다. 그래서 성과는 그 지점이 아니라 확정된 날부터 쟀습니다.',
+    },
   },
   'obv-bearish-divergence': {
     name: 'OBV 약세 다이버전스', lesson: 'obv', bias: 'down',
@@ -256,6 +287,10 @@ export const OSC_PATTERNS = {
       '같은 두 지점의 OBV는 두 번째가 더 낮음',
       'OBV 차이가 5% 이상',
     ],
+    confirm: {
+      lag: 5,
+      why: '어떤 날이 국소 저점·고점인지는 뒤로 5봉이 더 지나야 정해집니다. 그 전에는 더 갈 수 있기 때문입니다. 그래서 성과는 그 지점이 아니라 확정된 날부터 쟀습니다.',
+    },
   },
   'stochastic-oversold-cross': {
     name: '스토캐스틱 과매도 반등', lesson: 'stochastic', bias: 'up',

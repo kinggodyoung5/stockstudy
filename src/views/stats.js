@@ -9,7 +9,7 @@
  */
 
 import { loadPatternIndex } from '../lib/data.js';
-import { confidence } from '../lib/stats.js';
+import { confidence, directionalEdge } from '../lib/stats.js';
 import { LESSON_BY_ID } from '../content/lessons.js';
 import { el, clear, signed, dirClass } from '../lib/ui.js';
 
@@ -45,7 +45,8 @@ export async function renderStats(app) {
     { key: 'bias', label: '알려진 방향', align: 'left' },
     { key: 'count', label: '검출 건수', align: 'right' },
     { key: 'winRate', label: `${data.outcomeDays}일 뒤 상승 비율`, align: 'right' },
-    { key: 'edge', label: '기준선 대비', align: 'right' },
+    { key: 'edge', label: '상승 비율 − 기준선', align: 'right' },
+    { key: 'hit', label: '방향 적중', align: 'right' },
     { key: 'avgChange', label: '평균 수익률', align: 'right' },
     { key: 'medianChange', label: '중앙값', align: 'right' },
     { key: 'stdev', label: '편차', align: 'right' },
@@ -57,6 +58,7 @@ export async function renderStats(app) {
     const b = curBase();
     if (key === 'count') return cur.count;
     if (key === 'edge') return cur.stats && b ? cur.stats.winRate - b.winRate : null;
+    if (key === 'hit') return directionalEdge(cur.stats, b, row.bias);
     return cur.stats ? cur.stats[key] : null;
   };
 
@@ -100,6 +102,8 @@ export async function renderStats(app) {
       const cur = curStats(r);
       const s = cur.stats;
       const edge = s && b ? +(s.winRate - b.winRate).toFixed(1) : null;
+      // 하락 신호는 상승 비율이 낮아야 맞힌 것 — 부호를 뒤집어 따로 보여준다
+      const hit = directionalEdge(s, b, r.bias);
       const conf = confidence(cur.count);
       const lesson = LESSON_BY_ID[r.lesson];
 
@@ -117,7 +121,9 @@ export async function renderStats(app) {
           el('td.small', null, [el('span', { class: 'pill ' + (r.bias === 'up' ? 'up' : r.bias === 'down' ? 'down' : ''), text: BIAS_NAMES[r.bias] })]),
           el('td.num', { text: cur.count.toLocaleString() }),
           el('td.num', { class: s ? (s.winRate >= 50 ? 'up' : 'down') : '', text: s ? s.winRate + '%' : '—' }),
-          el('td.num', { class: dirClass(edge), text: edge == null ? '—' : (edge > 0 ? '+' : '') + edge + '%p' }),
+          el('td.num.muted', { text: edge == null ? '—' : (edge > 0 ? '+' : '') + edge + '%p' }),
+          el('td.num', { class: dirClass(hit), title: hit == null ? '방향을 가리키지 않는 신호입니다' : '',
+            text: hit == null ? '—' : (hit > 0 ? '+' : '') + hit + '%p' }),
           el('td.num', { class: s ? dirClass(s.avgChange) : '', text: s ? signed(s.avgChange) : '—' }),
           el('td.num', { class: s ? dirClass(s.medianChange) : '', text: s ? signed(s.medianChange) : '—' }),
           el('td.num.muted', { text: s ? s.stdev + '%p' : '—' }),
@@ -248,6 +254,11 @@ export async function renderStats(app) {
     axisPanel,
 
     el('div.panel', { style: { marginTop: '18px' } }, [
+      el('p.small.muted', { style: { margin: '0 0 14px' }, html:
+        '<b>두 숫자를 구분해서 보세요.</b> "상승 비율 − 기준선"은 방향과 무관하게 그냥 뺀 값입니다. ' +
+        '"방향 적중"은 그 신호가 가리킨 방향이 실제로 얼마나 더 맞았는지입니다 — ' +
+        '하락 신호는 상승 비율이 낮아야 맞힌 것이라 부호를 뒤집어 계산합니다. ' +
+        '방향을 가리키지 않는 신호는 이 칸이 비어 있습니다.' }),
       el('div.row', { style: { marginBottom: '14px' } }, [
         search, groupSel, minSel,
         el('span.spacer'),
@@ -259,7 +270,7 @@ export async function renderStats(app) {
     el('div.panel.caution', { style: { marginTop: '18px' } }, [
       el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '이 표를 읽을 때 반드시 감안할 것' }),
       el('ul.small', { style: { margin: '0', paddingLeft: '20px' } }, [
-        el('li', { text: '매매 전략의 백테스트가 아닙니다. 수수료·세금·슬리피지·분산투자·자금관리가 전혀 반영돼 있지 않습니다.' }),
+        el('li', { text: '매매 전략을 과거에 돌려본 검증이 아니라 단순 집계입니다. 수수료, 세금, 원하는 가격에 못 사고 밀리는 손실, 분산투자, 자금 배분이 전혀 들어 있지 않습니다.' }),
         el('li', { text: `종목이 ${data.tickers}개입니다. 고점 대비 크게 밀린 종목과 오래 부진한 종목을 일부러 섞었지만, 여전히 '지금까지 상장을 유지한 회사들'만 들어 있습니다. 같은 기간에 상장폐지된 회사는 한 곳도 없습니다 (생존 편향). 실제보다 낙관적인 숫자라고 보는 편이 맞습니다.` }),
         el('li', { text: '표본이 20건 미만인 규칙은 흐리게 표시했습니다. 승률 100%라도 3건이면 아무 의미가 없습니다.' }),
         el('li', { text: '보유 기간을 20거래일로 고정했습니다. 기간을 바꾸면 순위가 달라집니다.' }),

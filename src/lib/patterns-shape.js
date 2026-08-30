@@ -49,6 +49,16 @@ function trendBefore(candles, i, n = 40) {
   return pct(candles[j].close, candles[i].close);
 }
 
+/**
+ * 스윙 고점·저점을 인정할 좌우 폭.
+ *
+ * 어떤 날이 고점인지는 뒤로 PIVOT_W 봉이 더 지나야 확정된다. 그래서 넥라인 돌파를
+ * 찾을 때도 마지막 어깨(봉우리)가 확정된 뒤부터 봐야 한다. 어깨 바로 다음 날부터
+ * 찾으면, 아직 어깨인 줄 몰랐던 시점의 돌파를 신호로 세게 된다.
+ */
+const PIVOT_W = 5;
+const WEDGE_PIVOT_W = 3;   // 삼각수렴·쐐기는 더 촘촘한 피벗을 쓴다
+
 /** 두 점을 잇는 직선을 연장해 특정 인덱스에서의 값 */
 const lineAt = (x1, y1, x2, y2, x) => y1 + ((y2 - y1) / (x2 - x1)) * x - ((y2 - y1) / (x2 - x1)) * x1;
 
@@ -56,7 +66,7 @@ const lineAt = (x1, y1, x2, y2, x) => y1 + ((y2 - y1) / (x2 - x1)) * x - ((y2 - 
 
 function headAndShoulders(stock, inverse) {
   const { candles } = stock;
-  const { highs, lows } = pivots(candles, 5);
+  const { highs, lows } = pivots(candles, PIVOT_W);
   // 역패턴은 저점 3개와 그 사이 고점 2개를 본다 (부호만 뒤집힌 같은 구조)
   const peaks = inverse ? lows : highs;
   const troughs = inverse ? highs : lows;
@@ -92,8 +102,9 @@ function headAndShoulders(stock, inverse) {
     if (span < 20 || span > 120) continue;
 
     // 넥라인을 연장해 돌파 확인
+    // 오른쪽 어깨는 PIVOT_W 봉이 더 지나야 어깨로 확정된다. 그 전 돌파는 알 수 없었다.
     let breakIdx = null;
-    for (let k = iR + 1; k <= iR + 20 && k < candles.length; k++) {
+    for (let k = iR + PIVOT_W; k <= iR + 20 && k < candles.length; k++) {
       const neck = lineAt(t1, N1, t2, N2, k);
       if (inverse ? candles[k].close > neck : candles[k].close < neck) { breakIdx = k; break; }
     }
@@ -135,7 +146,7 @@ function headAndShoulders(stock, inverse) {
 
 function multiTopBottom(stock, count, isTop) {
   const { candles } = stock;
-  const { highs, lows } = pivots(candles, 5);
+  const { highs, lows } = pivots(candles, PIVOT_W);
   const peaks = isTop ? highs : lows;
   const troughs = isTop ? lows : highs;
   const peakPrice = (i) => (isTop ? candles[i].high : candles[i].low);
@@ -181,8 +192,9 @@ function multiTopBottom(stock, count, isTop) {
 
     // 넥라인 이탈 확인
     const lastPeak = idx[count - 1];
+    // 마지막 봉우리도 PIVOT_W 봉 뒤에야 봉우리로 확정된다
     let breakIdx = null;
-    for (let k = lastPeak + 1; k <= lastPeak + 30 && k < candles.length; k++) {
+    for (let k = lastPeak + PIVOT_W; k <= lastPeak + 30 && k < candles.length; k++) {
       if (isTop ? candles[k].close < neckline : candles[k].close > neckline) { breakIdx = k; break; }
     }
     if (breakIdx == null) continue;
@@ -226,7 +238,7 @@ const CONVERGE = 0.75;  // 끝 폭이 시작 폭의 이 비율 이하로 좁아�
  */
 function convergingShapes(stock) {
   const { candles } = stock;
-  const { highs, lows } = pivots(candles, 3);
+  const { highs, lows } = pivots(candles, WEDGE_PIVOT_W);
   const out = {
     'ascending-triangle': [],
     'descending-triangle': [],
@@ -238,8 +250,10 @@ function convergingShapes(stock) {
 
   for (let i = WINDOW; i < candles.length; i++) {
     const from = i - WINDOW;
-    const hp = highs.filter((x) => x >= from && x < i).map((x) => ({ x, y: candles[x].high }));
-    const lp = lows.filter((x) => x >= from && x < i).map((x) => ({ x, y: candles[x].low }));
+    // i 시점에 이미 확정된 피벗만 쓴다 (x + WEDGE_PIVOT_W 봉까지 봐야 피벗으로 확정되므로)
+    const confirmed = (x) => x + WEDGE_PIVOT_W <= i;
+    const hp = highs.filter((x) => x >= from && confirmed(x)).map((x) => ({ x, y: candles[x].high }));
+    const lp = lows.filter((x) => x >= from && confirmed(x)).map((x) => ({ x, y: candles[x].low }));
     if (hp.length < 3 || lp.length < 3) continue;
 
     const upper = fitLine(hp);

@@ -179,6 +179,7 @@ document.getElementById('run').addEventListener('click', async (e) => {
         bias: meta.bias || 'none',
         summary: meta.summary,
         rules: meta.rules,
+        confirm: meta.confirm || null,
         outcomeDays: OUTCOME_DAYS,
         baseline: base,
         generatedAt: new Date().toISOString().slice(0, 10),

@@ -35,6 +35,30 @@ export function outcomeAt(candles, i, days = OUTCOME_DAYS) {
   };
 }
 
+/**
+ * 신호를 실제로 알 수 있게 되는 날("확인일")부터 성과를 잰다.
+ *
+ * 판정에 뒷날 봉이 필요한 규칙이 있다. 스윙 저점은 뒤로 5봉이 더 지나야 저점이었음이
+ * 확정되고, "교차가 5일 유지" 같은 조건도 5일이 지나야 참·거짓이 갈린다.
+ * 그런 규칙의 성과를 신호일부터 재면, 그날은 아직 알 수 없던 사실을 알고 산 셈이 된다.
+ * 게다가 "뒤 5봉보다 낮다"가 저점의 정의이므로 그 5봉은 반드시 위에 있다 —
+ * 규칙이 스스로 수익을 만들어내고, 승률이 실제보다 크게 부풀려진다.
+ *
+ * 그래서 도형은 원래 지점에 그대로 그리고, 성적을 매기는 출발선만 확인일로 민다.
+ * lag 가 0 인 규칙(그날 종가만으로 판정되는 규칙)은 이 함수를 쓸 필요가 없다.
+ */
+export function confirmedOutcome(candles, signalIdx, lag, days = OUTCOME_DAYS) {
+  const j = signalIdx + lag;
+  if (j >= candles.length) {
+    return { confirmLag: lag, confirmDate: null, outcome: null };
+  }
+  return {
+    confirmLag: lag,
+    confirmDate: candles[j].date,
+    outcome: outcomeAt(candles, j, days),
+  };
+}
+
 /** 차트에 보여줄 앞뒤 여유 구간 */
 export function windowRange(candles, startIdx, endIdx, pad = 40) {
   const a = Math.max(0, startIdx - pad);

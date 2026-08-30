@@ -6,6 +6,7 @@
  * (3) 지금 뭘 찾고 있다면 어디로 가면 되는지를 한 화면에 정리한다.
  */
 
+import { directionalEdge } from '../lib/stats.js';
 import { LESSONS, LESSON_GROUPS } from '../content/lessons.js';
 import { loadPatternIndex } from '../lib/data.js';
 import { el, clear, signed, dirClass } from '../lib/ui.js';
@@ -57,13 +58,15 @@ export async function renderHome(app) {
   if (data && base) {
     highlights = data.patterns
       .filter((p) => p.stats && p.count >= 100)
-      .map((p) => ({ ...p, edge: +(p.stats.winRate - base.winRate).toFixed(1) }))
-      .sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))
+      // 하락 신호는 상승 비율이 낮아야 맞힌 것이다. 그냥 빼면 "틀린 신호"가 +로 올라온다.
+      .map((p) => ({ ...p, edge: directionalEdge(p.stats, base, p.bias) }))
+      .filter((p) => p.edge != null)
+      .sort((a, b) => b.edge - a.edge)
       .slice(0, 4);
   }
 
   const hero = el('div.hero', null, [
-    el('h1', { text: '차트를 읽는 법, 그리고 믿지 않는 법' }),
+    el('h1', { text: '차트 읽는 법, 그리고 그 숫자를 확인하는 법' }),
     el('p', { text:
       '기술적 분석을 배우는 학습 도구입니다. 지표가 무엇을 재는지 설명하고, ' +
       '그 판정 기준을 코드 그대로 공개하고, 실제 과거 데이터에서 자동으로 찾아낸 사례를 보여줍니다. ' +
@@ -128,12 +131,18 @@ export async function renderHome(app) {
 
         el('h3', { style: { margin: '22px 0 6px', fontSize: '16px' }, text: '그래서 이 앱은 모든 신호를 이렇게 봅니다' }),
         el('p', { text:
-          '57개 규칙 전부에 대해 "그 신호가 나온 뒤의 결과"와 "아무 날이나 샀을 때의 결과"를 나란히 계산해 뒀습니다. ' +
-          '둘의 차이가 0에 가까우면, 그 신호는 있으나 마나 한 것입니다. 실제로 유명한 신호 상당수가 그렇습니다.' }),
+          '57개 규칙마다 "그 신호가 나온 뒤의 결과"와 "아무 날이나 샀을 때의 결과"를 나란히 계산해 뒀습니다. ' +
+          '둘의 차이가 0에 가까우면, 신호 하나만 보고 사고파는 방식으로는 도움이 되지 않았다는 뜻입니다. ' +
+          '실제로 유명한 신호 상당수가 그렇습니다.' }),
+        el('p.small.muted', { style: { margin: '8px 0 0' }, text:
+          '이 숫자가 "차트 분석은 소용없다"는 뜻은 아닙니다. 여기서 재는 것은 진입 시점 하나뿐입니다. ' +
+          '언제 팔지(손절·익절), 얼마나 살지, 여러 신호를 어떻게 겹쳐 볼지는 들어 있지 않고, ' +
+          '실제 결과는 그쪽이 더 크게 좌우합니다. 지표를 언제 믿고 언제 의심할지 감을 잡는 용도로 보세요.' }),
 
         highlights.length
           ? el('div', null, [
-              el('p.small.muted', { style: { margin: '14px 0 8px' }, text: '반대로 차이가 뚜렷하게 나는 것들도 있습니다 (표본 100건 이상):' }),
+              el('p.small.muted', { style: { margin: '14px 0 8px' }, text:
+                '그중에서는 이 넷이 그나마 나았습니다. 신호가 가리킨 방향이 실제로 더 맞은 폭 기준입니다 (표본 100건 이상):' }),
               el('div.highlight-grid', null, highlights.map((h) =>
                 el('a.highlight', { href: `#/learn/${h.lesson}` }, [
                   el('span.h-name', { text: h.name }),
@@ -145,7 +154,8 @@ export async function renderHome(app) {
           : null,
 
         el('p.small.muted', { style: { margin: '14px 0 12px' }, text:
-          '단, 이 숫자들도 어느 시기·어느 종목군이었는지에 따라 크게 달라집니다. 통계 탭에서 나눠 볼 수 있습니다.' }),
+          '단, 이 숫자들도 어느 시기·어느 종목군이었는지에 따라 크게 달라집니다. 통계 탭에서 나눠 볼 수 있습니다. ' +
+          '표본이 쌓인 규칙 가운데 기준선을 뚜렷하게 앞선 것은 없습니다.' }),
         el('a.btn.primary', { href: '#/stats', text: '57개 규칙 전부 보기' }),
       ])
     : null;
@@ -194,7 +204,7 @@ export async function renderHome(app) {
       el('ul.small', { style: { margin: 0, paddingLeft: '20px' } }, [
         el('li', { text: '종목을 추천하지 않습니다. 매매 신호도 제공하지 않습니다.' }),
         el('li', { text: '실시간 시세를 연동하지 않습니다. 전부 저장된 과거 데이터입니다.' }),
-        el('li', { text: '여기 나오는 통계는 매매 전략의 백테스트가 아닙니다. 수수료·세금·분산투자가 반영돼 있지 않습니다.' }),
+        el('li', { text: '여기 나오는 통계는 매매 전략을 과거에 돌려본 검증이 아니라 단순 집계입니다. 수수료·세금·분산투자가 들어 있지 않습니다.' }),
         el('li', { text: '과거 데이터는 미래를 보장하지 않습니다.' }),
       ]),
     ])

@@ -9,9 +9,20 @@
 
 import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct } from './indicators.js';
 
-import { OUTCOME_DAYS, outcomeAt, windowRange, round } from './outcome.js';
+import { OUTCOME_DAYS, outcomeAt, confirmedOutcome, windowRange, round } from './outcome.js';
 
 export { OUTCOME_DAYS };
+
+/**
+ * 판정에 뒷날 봉이 필요한 규칙의 대기 일수.
+ *
+ * "교차가 며칠 유지되는지"는 그 며칠이 지나야 알 수 있다. 신호일에는 아직 모르는
+ * 사실이므로, 성과는 신호일이 아니라 조건이 확정되는 날부터 잰다.
+ * (confirmedOutcome 주석 참고)
+ */
+const CROSS_HOLD = 5;   // 골든/데드크로스 — 교차 후 유지 확인
+const ALIGN_HOLD = 10;  // 정배열 성립 — 배열 유지 확인
+const CLOUD_HOLD = 3;   // 구름대 돌파 — 돌파 유지 확인
 
 /**
  * 패턴 정의. rules 배열은 학습 탭에 "판정 기준"으로 그대로 노출된다.
@@ -27,6 +38,10 @@ export const PATTERNS = {
       '교차 이후 5거래일 동안 20일선이 60일선 위를 유지 (되돌림 교차 제외)',
       '교차 직전 20거래일 안에 반대 방향(데드크로스) 교차가 없음',
     ],
+    confirm: {
+      lag: 5,
+      why: '교차가 5거래일 유지되는지는 5거래일이 지나야 알 수 있습니다. 그래서 성과는 교차일이 아니라 유지가 확인된 날부터 쟀습니다.',
+    },
   },
   'dead-cross': {
     name: '데드크로스',
@@ -38,6 +53,10 @@ export const PATTERNS = {
       '교차 이후 5거래일 동안 20일선이 60일선 아래를 유지',
       '교차 직전 20거래일 안에 반대 방향(골든크로스) 교차가 없음',
     ],
+    confirm: {
+      lag: 5,
+      why: '교차가 5거래일 유지되는지는 5거래일이 지나야 알 수 있습니다. 그래서 성과는 교차일이 아니라 유지가 확인된 날부터 쟀습니다.',
+    },
   },
   'ma-alignment': {
     name: '이동평균선 정배열 성립',
@@ -49,6 +68,10 @@ export const PATTERNS = {
       '전일에는 정배열이 아니었음 (성립 시점만 포착)',
       '성립 이후 10거래일 연속으로 정배열 유지 (하루 스치는 경우 제외)',
     ],
+    confirm: {
+      lag: 10,
+      why: '정배열이 10거래일 유지되는지는 10거래일이 지나야 알 수 있습니다. 그래서 성과는 성립일이 아니라 유지가 확인된 날부터 쟀습니다.',
+    },
   },
   'bollinger-breakout': {
     name: '볼린저밴드 상단 이탈',
@@ -82,6 +105,10 @@ export const PATTERNS = {
       '구름대 두께가 종가 대비 1% 이상 (얇아서 의미 없는 구름 제외)',
       '돌파 이후 3거래일 동안 종가가 구름대 상단 위를 유지',
     ],
+    confirm: {
+      lag: 3,
+      why: '돌파가 3거래일 유지되는지는 3거래일이 지나야 알 수 있습니다. 그래서 성과는 돌파일이 아니라 유지가 확인된 날부터 쟀습니다.',
+    },
   },
 };
 
@@ -97,9 +124,10 @@ function detectCross(stock, direction) {
   for (let i = 1; i < candles.length; i++) {
     if (crossAt(short, long, i) !== direction) continue;
 
-    // 조건 2: 교차 후 5거래일 유지
+    // 조건 2: 교차 후 CROSS_HOLD 거래일 유지.
+    // 이 조건이 참인지는 CROSS_HOLD 일이 지나야 알 수 있으므로, 성과는 그날부터 잰다.
     let held = true;
-    for (let k = i; k <= i + 5 && k < candles.length; k++) {
+    for (let k = i; k <= i + CROSS_HOLD && k < candles.length; k++) {
       if (short[k] == null || long[k] == null) { held = false; break; }
       if (direction === 1 ? short[k] <= long[k] : short[k] >= long[k]) { held = false; break; }
     }
@@ -122,7 +150,7 @@ function detectCross(stock, direction) {
         { label: '당일 (20일선 − 60일선)', value: round(short[i] - long[i]) },
       ],
       ...windowRange(candles, i, i),
-      outcome: outcomeAt(candles, i),
+      ...confirmedOutcome(candles, i, CROSS_HOLD),
     });
   }
   return hits;
@@ -141,8 +169,9 @@ function detectMaAlignment(stock) {
   for (let i = 1; i < candles.length; i++) {
     if (!aligned(i) || aligned(i - 1)) continue;
 
+    // 정배열이 ALIGN_HOLD 일간 유지되는지는 그만큼 지나야 알 수 있다 → 성과도 그날부터
     let held = true;
-    for (let k = i; k <= i + 10 && k < candles.length; k++) {
+    for (let k = i; k <= i + ALIGN_HOLD && k < candles.length; k++) {
       if (!aligned(k)) { held = false; break; }
     }
     if (!held) continue;
@@ -157,7 +186,7 @@ function detectMaAlignment(stock) {
         { label: '5일선 − 60일선 이격률(%)', value: round(pct(m60[i], m5[i])) },
       ],
       ...windowRange(candles, i, i),
-      outcome: outcomeAt(candles, i),
+      ...confirmedOutcome(candles, i, ALIGN_HOLD),
     });
   }
   return hits;
@@ -255,8 +284,9 @@ function detectCloudBreakout(stock) {
     const thickPct = ((top - bottom) / close) * 100;
     if (thickPct < 1) continue;
 
+    // 돌파가 CLOUD_HOLD 일간 유지되는지는 그만큼 지나야 알 수 있다 → 성과도 그날부터
     let held = true;
-    for (let k = i; k <= i + 3 && k < candles.length; k++) {
+    for (let k = i; k <= i + CLOUD_HOLD && k < candles.length; k++) {
       if (cloud.top[k] == null || candles[k].close <= cloud.top[k]) { held = false; break; }
     }
     if (!held) continue;
@@ -276,7 +306,7 @@ function detectCloudBreakout(stock) {
         { label: '구름 두께 (종가 대비 %)', value: round(thickPct) },
       ],
       ...windowRange(candles, i, i),
-      outcome: outcomeAt(candles, i),
+      ...confirmedOutcome(candles, i, CLOUD_HOLD),
     });
   }
   return hits;

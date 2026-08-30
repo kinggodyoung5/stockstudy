@@ -80,9 +80,27 @@ export function confidence(samples) {
   return { level: 'ok', label: `표본 ${samples}건` };
 }
 
-/** 승률이 기준선 대비 얼마나 나은지 (퍼센트포인트) */
+/** 상승 비율이 기준선보다 얼마나 높은지 (퍼센트포인트). 방향은 따지지 않는다. */
 export const edgeOver = (stats, base) =>
   stats && base ? round(stats.winRate - base.winRate, 1) : null;
+
+/**
+ * 신호가 제 방향을 맞힌 폭 (퍼센트포인트)
+ *
+ * 상승 신호는 상승 비율이 기준선보다 **높아야** 맞힌 것이고,
+ * 하락 신호는 반대로 **낮아야** 맞힌 것이다.
+ *
+ * 방향을 무시하고 뺄셈만 하면 "하락 신호가 떴는데 오히려 기준선보다 더 많이 올랐다"가
+ * 신호의 공로처럼 +로 표시된다. 실제로는 신호가 틀린 것이므로 부호를 뒤집어야 한다.
+ * 방향을 말하지 않는 신호(bias: none)에는 이 값이 의미가 없어 null 을 돌려준다.
+ */
+export function directionalEdge(stats, base, bias) {
+  if (!stats || !base) return null;
+  const diff = stats.winRate - base.winRate;
+  if (bias === 'up') return round(diff, 1);
+  if (bias === 'down') return round(-diff, 1);
+  return null;
+}
 
 /**
  * 종목 분류 (프로파일)
