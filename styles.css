@@ -28,6 +28,16 @@ html, body {
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
   font-size: 15px;
   line-height: 1.7;
+
+  /* 한글 줄바꿈.
+     브라우저 기본값(word-break: normal)은 한글을 음절 단위로 끊는다.
+     그래서 "판정 기준을 코드 그대로 공개하고" 가 "…그대로 공 / 개하고" 처럼
+     단어 중간에서 잘린다. keep-all 로 두면 띄어쓰기(어절) 단위로만 끊긴다.
+     다만 URL 이나 긴 영문처럼 한 덩어리가 칸보다 길면 넘쳐버리므로,
+     그때만 예외로 끊도록 overflow-wrap 을 함께 둔다.
+     두 속성 모두 상속되므로 여기 한 번만 두면 화면 전체에 적용된다. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
 }
 
