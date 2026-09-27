@@ -4,7 +4,8 @@
  * 정답 라벨을 따로 만들 필요가 없다 — 가려둔 미래 구간 자체가 정답이다.
  */
 
-import { loadStockList, loadStock } from '../lib/data.js';
+import { loadEligibleStockList, loadStock } from '../lib/data.js';
+import { inspectStock } from '../lib/data-quality.js';
 import { createStockChart, COLORS } from '../lib/chart.js';
 import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct, disparity } from '../lib/indicators.js';
 import { rsi, macd, stochastic, adx } from '../lib/oscillators.js';
@@ -20,8 +21,10 @@ const FLAT_BAND = 3;      // ±3% 안이면 횡보로 본다
 let chart = null;
 let panels = [];
 let unsync = null;
+let quizVersion = 0;
 
 export function destroyQuiz() {
+  quizVersion++;
   if (unsync) { try { unsync(); } catch (_) {} unsync = null; }
   panels.forEach((p) => { try { p.destroy(); } catch (_) {} });
   panels = [];
@@ -121,9 +124,12 @@ function evaluateSignals(setup) {
 }
 export async function renderQuiz(app) {
   destroyQuiz();
+  const version = quizVersion;
   clear(app).append(el('p.loading', { text: '문제를 준비하는 중…' }));
 
-  const index = await loadStockList();
+  const index = await loadEligibleStockList();
+  if (!index.length) throw new Error('출제 가능한 정합성 통과 종목이 없습니다.');
+  if (version !== quizVersion || !app.isConnected) return;
   // 기록은 브라우저에 남긴다 (새로고침·재방문해도 유지)
   const saved = storage.load('quiz', null);
   const session = saved && typeof saved.total === 'number'
@@ -184,7 +190,7 @@ export async function renderQuiz(app) {
       const def = OSCILLATORS[id];
       const pbox = el('div.osc-box', { style: { height: def.height + 'px' } });
       panelWrap.append(el('div.osc-wrap', null, [el('div.panel-head', null, [el('span', { text: def.name })]), pbox]));
-      const panel = createOscillatorPanel(pbox, def, candles);
+      const panel = createOscillatorPanel(pbox, def, candles, undefined, current.stock.candles);
       panels.push(panel);
       panel.fit();
       charts.push(panel.chart);
@@ -192,10 +198,17 @@ export async function renderQuiz(app) {
     unsync = syncTimeScales(charts);
   }
 
+  let questionVersion = 0;
   async function newQuestion() {
+    const question = ++questionVersion;
     clear(resultArea);
     const row = index[Math.floor(Math.random() * index.length)];
     const stock = await loadStock(row.ticker);
+    if (version !== quizVersion || question !== questionVersion || !app.isConnected) return;
+    if (!inspectStock(stock).eligible) {
+      clear(resultArea).append(el('p.error', { text: '원자료가 바뀌어 정합성 검사를 통과하지 못했습니다. 탐지 결과를 다시 생성하세요.' }));
+      return;
+    }
     const all = stock.candles;
     const need = SETUP_BARS + FUTURE_BARS;
     const start = Math.floor(Math.random() * (all.length - need));
@@ -209,7 +222,7 @@ export async function renderQuiz(app) {
       stock, setup, future, changePct,
       actual: verdictOf(changePct),
       cutDate: setup[setup.length - 1].date,
-      signals: evaluateSignals(setup),
+      signals: evaluateSignals(all.slice(0, start + SETUP_BARS)),
       checked: new Set(),
       answered: false,
     };
@@ -222,7 +235,7 @@ export async function renderQuiz(app) {
     if (!chart) chart = createStockChart(box, { width: box.clientWidth, height: box.clientHeight });
     chart.dropLine('cut');
     chart.setOverlays({ ma5: true, ma20: true, ma60: true, volume: true });
-    chart.setCandles(setup);
+    chart.setCandles(setup, stock.candles);
     chart.setMarkers([]);
     chart.fit();
     mountPanels(setup);
@@ -257,7 +270,7 @@ export async function renderQuiz(app) {
 
     // 가려뒀던 미래 구간을 이어 붙인다
     const full = current.setup.concat(current.future);
-    chart.setCandles(full);
+    chart.setCandles(full, current.stock.candles);
     mountPanels(full);
     chart.setMarkers([
       { date: current.cutDate, position: 'belowBar', color: COLORS.neckline, shape: 'arrowUp', text: '여기까지 보였음' },
@@ -297,7 +310,7 @@ export async function renderQuiz(app) {
           el('span.spacer'),
           el('strong', { class: dirClass(current.changePct), text: signed(current.changePct) }),
         ]),
-        el('p.small.muted', { style: { margin: '10px 0 4px' }, text: '이 구간에서 실제로 어떤 신호가 있었는지 확인해보세요. 내가 근거로 삼은 항목을 체크하면 그 신호가 이번에 유효했는지 알려줍니다.' }),
+        el('p.small.muted', { style: { margin: '10px 0 4px' }, text: '간이 조건이 있었는지 복습하는 체크리스트입니다. 한 번 결과 방향이 일치했다고 그 신호의 유효성이 검증된 것은 아닙니다.' }),
         signalChecklist(presentSignals),
       ])
     );
@@ -351,8 +364,9 @@ export async function renderQuiz(app) {
   }
 
   clear(app).append(
-    el('h1.page-title', { text: '구간 맞히기 퀴즈' }),
-    el('p.page-sub', { text: '실제 과거 데이터에서 무작위로 뽑은 구간입니다. 종목과 시기는 답을 공개할 때까지 가려집니다.' }),
+    el('h1.page-title', { text: '방향 예측 실험 (보조 활동)' }),
+    el('p.page-sub', { text: '실제 과거 구간의 이후 방향을 예상해보는 실험입니다. 방향 적중률은 차트 읽기 숙달 점수가 아닙니다. 상승·횡보·하락의 출현 비율도 같지 않습니다. 기초 공부는 “기초 읽기 연습”에서 시작하세요.' }),
+    el('p.small.warn', { text: `정합성을 통과한 ${index.length}개 종목에서만 출제합니다. 간이 신호 체크리스트는 레슨의 탐지 엔진과 조건이 다릅니다. 정의 통합 전까지는 복습 참고용이며, 결과를 본 뒤 고른 근거는 사전 판단 기록이 아닙니다.` }),
     el('div.quiz-grid', null, [
       el('div.panel', null, [questionMeta, box, panelWrap, resultArea]),
       el('div', null, [

@@ -9,6 +9,7 @@
 import { pivots, closes, pct, bollinger, disparity } from './indicators.js';
 import { rsi, macd, obv, stochastic, adx } from './oscillators.js';
 import { outcomeAt, confirmedOutcome, windowRange, round } from './outcome.js';
+import { divergenceMagnitude } from './pattern-context.js';
 
 // ── 다이버전스 (범용) ────────────────────────────────────────
 
@@ -28,7 +29,7 @@ const PIVOT_W = 5;
  * @param bullish    true면 강세 다이버전스(가격 저점 낮아짐 + 지표 저점 높아짐)
  * @param label      근거 표시에 쓸 지표 이름
  */
-function divergence(stock, series, bullish, label) {
+export function divergence(stock, series, bullish, label, kind) {
   const { candles } = stock;
   const { highs, lows } = pivots(candles, PIVOT_W);
   const points = bullish ? lows : highs;
@@ -52,13 +53,12 @@ function divergence(stock, series, bullish, label) {
     const indOk = bullish ? series[i2] > series[i1] : series[i2] < series[i1];
     if (!priceOk || !indOk) continue;
 
-    // 지표 차이가 미미하면 잡음이다
-    const indDiff = Math.abs(series[i2] - series[i1]);
-    const indScale = Math.max(Math.abs(series[i1]), Math.abs(series[i2]), 1e-9);
-    if (indDiff / indScale < 0.05) continue;
+    const magnitude = divergenceMagnitude(kind, candles, series, i1, i2);
+    if (!magnitude.passes) continue;
 
-    if (i2 - last < 30) continue;
+    const tooSoon = i2 - last < 30;
     last = i2;
+    if (tooSoon) continue;
 
     hits.push({
       index: i2,
@@ -69,7 +69,7 @@ function divergence(stock, series, bullish, label) {
         { label: '가격 변화(%)', value: round(priceMove) },
         { label: `${label} 값 1`, value: round(series[i1], 3) },
         { label: `${label} 값 2`, value: round(series[i2], 3) },
-        { label: `${label} 변화율(%)`, value: round((indDiff / indScale) * 100) },
+        { label: magnitude.label, value: round(magnitude.value, 4), unit: kind === 'rsi' ? 'points' : 'percent' },
         { label: '두 지점 간격(거래일)', value: gap },
         { label: '신호를 알 수 있게 된 날', value: candles[Math.min(i2 + PIVOT_W, candles.length - 1)].date },
       ],
@@ -197,7 +197,7 @@ export const OSC_PATTERNS = {
       '국소 저점 두 개의 간격이 10 ~ 60 거래일',
       '두 번째 저가가 첫 저가보다 2% 이상 낮음',
       '같은 두 지점의 RSI는 두 번째가 더 높음',
-      'RSI 차이가 5% 이상 (미미한 차이는 잡음으로 제외)',
+      'RSI 차이가 5포인트 이상 (앱 설정; RSI 값의 5%가 아님)',
     ],
     confirm: {
       lag: 5,
@@ -211,7 +211,7 @@ export const OSC_PATTERNS = {
       '국소 고점 두 개의 간격이 10 ~ 60 거래일',
       '두 번째 고가가 첫 고가보다 2% 이상 높음',
       '같은 두 지점의 RSI는 두 번째가 더 낮음',
-      'RSI 차이가 5% 이상',
+      'RSI 차이가 5포인트 이상 (앱 설정)',
     ],
     confirm: {
       lag: 5,
@@ -243,7 +243,7 @@ export const OSC_PATTERNS = {
       '국소 저점 두 개의 간격이 10 ~ 60 거래일',
       '두 번째 저가가 첫 저가보다 2% 이상 낮음',
       '같은 두 지점의 MACD 히스토그램은 두 번째가 더 높음',
-      '히스토그램 차이가 5% 이상',
+      '히스토그램 차이가 두 시점 평균 종가의 0.1% 이상 (앱 설정)',
     ],
     confirm: {
       lag: 5,
@@ -257,7 +257,7 @@ export const OSC_PATTERNS = {
       '국소 고점 두 개의 간격이 10 ~ 60 거래일',
       '두 번째 고가가 첫 고가보다 2% 이상 높음',
       '같은 두 지점의 MACD 히스토그램은 두 번째가 더 낮음',
-      '히스토그램 차이가 5% 이상',
+      '히스토그램 차이가 두 시점 평균 종가의 0.1% 이상 (앱 설정)',
     ],
     confirm: {
       lag: 5,
@@ -271,7 +271,7 @@ export const OSC_PATTERNS = {
       '국소 저점 두 개의 간격이 10 ~ 60 거래일',
       '두 번째 저가가 첫 저가보다 2% 이상 낮음',
       '같은 두 지점의 OBV는 두 번째가 더 높음',
-      'OBV 차이가 5% 이상',
+      'OBV 차이가 첫 극점 다음 봉부터 둘째 극점까지 총거래량의 5% 이상 (앱 설정)',
     ],
     confirm: {
       lag: 5,
@@ -285,7 +285,7 @@ export const OSC_PATTERNS = {
       '국소 고점 두 개의 간격이 10 ~ 60 거래일',
       '두 번째 고가가 첫 고가보다 2% 이상 높음',
       '같은 두 지점의 OBV는 두 번째가 더 낮음',
-      'OBV 차이가 5% 이상',
+      'OBV 차이가 첫 극점 다음 봉부터 둘째 극점까지 총거래량의 5% 이상 (앱 설정)',
     ],
     confirm: {
       lag: 5,
@@ -371,8 +371,8 @@ export function detectOscillatorPatterns(stock) {
         { label: '직전 20거래일 등락률(%)', value: round(pct(c[Math.max(0, i - 20)], c[i])) },
       ],
     }),
-    'rsi-bullish-divergence': divergence(stock, r, true, 'RSI'),
-    'rsi-bearish-divergence': divergence(stock, r, false, 'RSI'),
+    'rsi-bullish-divergence': divergence(stock, r, true, 'RSI', 'rsi'),
+    'rsi-bearish-divergence': divergence(stock, r, false, 'RSI', 'rsi'),
 
     'macd-golden-cross': lineCross(stock, m.line, m.signal, true, {
       guard: (i) => m.line[i] < 0,
@@ -394,11 +394,11 @@ export function detectOscillatorPatterns(stock) {
         { label: '당일 종가', value: round(c[i]) },
       ],
     }),
-    'macd-bullish-divergence': divergence(stock, m.hist, true, 'MACD 히스토그램'),
-    'macd-bearish-divergence': divergence(stock, m.hist, false, 'MACD 히스토그램'),
+    'macd-bullish-divergence': divergence(stock, m.hist, true, 'MACD 히스토그램', 'macd'),
+    'macd-bearish-divergence': divergence(stock, m.hist, false, 'MACD 히스토그램', 'macd'),
 
-    'obv-bullish-divergence': divergence(stock, o, true, 'OBV'),
-    'obv-bearish-divergence': divergence(stock, o, false, 'OBV'),
+    'obv-bullish-divergence': divergence(stock, o, true, 'OBV', 'obv'),
+    'obv-bearish-divergence': divergence(stock, o, false, 'OBV', 'obv'),
 
     'stochastic-oversold-cross': lineCross(stock, st.k, st.d, true, {
       guard: (i) => st.k[i] <= 20 && st.d[i] <= 20,
@@ -467,4 +467,9 @@ export function detectOscillatorPatterns(stock) {
   };
 }
 
+for (const [id, meta] of Object.entries(OSC_PATTERNS)) {
+  if (id.endsWith('-divergence')) {
+    meta.rules.push('직전 조건 충족 후보와 둘째 극점 간격 30봉 이상 (미표시 후보도 간격을 다시 시작함)');
+  }
+}
 export const OSC_PATTERN_IDS = Object.keys(OSC_PATTERNS);

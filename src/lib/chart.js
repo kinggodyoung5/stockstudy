@@ -7,6 +7,7 @@
  */
 
 import { sma, bollinger, ichimoku, closes } from './indicators.js';
+import { historyThrough, alignedSeries } from './chart-data.js';
 
 const LWC = () => window.LightweightCharts;
 
@@ -68,16 +69,6 @@ function baseOptions(extra = {}) {
   };
 }
 
-/** 값 배열(null 포함) → lightweight-charts 데이터 */
-function toSeries(candles, values, extra) {
-  const out = [];
-  for (let i = 0; i < candles.length; i++) {
-    if (values[i] == null || !Number.isFinite(values[i])) continue;
-    out.push({ time: candles[i].date, value: values[i], ...(extra ? extra(values[i], i) : null) });
-  }
-  return out;
-}
-
 /** 가격 차트 */
 export function createStockChart(container, opts = {}) {
   const { logScale = false, ...rest } = opts;
@@ -102,6 +93,8 @@ export function createStockChart(container, opts = {}) {
   const lines = {};       // key → LineSeries
   const priceLines = {};  // key → [PriceLine]
   let candles = [];
+  let history = [];
+  const indicatorSeries = (values) => alignedSeries(candles, history, values);
   let overlays = {};
   // 지표 설정. 사용자가 기간을 바꿔가며 "파라미터에 따라 신호가 달라진다"를 확인할 수 있게 열어둔다.
   let params = { ma: { ...MA_PERIODS }, bb: { period: 20, mult: 2 } };
@@ -131,8 +124,9 @@ export function createStockChart(container, opts = {}) {
     }
   }
 
-  function setCandles(next) {
+  function setCandles(next, calculationHistory = next) {
     candles = next;
+    history = historyThrough(next, calculationHistory);
     candleSeries.setData(
       candles.map((c) => ({ time: c.date, open: c.open, high: c.high, low: c.low, close: c.close }))
     );
@@ -149,31 +143,31 @@ export function createStockChart(container, opts = {}) {
   function applyOverlays(next) {
     overlays = { ...next };
     if (!candles.length) return;
-    const c = closes(candles);
+    const c = closes(history);
 
     for (const key of Object.keys(MA_PERIODS)) {
       if (overlays[key]) {
         lineOf(key, { color: COLORS[key], lineWidth: key === 'ma200' ? 2 : 1 })
-          .setData(toSeries(candles, sma(c, params.ma[key])));
+          .setData(indicatorSeries(sma(c, params.ma[key])));
       } else dropLine(key);
     }
 
     if (overlays.bollinger) {
       const bb = bollinger(c, params.bb.period, params.bb.mult);
-      lineOf('bbUpper', { color: COLORS.bbBand }).setData(toSeries(candles, bb.upper));
-      lineOf('bbMid', { color: COLORS.bbMid, lineStyle: 2 }).setData(toSeries(candles, bb.mid));
-      lineOf('bbLower', { color: COLORS.bbBand }).setData(toSeries(candles, bb.lower));
+      lineOf('bbUpper', { color: COLORS.bbBand }).setData(indicatorSeries(bb.upper));
+      lineOf('bbMid', { color: COLORS.bbMid, lineStyle: 2 }).setData(indicatorSeries(bb.mid));
+      lineOf('bbLower', { color: COLORS.bbBand }).setData(indicatorSeries(bb.lower));
     } else {
       ['bbUpper', 'bbMid', 'bbLower'].forEach(dropLine);
     }
 
     if (overlays.ichimoku) {
-      const ich = ichimoku(candles);
-      lineOf('spanA', { color: COLORS.spanA, lineWidth: 2 }).setData(toSeries(candles, ich.spanA));
-      lineOf('spanB', { color: COLORS.spanB, lineWidth: 2 }).setData(toSeries(candles, ich.spanB));
-      lineOf('tenkan', { color: COLORS.tenkan }).setData(toSeries(candles, ich.tenkan));
-      lineOf('kijun', { color: COLORS.kijun }).setData(toSeries(candles, ich.kijun));
-      lineOf('chikou', { color: COLORS.chikou, lineStyle: 2 }).setData(toSeries(candles, ich.chikou));
+      const ich = ichimoku(history);
+      lineOf('spanA', { color: COLORS.spanA, lineWidth: 2 }).setData(indicatorSeries(ich.spanA));
+      lineOf('spanB', { color: COLORS.spanB, lineWidth: 2 }).setData(indicatorSeries(ich.spanB));
+      lineOf('tenkan', { color: COLORS.tenkan }).setData(indicatorSeries(ich.tenkan));
+      lineOf('kijun', { color: COLORS.kijun }).setData(indicatorSeries(ich.kijun));
+      lineOf('chikou', { color: COLORS.chikou, lineStyle: 2 }).setData(indicatorSeries(ich.chikou));
     } else {
       ['spanA', 'spanB', 'tenkan', 'kijun', 'chikou'].forEach(dropLine);
     }
@@ -206,7 +200,7 @@ export function createStockChart(container, opts = {}) {
 
   function setMarkers(markers) {
     candleSeries.setMarkers(
-      (markers || []).map((m) => ({
+      [...(markers || [])].sort((a, b) => a.date.localeCompare(b.date)).map((m) => ({
         time: m.date,
         position: m.position || 'aboveBar',
         color: m.color || '#ffffff',
@@ -241,7 +235,8 @@ export function createStockChart(container, opts = {}) {
  * 오실레이터 패널
  * def 는 oscillators.js 의 OSCILLATORS[id] 형태 — 무엇을 어떤 색으로 그릴지 그 안에 다 있다.
  */
-export function createOscillatorPanel(container, def, candles, oscParams) {
+export function createOscillatorPanel(container, def, candles, oscParams, calculationHistory = candles) {
+  const history = historyThrough(candles, calculationHistory);
   const chart = LWC().createChart(
     container,
     baseOptions({
@@ -259,11 +254,11 @@ export function createOscillatorPanel(container, def, candles, oscParams) {
   ro.observe(container);
 
   const series = [];
-  for (const spec of def.compute(candles, oscParams || def.params || {})) {
+  for (const spec of def.compute(history, oscParams || def.params || {})) {
     if (spec.type === 'histogram') {
       const s = chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false });
       s.setData(
-        toSeries(candles, spec.values, (v) => ({
+        alignedSeries(candles, history, spec.values, (v) => ({
           color: spec.signed ? (v >= 0 ? 'rgba(224,75,75,0.55)' : 'rgba(47,127,224,0.55)') : spec.color,
         }))
       );
@@ -276,7 +271,7 @@ export function createOscillatorPanel(container, def, candles, oscParams) {
         lastValueVisible: true,
         crosshairMarkerVisible: false,
       });
-      s.setData(toSeries(candles, spec.values));
+      s.setData(alignedSeries(candles, history, spec.values));
       series.push(s);
     }
   }
@@ -318,10 +313,11 @@ export function syncTimeScales(charts) {
     const handler = (range) => {
       if (locked || !range) return;
       locked = true;
-      for (const dst of charts) {
-        if (dst !== src) dst.timeScale().setVisibleLogicalRange(range);
-      }
-      locked = false;
+      try {
+        for (const dst of charts) {
+          if (dst !== src) dst.timeScale().setVisibleLogicalRange(range);
+        }
+      } finally { locked = false; }
     };
     src.timeScale().subscribeVisibleLogicalRangeChange(handler);
     unsubs.push(() => src.timeScale().unsubscribeVisibleLogicalRangeChange(handler));

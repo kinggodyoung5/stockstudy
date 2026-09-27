@@ -42,24 +42,11 @@ try {
     try {
       $rel = [uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath)
 
-      # 개발용 저장 엔드포인트: tools/build-patterns.html 이 탐지 결과를 data/patterns/ 에 기록할 때만 쓴다.
-      # localhost 전용이고, data/patterns/*.json 외의 경로는 거부한다.
-      if ($ctx.Request.HttpMethod -eq 'POST' -and $rel -eq '/_write') {
-        $target = $ctx.Request.QueryString['path']
-        if ($target -notmatch '^data/patterns/[A-Za-z0-9._-]+\.json$') {
-          $res.StatusCode = 403
-          $bytes = [System.Text.Encoding]::UTF8.GetBytes('forbidden path')
-        } else {
-          $reader = New-Object System.IO.StreamReader($ctx.Request.InputStream, [System.Text.Encoding]::UTF8)
-          $body = $reader.ReadToEnd()
-          $reader.Close()
-          $dest = Join-Path $Root ($target -replace '/', '\')
-          New-Item -ItemType Directory -Force (Split-Path -Parent $dest) | Out-Null
-          [System.IO.File]::WriteAllText($dest, $body, (New-Object System.Text.UTF8Encoding($false)))
-          $res.StatusCode = 200
-          $bytes = [System.Text.Encoding]::UTF8.GetBytes('written ' + $target + ' (' + $body.Length + ' bytes)')
-          Write-Host ("WRITE {0} ({1} bytes)" -f $target, $body.Length) -ForegroundColor Green
-        }
+      # 생성은 Node CLI 한 경로만 사용한다. 브라우저에서 저장 파일을 덮어쓰지 않는다.
+      if ($ctx.Request.HttpMethod -notin @('GET', 'HEAD')) {
+        $res.StatusCode = 405
+        $res.Headers.Add('Allow', 'GET, HEAD')
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes('Method Not Allowed')
         $res.ContentType = 'text/plain; charset=utf-8'
         $res.ContentLength64 = $bytes.Length
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
@@ -71,7 +58,8 @@ try {
 
       # 루트 밖으로 나가는 경로 차단
       $full = [System.IO.Path]::GetFullPath($path)
-      if (-not $full.StartsWith($Root, [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path $full -PathType Leaf)) {
+      $rootPrefix = $Root.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+      if (-not $full.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path $full -PathType Leaf)) {
         $res.StatusCode = 404
         $bytes = [System.Text.Encoding]::UTF8.GetBytes('404 Not Found: ' + $rel)
         $res.ContentType = 'text/plain; charset=utf-8'
@@ -82,7 +70,7 @@ try {
         $bytes = [System.IO.File]::ReadAllBytes($full)
       }
       $res.ContentLength64 = $bytes.Length
-      $res.OutputStream.Write($bytes, 0, $bytes.Length)
+      if ($ctx.Request.HttpMethod -ne 'HEAD') { $res.OutputStream.Write($bytes, 0, $bytes.Length) }
       Write-Host ("{0} {1}" -f $res.StatusCode, $rel)
     } catch {
       Write-Host ("ERR " + $_.Exception.Message) -ForegroundColor Red

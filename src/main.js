@@ -11,14 +11,16 @@ import { renderViewer, destroyViewer } from './views/viewer.js';
 import { renderQuiz, destroyQuiz } from './views/quiz.js';
 import { renderStats, destroyStats } from './views/stats.js';
 import { renderHome, destroyHome } from './views/home.js';
+import { renderPractice, destroyPractice } from './views/practice.js';
 
 const ROUTES = [
   { id: 'home', label: '시작하기', render: renderHome },
   { id: 'learn', label: '개념 학습', render: renderLearn },
+  { id: 'practice', label: '기초 읽기 연습', render: renderPractice },
   { id: 'viewer', label: '데이터 뷰어', render: renderViewer },
-  { id: 'stats', label: '성과 통계', render: renderStats },
+  { id: 'stats', label: '과거 통계', render: renderStats },
   { id: 'sandbox', label: '가상 차트', render: renderSandbox },
-  { id: 'quiz', label: '퀴즈', render: renderQuiz },
+  { id: 'quiz', label: '방향 예측 실험', render: renderQuiz },
 ];
 
 const app = document.getElementById('app');
@@ -46,6 +48,7 @@ function teardown() {
   destroyQuiz();
   destroyStats();
   destroyHome();
+  destroyPractice();
 }
 
 let renderToken = 0;
@@ -57,10 +60,14 @@ async function route() {
 
   teardown();
   renderNav(id);
-  clear(app).append(el('p.loading', { text: '불러오는 중…' }));
+  // 이전 비동기 렌더가 끝나도 새 페이지의 DOM을 덮어쓸 수 없게 분리한다.
+  const page = el('div');
+  clear(app).append(page);
+  window.scrollTo(0, 0);
+  page.append(el('p.loading', { text: '불러오는 중…' }));
 
   try {
-    await route.render(app, params);
+    await route.render(page, params);
   } catch (err) {
     if (token !== renderToken) return; // 그 사이 다른 탭으로 이동함
     console.error(err);

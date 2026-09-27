@@ -3,6 +3,8 @@
  * 앱 시작 시 전체를 불러오지 않고, 필요한 종목 파일만 그때그때 fetch 한 뒤 메모리에 캐시한다.
  */
 
+import { expandStock } from './data-quality.js';
+import { RULES_VERSION } from './rules-version.js';
 const BASE = new URL('../../data/', import.meta.url);
 
 const stockCache = new Map();
@@ -28,18 +30,7 @@ const fileOf = (ticker) => ticker.replace(/\^/g, '_');
  *
  * format 이 없는 예전 파일(객체 배열)도 그대로 통과시킨다.
  */
-function expand(stock) {
-  if (stock.format !== 2 || !Array.isArray(stock.candles)) return stock;
-  const fields = stock.fields || ['date', 'open', 'high', 'low', 'close', 'volume'];
-  const candles = new Array(stock.candles.length);
-  for (let i = 0; i < stock.candles.length; i++) {
-    const row = stock.candles[i];
-    const c = {};
-    for (let k = 0; k < fields.length; k++) c[fields[k]] = row[k];
-    candles[i] = c;
-  }
-  return { ...stock, candles };
-}
+const expand = expandStock;
 
 /** 전체 목록 (종목 + 지수) */
 export async function loadIndex() {
@@ -50,6 +41,20 @@ export async function loadIndex() {
 /** 종목만 (지수 제외) — 선택 목록·퀴즈·탐지 대상 */
 export async function loadStockList() {
   return (await loadIndex()).filter((r) => (r.type || 'stock') === 'stock');
+}
+
+/** 학습·예측 문제는 생성 시 정합성을 통과한 종목만 출제한다. 뷰어 목록은 보존한다. */
+export async function loadEligibleStockList() {
+  const index = await loadPatternIndex();
+  const allowed = new Set(index.eligibleTickers);
+  return (await loadStockList()).filter((r) => allowed.has(r.ticker));
+}
+
+export function assertSnapshotVersion(payload, index = null) {
+  if (payload.provenance?.rulesVersion !== RULES_VERSION
+    || (index && (payload.provenance.sourceDigest !== index.provenance.sourceDigest || payload.generatedAt !== index.generatedAt))) {
+    throw new Error('규칙과 저장 데이터 버전이 다릅니다. node tools/build-patterns.mjs 로 전부 재생성한 뒤 새로고침하세요.');
+  }
 }
 
 /** 지수만 — 상대강도 비교 기준 */
@@ -66,12 +71,15 @@ export async function loadStock(ticker) {
 }
 
 /** 시장에 맞는 기본 비교 지수 */
-export const defaultBenchmark = (market) => (market === 'KR' ? '^KS11' : '^GSPC');
+export const defaultBenchmark = (market, ticker = '') => (market === 'KR' ? (ticker.endsWith('.KQ') ? '^KQ11' : '^KS11') : '^GSPC');
 
 /** 미리 계산된 패턴 탐지 결과 */
 export async function loadPattern(patternId) {
   if (!patternCache.has(patternId)) {
-    patternCache.set(patternId, await getJson('patterns/' + patternId + '.json'));
+    const index = await loadPatternIndex();
+    const payload = await getJson('patterns/' + patternId + '.json');
+    assertSnapshotVersion(payload, index);
+    patternCache.set(patternId, payload);
   }
   return patternCache.get(patternId);
 }
@@ -79,7 +87,11 @@ export async function loadPattern(patternId) {
 /** 전체 패턴 요약 (건수·승률·평균수익률) — 통계 탭에서 쓴다 */
 let patternIndexCache = null;
 export async function loadPatternIndex() {
-  if (!patternIndexCache) patternIndexCache = await getJson('patterns/_index.json');
+  if (!patternIndexCache) {
+    const payload = await getJson('patterns/_index.json');
+    assertSnapshotVersion(payload);
+    patternIndexCache = payload;
+  }
   return patternIndexCache;
 }
 

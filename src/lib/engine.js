@@ -15,6 +15,7 @@ import { PATTERNS, detectStock as detectIndicator } from './patterns.js';
 import { SHAPE_PATTERNS, detectShapePatterns } from './patterns-shape.js';
 import { OSC_PATTERNS, detectOscillatorPatterns } from './patterns-oscillator.js';
 import { CANDLE_PATTERNS, detectCandlePatterns } from './candlestick.js';
+import { inspectStock } from './data-quality.js';
 
 /** 패턴 정의 전체 — id → { name, lesson, summary, rules, bias } */
 export const ALL_PATTERNS = {
@@ -38,6 +39,7 @@ export const groupOf = (id) => PATTERN_GROUPS.find((g) => g.ids.includes(id))?.i
 
 /** 한 종목에 모든 규칙을 적용 */
 export function detectStock(stock) {
+  if (!inspectStock(stock).eligible) return Object.fromEntries(ALL_PATTERN_IDS.map((id) => [id, []]));
   const merged = {
     ...detectIndicator(stock),
     ...detectShapePatterns(stock),

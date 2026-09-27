@@ -32,6 +32,11 @@ $root = Split-Path -Parent $PSScriptRoot
 $outDir = Join-Path $root 'data\stocks'
 New-Item -ItemType Directory -Force $outDir | Out-Null
 
+# 복구한 과거 가격·출처를 단일 공급자 재수집/이어붙이기로 지우지 않는다.
+if (Test-Path -LiteralPath (Join-Path $root 'data\recovery\2026-09-23\originals')) {
+  throw '복구 자료가 있어 기존 단일 공급자 수집을 중단합니다. tools/collect-recovery.mjs로 원문을 보존하고 새 복구 실행을 별도로 검증하세요.'
+}
+
 # 수집 대상. market: KR = 원화 정수 가격, US = 달러 (아래 Get-Digits 가 자릿수를 정함)
 #
 # 종목 선정 원칙: **일부러 부진했던 종목을 많이 섞는다.**

@@ -103,11 +103,11 @@ export async function renderSandbox(app) {
 
     const first = candles[0].close;
     const last = candles[candles.length - 1].close;
-    let peak = candles[0].high;
+    let peak = candles[0].close;
     let mdd = 0;
     for (const c of candles) {
-      if (c.high > peak) peak = c.high;
-      const dd = ((c.low - peak) / peak) * 100;
+      if (c.close > peak) peak = c.close;
+      const dd = ((c.close - peak) / peak) * 100;
       if (dd < mdd) mdd = dd;
     }
     const total = ((last - first) / first) * 100;
@@ -117,7 +117,7 @@ export async function renderSandbox(app) {
 
     clear(stats).append(
       card('전체 수익률', signed(total), dirClass(total)),
-      card('최대 낙폭', signed(mdd), 'down'),
+      card('종가 기준 최대 낙폭', signed(mdd), 'down'),
       card('캔들 수', `${candles.length}봉`, 'muted'),
       card('이 차트에서 검출된 신호', `${hitCount}건`, 'warn'),
       card('서로 다른 패턴 종류', `${kinds}종`, 'warn')

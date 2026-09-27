@@ -9,6 +9,7 @@
 
 import { pivots, closes, pct, sma } from './indicators.js';
 import { outcomeAt, windowRange, round } from './outcome.js';
+import { trendBeforePattern, retracementDepth } from './pattern-context.js';
 
 // ── 공통 헬퍼 ────────────────────────────────────────────────
 
@@ -78,6 +79,8 @@ function headAndShoulders(stock, inverse) {
     const iL = peaks[a];
     const iH = peaks[a + 1];
     const iR = peaks[a + 2];
+    const prior = trendBeforePattern(candles, iL, 40);
+    if (prior == null || (inverse ? prior > -10 : prior < 10)) continue;
     const L = peakPrice(iL);
     const H = peakPrice(iH);
     const R = peakPrice(iR);
@@ -115,6 +118,8 @@ function headAndShoulders(stock, inverse) {
       index: breakIdx,
       date: candles[breakIdx].date,
       evidence: [
+        { label: '첫 어깨 전 40거래일 등락률(%)', value: round(prior) },
+        { label: '선행 추세 측정 구간', value: `${candles[iL - 41].date} → ${candles[iL - 1].date}` },
         { label: `왼쪽 어깨 ${side}`, value: round(L) + ' (' + candles[iL].date + ')' },
         { label: `머리 ${side}`, value: round(H) + ' (' + candles[iH].date + ')' },
         { label: `오른쪽 어깨 ${side}`, value: round(R) + ' (' + candles[iR].date + ')' },
@@ -171,7 +176,7 @@ function multiTopBottom(stock, count, isTop) {
     }
     if (!okGap) continue;
 
-    // 사이의 되돌림 골이 충분히 깊어야 (5% 이상) 별개의 봉우리로 인정
+    // 각 인접 극점 사이 첫 반대쪽 피벗을 택한다 (이 앱의 선택 규칙).
     const mids = [];
     for (let k = 1; k < count; k++) {
       const t = troughs.find((x) => x > idx[k - 1] && x < idx[k]);
@@ -182,12 +187,13 @@ function multiTopBottom(stock, count, isTop) {
 
     const midPrices = mids.map(troughPrice);
     const neckline = isTop ? Math.min(...midPrices) : Math.max(...midPrices);
-    // 사이 골이 충분히 깊어야 별개의 봉우리다. 통상 10% 이상을 요구한다.
-    const depth = Math.abs(pct(neckline, hi));
+    // 천장은 최고 고점 대비 하락, 바닥은 최저 저점 대비 상승으로 단위를 명시한다.
+    const depth = retracementDepth(prices, neckline, isTop);
     if (depth < 10) continue;
 
     // 직전 추세 (천장은 상승 뒤, 바닥은 하락 뒤에 나와야 반전이다)
-    const t0 = trendBefore(candles, idx[0], 40);
+    const t0 = trendBeforePattern(candles, idx[0], 40);
+    if (t0 == null) continue;
     if (isTop ? t0 < 10 : t0 > -10) continue;
 
     // 넥라인 이탈 확인
@@ -490,6 +496,7 @@ export const SHAPE_PATTERNS = {
     name: '헤드앤숄더', lesson: 'head-and-shoulders', bias: 'down',
     summary: '왼쪽 어깨 - 머리 - 오른쪽 어깨 형태의 세 고점이 만들어진 뒤 넥라인이 무너지는 형태',
     rules: [
+      '첫 어깨 전일을 끝점으로 한 40거래일 등락률 +10% 이상 (앱 설정; 패턴 봉 제외)',
       '연속된 세 고점이 왼쪽어깨 < 머리 > 오른쪽어깨 (고점은 좌우 5봉보다 높은 국소 고점)',
       '머리가 양 어깨보다 각각 3% 이상 높음',
       '두 어깨의 높이 차이가 10% 이내',
@@ -503,6 +510,7 @@ export const SHAPE_PATTERNS = {
     name: '역헤드앤숄더', lesson: 'head-and-shoulders', bias: 'up',
     summary: '헤드앤숄더를 위아래로 뒤집은 형태. 저점 세 개 뒤 넥라인을 위로 뚫는다',
     rules: [
+      '첫 어깨 전일을 끝점으로 한 40거래일 등락률 −10% 이하 (앱 설정; 패턴 봉 제외)',
       '연속된 세 저점이 왼쪽어깨 > 머리 < 오른쪽어깨',
       '머리가 양 어깨보다 각각 3% 이상 낮음',
       '두 어깨의 깊이 차이가 10% 이내',
@@ -690,4 +698,7 @@ export function detectShapePatterns(stock) {
   };
 }
 
+for (const id of ['double-top', 'triple-top', 'double-bottom', 'triple-bottom']) {
+  SHAPE_PATTERNS[id].rules.push('깊이 분모는 천장의 최고 고점 / 바닥의 최저 저점. 중간 지점은 각 인접 극점 사이 첫 반대쪽 국소 극점을 택함');
+}
 export const SHAPE_IDS = Object.keys(SHAPE_PATTERNS);

@@ -10,49 +10,16 @@ import { loadPattern, loadStock, sliceByDate } from '../lib/data.js';
 import { createStockChart, createOscillatorPanel, syncTimeScales, COLORS } from '../lib/chart.js';
 import { OSCILLATORS } from '../lib/oscillators.js';
 import { confidence, directionalEdge } from '../lib/stats.js';
-import { el, clear, fmt, signed, dirClass } from '../lib/ui.js';
+import { el, clear, formatEvidence, signed, dirClass, qualityNotice } from '../lib/ui.js';
+import { pickCases, invalidCandles } from '../lib/chart-data.js';
 
 let charts = [];
 
 function destroyCharts() {
-  charts.forEach((c) => {
+  charts.reverse().forEach((c) => {
     try { c.destroy(); } catch (_) { /* 이미 제거됨 */ }
   });
   charts = [];
-}
-
-/** 사례를 종목이 겹치지 않게 돌아가며 고른다 (다양성 우선) */
-function pickCases(hits, count, offset = 0) {
-  const byTicker = new Map();
-  for (const h of hits) {
-    if (!byTicker.has(h.ticker)) byTicker.set(h.ticker, []);
-    byTicker.get(h.ticker).push(h);
-  }
-  const buckets = [...byTicker.values()];
-  const picked = [];
-  let round = 0;
-  while (picked.length < count && round < 60) {
-    let added = false;
-    for (const b of buckets) {
-      const cand = b[(offset + round) % b.length];
-      if (cand && !picked.includes(cand)) { picked.push(cand); added = true; }
-      if (picked.length >= count) break;
-    }
-    if (!added) break;
-    round++;
-  }
-  return picked;
-}
-
-/**
- * 근거 수치 표시.
- * 라벨에 %·배수·비율 같은 단위가 이미 들어있는 항목은 가격이 아니므로 통화 기호를 붙이지 않는다.
- */
-const NON_PRICE = /(%|배수|비율|거래일|거래량|횟수|R²|기울기|오차)/;
-function formatEvidence(e, currency) {
-  if (typeof e.value !== 'number') return String(e.value);
-  if (NON_PRICE.test(e.label)) return e.value.toLocaleString('ko-KR', { maximumFractionDigits: 3 });
-  return fmt(e.value, currency);
 }
 
 /**
@@ -76,19 +43,22 @@ function outcomeCard(hit) {
   const dl = el('dl.kv');
   const rows = [
     [`${o.days}거래일 뒤 종가 변화`, el('span', { class: dirClass(o.changePct), text: signed(o.changePct) })],
-    ['기간 중 최대 상승', el('span.up', { text: signed(o.maxUpPct) })],
-    ['기간 중 최대 하락', el('span.down', { text: signed(o.maxDownPct) })],
+    ['기준 종가 대비 최고가 변화', el('span', { class: dirClass(o.maxUpPct), text: signed(o.maxUpPct) })],
+    ['기준 종가 대비 최저가 변화', el('span', { class: dirClass(o.maxDownPct), text: signed(o.maxDownPct) })],
     [hit.confirmLag ? `성과 측정 구간 (신호 ${hit.confirmLag}거래일 뒤부터)` : '성과 측정 구간',
       `${o.fromDate} → ${o.toDate}`],
   ];
   for (const [k, v] of rows) dl.append(el('dt', { text: k }), el('dd', null, [v]));
-  return dl;
+  return el('div', null, [dl, el('p.small.muted', { text: '두 극값은 발생 순서나 실현 수익을 뜻하지 않습니다. 최대 낙폭과도 다른 값입니다.' }),
+    o.days < 20 ? el('p.small.warn', { text: `관찰 기간 부족: ${o.days}거래일만 있습니다. 20거래일 결과와 직접 비교하지 마세요.` }) : null]);
 }
 
 /** 탐지 결과에 담긴 shape 정보를 차트 위에 그린다 */
 function drawShape(c, hit, patternName) {
   const s = hit.shape;
-  const markers = [];
+  const markers = hit.confirmDate && hit.confirmDate !== hit.date
+    ? [{ date: hit.confirmDate, position: 'belowBar', color: COLORS.ma60, shape: 'circle', text: '판정 확인일' }]
+    : [];
 
   if (!s) {
     markers.push({ date: hit.date, position: 'aboveBar', color: COLORS.neckline, shape: 'arrowDown', text: patternName });
@@ -122,7 +92,7 @@ function drawShape(c, hit, patternName) {
   if (s.breakout) {
     markers.push({ date: s.breakout.date, position: 'belowBar', color: COLORS.neckline, shape: 'arrowUp', text: '돌파/이탈' });
   }
-  if (!markers.length) {
+  if (!markers.some((m) => m.date === hit.date)) {
     markers.push({ date: hit.date, position: 'aboveBar', color: COLORS.neckline, shape: 'arrowDown', text: patternName });
   }
   c.setMarkers(markers);
@@ -181,19 +151,25 @@ export function figureEl(id, opts) {
 async function renderCase(hit, lesson, patternMeta) {
   const stock = await loadStock(hit.ticker);
   const view = sliceByDate(stock.candles, hit.fromDate, hit.toDate);
+  const history = sliceByDate(stock.candles, null, hit.toDate);
+  const bad = invalidCandles(view);
 
   const box = el('div.chart-box');
-  const oscDef = lesson.oscillator ? OSCILLATORS[lesson.oscillator] : null;
+  const oscillator = patternMeta.pattern?.startsWith('macd-') ? 'macd' : lesson.oscillator;
+  const oscDef = oscillator ? OSCILLATORS[oscillator] : null;
   const oscBox = oscDef ? el('div.osc-box', { style: { height: oscDef.height + 'px' } }) : null;
 
   const card = el('div.case', null, [
     el('div.case-head', null, [
       el('span.ticker', { text: `${hit.name} (${hit.ticker})` }),
-      el('span.date', { text: `신호일 ${hit.date}` }),
+      el('span.date', { text: `신호일 ${hit.date}${hit.confirmDate && hit.confirmDate !== hit.date ? ' / 확인일 ' + hit.confirmDate : ''}` }),
       el('span.spacer'),
       el('span.pill', { text: patternMeta.name }),
     ]),
-    el('div.case-body', null, [box, oscBox]),
+    el('div.case-body', null, [
+      bad.length ? el('p.warn', { text: `표시 구간에 정합성 오류가 있는 봉 ${bad.length}개가 있습니다 (첫 날짜 ${bad[0].date}). 잘못된 모양을 학습하지 않도록 차트를 보류합니다. 원자료와 저장 통계는 아직 수정되지 않았습니다.` }) : box,
+      bad.length ? null : oscBox,
+    ]),
     el('div.case-foot', null, [
       el('div', null, [
         el('h4', { text: '이 사례가 규칙을 만족한 근거' }),
@@ -210,28 +186,37 @@ async function renderCase(hit, lesson, patternMeta) {
         outcomeCard(hit),
         el('p.muted.small', {
           style: { marginTop: '10px', marginBottom: '0' },
-          text: '이 수치는 판정에 사용되지 않았습니다. 규칙을 만족했다고 해서 결과가 늘 같은 방향인 것은 아닙니다.',
+          text: '이 차트는 이후 결과를 포함한 복습용입니다. 판정 당시 알 수 있었던 정보와 이후에 알게 된 결과를 구분하세요. 규칙을 만족해도 결과는 달라집니다.',
         }),
       ]),
     ]),
   ]);
 
   // 차트는 카드가 DOM에 붙은 뒤에 만들어야 컨테이너 크기를 잡을 수 있다.
+  const owned = [];
+  card.dispose = () => {
+    for (const item of owned.splice(0).reverse()) {
+      try { item.destroy(); } catch (_) { /* 이미 정리됨 */ }
+      charts = charts.filter((c) => c !== item);
+    }
+  };
+  const own = (item) => { owned.push(item); charts.push(item); };
   card.mountChart = () => {
     if (!box.isConnected) return;
     const c = createStockChart(box, { width: box.clientWidth, height: box.clientHeight });
-    charts.push(c);
+    own(c);
     c.setOverlays(lesson.overlays || {});
-    c.setCandles(view);
+    c.setCandles(view, history);
     drawShape(c, hit, patternMeta.name);
     c.fit();
 
     if (oscDef && oscBox.isConnected) {
-      const panel = createOscillatorPanel(oscBox, oscDef, view);
-      charts.push(panel);
+      oscBox.setAttribute('aria-label', oscDef.name);
+      const panel = createOscillatorPanel(oscBox, oscDef, view, undefined, history);
+      own(panel);
       panel.fit();
       const unsync = syncTimeScales([c.chart, panel.chart]);
-      charts.push({ destroy: unsync });
+      own({ destroy: unsync });
     }
   };
 
@@ -254,11 +239,11 @@ function statsBox(meta) {
   const hit = directionalEdge(s, base, meta.bias);
   const raw = base ? +(s.winRate - base.winRate).toFixed(1) : null;
   const edge = hit != null ? hit : raw;
-  const edgeLabel = hit != null ? '신호가 방향을 맞힌 몫' : '기준선 대비';
+  const edgeLabel = hit != null ? '방향 기준 비율 차이' : '기준선 대비';
 
   row.append(
     stat(`${meta.outcomeDays}일 뒤 오른 비율`, s.winRate + '%', s.winRate >= 50 ? 'up' : 'down'),
-    base ? stat('아무 날이나 샀다면', base.winRate + '%', 'muted') : null,
+    base ? stat('5봉 간격 기준선', base.winRate + '%', 'muted') : null,
     edge != null ? stat(edgeLabel, (edge > 0 ? '+' : '') + edge + '%p', dirClass(edge)) : null,
     stat('평균 수익률', signed(s.avgChange), dirClass(s.avgChange)),
     stat('가장 나빴던 경우', signed(s.worst), 'down')
@@ -267,15 +252,16 @@ function statsBox(meta) {
     row,
     el('p.muted.small', { style: { margin: '8px 0 0' }, text:
       conf.label + ' · ' + (hit != null
-        ? `이 신호는 ${meta.bias === 'down' ? '하락' : '상승'}을 가리킵니다. "${edgeLabel}"은 그 방향이 실제로 얼마나 더 맞았는지이고, 0에 가까우면 아무 날이나 사는 것과 구별되지 않는다는 뜻입니다.`
-        : '"기준선 대비"가 0에 가까우면, 그 신호는 아무 날이나 사는 것과 구별되지 않는다는 뜻입니다.') }),
+        ? `이 신호의 해석 방향은 ${meta.bias === 'down' ? '하락' : '상승'}입니다. 차이는 단순 집계 비교이며 신호의 인과적 효과나 통계적 유의성을 뜻하지 않습니다.`
+        : '기준선과의 차이는 단순 집계입니다. 차이가 작다고 효과가 없음을 증명한 것은 아닙니다.') }),
     el('p.muted.small', { style: { margin: '4px 0 0' }, text:
-      '매매 전략을 과거에 돌려본 검증이 아니라 단순 집계입니다. 수수료·세금·분산투자는 들어 있지 않습니다.' }),
+      `20거래일을 모두 관측한 ${meta.observation?.complete ?? s.samples}건만 집계했습니다. 기간 부족 ${meta.observation?.partial || 0}건과 결과 없음 ${meta.observation?.pending || 0}건은 제외했습니다. 표본 구간은 겹칠 수 있으며 거래비용·청산 규칙·통계적 유의성 검정은 포함하지 않습니다.` }),
   ]);
 }
 
 async function renderPatternSection(root, patternId, lesson) {
   const meta = await loadPattern(patternId);
+  if (!root.isConnected) return;
   const section = el('div', { style: { marginTop: '30px' } });
   root.append(section);
 
@@ -290,6 +276,7 @@ async function renderPatternSection(root, patternId, lesson) {
   );
 
   section.append(
+    qualityNotice(meta),
     el('div.rulebox', null, [
       el('h3', { text: '판정 기준 (이 조건을 전부 만족해야 사례로 인정)' }),
       el('p.why', { text: meta.summary }),
@@ -298,7 +285,7 @@ async function renderPatternSection(root, patternId, lesson) {
         meta.rules.forEach((r) => ol.append(el('li', { text: r })));
         return ol;
       })(),
-      el('h3', { style: { marginTop: '18px' }, text: '이 신호의 실제 성과' }),
+      el('h3', { style: { marginTop: '18px' }, text: '이 규칙 이후의 과거 집계 (참고)' }),
       confirmNote(meta),
       statsBox(meta),
     ])
@@ -308,24 +295,31 @@ async function renderPatternSection(root, patternId, lesson) {
   section.append(list);
 
   if (!meta.count) {
-    list.append(el('p.muted.small', { text: '보유한 데이터에서 이 조건을 만족하는 구간이 없습니다. 조건이 그만큼 엄격하다는 뜻입니다.' }));
+    list.append(el('p.muted.small', { text: '정합성을 통과한 종목에서 이 조건을 만족하는 사례가 없습니다. 관찰 범위와 앱 설정에 따른 결과이며 패턴의 효과·무효를 증명하지 않습니다.' }));
     shuffleBtn.disabled = true;
     return;
   }
 
   let offset = 0;
+  let drawVersion = 0;
+  let mounted = [];
   async function draw() {
+    const version = ++drawVersion;
+    mounted.forEach((card) => card.dispose());
+    mounted = [];
     clear(list).append(el('p.loading', { text: '사례를 불러오는 중…' }));
     const cases = pickCases(meta.hits, 2, offset);
     const cards = [];
     for (const hit of cases) cards.push(await renderCase(hit, lesson, meta));
+    if (version !== drawVersion || !list.isConnected) return;
     clear(list);
     cards.forEach((c) => list.append(c));
     // requestAnimationFrame 은 탭이 화면에 보이지 않으면 실행되지 않으므로 동기적으로 만든다
     cards.forEach((c) => c.mountChart());
+    mounted = cards;
     if (meta.sampled) {
       list.append(el('p.muted.small', {
-        text: `전체 ${meta.count.toLocaleString()}건 중 종목별로 고르게 뽑은 ${meta.hits.length}건이 저장돼 있습니다. 위 통계는 전체 건수로 계산한 값입니다.`,
+        text: `검출 ${meta.count.toLocaleString()}건 중 종목·시기별로 분산한 ${meta.hits.length}건을 예시로 저장했습니다. 통계는 예시만이 아니라 전체 검출 중 20거래일 완전 관측 사례로 계산했습니다.`,
       }));
     }
   }
@@ -375,6 +369,11 @@ export async function renderLearn(app, params) {
 
   const content = el('article.lesson');
   content.append(el('h2', { text: lesson.title }), el('p.tagline', { text: lesson.tagline }));
+  content.append(el('div.rulebox', null, [
+    el('h3', { text: '읽고 나서 설명할 수 있나요?' }),
+    el('p', { text: '① 무엇을 관찰했나? ② 어떤 설정과 조건으로 판단했나? ③ 무엇은 아직 알 수 없나? 결과가 오른 것과 판단 근거가 타당한 것은 따로 확인합니다.' }),
+    el('a.btn', { href: '#/practice', text: '기초 읽기 연습으로 확인' }),
+  ]));
   for (const sec of lesson.body) {
     const node = el('section', null, [
       el('h3', { text: sec.h }),
@@ -393,8 +392,8 @@ export async function renderLearn(app, params) {
   if (!lesson.patterns.length) {
     content.append(
       el('div.rulebox', { style: { marginTop: '28px' } }, [
-        el('h3', { text: '이 지표에는 자동 탐지 사례가 없습니다' }),
-        el('p.why', { text: '방향을 가리키는 신호가 아니라 상태를 재는 도구라서, 규칙 기반 사례 대신 데이터 뷰어 탭에서 직접 켜보며 익히는 쪽이 맞습니다.' }),
+        el('h3', { text: '직접 읽고 설명하는 연습' }),
+        el('p.why', { text: '이 레슨은 자동 탐지 사례 대신 기초 연습과 데이터 뷰어에서 확인합니다. 용어를 외우는 데서 끝내지 말고, 관찰한 사실과 해석을 나눠 적어보세요.' }),
         el('a.btn', { href: '#/viewer', text: '데이터 뷰어에서 열어보기' }),
       ])
     );
@@ -408,7 +407,7 @@ export async function renderLearn(app, params) {
       content.append(
         el('div.error', { style: { marginTop: '20px' } }, [
           el('b', { text: `${pid} 사례를 불러오지 못했습니다. ` }),
-          el('span.small', { text: '탐지 결과가 아직 없다면 tools/build-patterns.html 을 한 번 실행하세요. (' + err.message + ')' }),
+          el('span.small', { text: '탐지 결과를 생성하려면 node tools/build-patterns.mjs 를 실행하세요. (' + err.message + ')' }),
         ])
       );
     }

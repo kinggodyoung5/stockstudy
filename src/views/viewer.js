@@ -12,12 +12,20 @@ import {
   supportResistance, fibonacci, dominantSwing, volumeProfile, resample, relativeStrength,
 } from '../lib/indicators.js';
 import { el, clear, overlayBar, fmt, signed, dirClass } from '../lib/ui.js';
+import { closeDrawdown, invalidCandles } from '../lib/chart-data.js';
+import { inspectStock } from '../lib/data-quality.js';
 
 let chart = null;
 let panels = [];
 let unsync = null;
+let viewerVersion = 0;
 
 export function destroyViewer() {
+  viewerVersion++;
+  clearViewerCharts();
+}
+
+function clearViewerCharts() {
   if (unsync) { try { unsync(); } catch (_) {} unsync = null; }
   panels.forEach((p) => { try { p.destroy(); } catch (_) {} });
   panels = [];
@@ -40,9 +48,11 @@ const UNITS = [
 
 export async function renderViewer(app) {
   destroyViewer();
+  const version = viewerVersion;
   clear(app).append(el('p.loading', { text: '종목 목록을 불러오는 중…' }));
 
   const list = await loadStockList();
+  if (version !== viewerVersion || !app.isConnected) return;
 
   const state = {
     ticker: list[0].ticker,
@@ -157,7 +167,7 @@ export async function renderViewer(app) {
     input.addEventListener('reset-value', () => { input.value = get(); });
     input.addEventListener('change', () => {
       const v = Number(input.value);
-      if (!Number.isFinite(v) || v < min || v > max) { input.value = get(); return; }
+      if (!Number.isFinite(v) || v < min || v > max || (step === 1 && !Number.isInteger(v))) { input.value = get(); return; }
       set(v);
       rebuild();
     });
@@ -183,7 +193,7 @@ export async function renderViewer(app) {
   );
 
   const resetBtn = el('button.btn.small', {
-    text: '표준 기본값으로 되돌리기',
+    text: '앱 기본값으로 되돌리기',
     onclick: () => {
       state.params.ma = { ma5: 5, ma20: 20, ma60: 60, ma120: 120, ma200: 200 };
       state.params.bb = { period: 20, mult: 2 };
@@ -211,9 +221,22 @@ export async function renderViewer(app) {
   }
 
   // ── 그리기 ────────────────────────────────────────────
+  let rebuildVersion = 0;
   async function rebuild() {
+    const build = ++rebuildVersion;
+    const current = () => version === viewerVersion && build === rebuildVersion && app.isConnected;
     const stock = await loadStock(state.ticker);
-    const all = resample(stock.candles, state.unit);
+    if (!current()) return;
+    const bench = state.tools.rs ? await loadStock(defaultBenchmark(stock.market, stock.ticker)) : null;
+    if (!current()) return;
+    // 기준일 이후의 일봉이 주봉·월봉 집계에 섞이지 않게 먼저 자른다.
+    const daily = stock.candles.filter((c) => !state.end || c.date <= state.end);
+    if (!daily.length) {
+      endInput.value = stock.candles[0].date;
+      state.end = endInput.value;
+      return rebuild();
+    }
+    const all = resample(daily, state.unit);
 
     let lastIdx = all.length - 1;
     if (state.end) while (lastIdx > 0 && all[lastIdx].date > state.end) lastIdx--;
@@ -221,22 +244,22 @@ export async function renderViewer(app) {
     const r = RANGES.find((x) => x.id === state.range);
     // 주봉·월봉은 같은 기간이라도 봉 수가 훨씬 적다
     const div = state.unit === 'week' ? 5 : state.unit === 'month' ? 21 : 1;
-    const bars = r.bars === Infinity ? Infinity : Math.max(20, Math.round(r.bars / div));
+    const bars = r.bars === Infinity ? Infinity : Math.max(1, Math.round(r.bars / div));
     const startIdx = bars === Infinity ? 0 : Math.max(0, lastIdx - bars + 1);
     const view = all.slice(startIdx, lastIdx + 1);
 
     for (const [id, b] of Object.entries(rangeBtns)) b.classList.toggle('primary', id === state.range);
     for (const [id, b] of Object.entries(unitBtns)) b.classList.toggle('primary', id === state.unit);
-    endInput.min = all[0].date;
-    endInput.max = all[all.length - 1].date;
+    endInput.min = stock.candles[0].date;
+    endInput.max = stock.candles.at(-1).date;
     if (!state.end) endInput.value = all[lastIdx].date;
 
     // 차트는 매번 새로 만든다 — 오실레이터 패널 구성이 바뀌면 시간축 동기화도 다시 걸어야 한다
-    destroyViewer();
+    clearViewerCharts();
     chart = createStockChart(box, { width: box.clientWidth, height: box.clientHeight, logScale: state.logScale });
     chart.setParams(state.params);
     chart.setOverlays(overlays);
-    chart.setCandles(view);
+    chart.setCandles(view, all);
 
     // 지지·저항선
     if (state.tools.levels) {
@@ -271,26 +294,22 @@ export async function renderViewer(app) {
     profileBox.style.display = state.tools.profile ? '' : 'none';
     if (state.tools.profile) renderProfile(view, stock.currency);
 
-    // 상대강도 (지수 대비)
-    if (state.tools.rs) {
-      const bench = await loadStock(defaultBenchmark(stock.market));
-      const benchView = resample(bench.candles, state.unit);
-      const rs = relativeStrength(view, benchView);
-      chart.drawSegment(
-        'rs',
-        view.map((c, i) => ({ date: c.date, value: rs[i] })).filter((p) => p.value != null),
-        COLORS.ma200
-      );
-    } else {
-      chart.dropLine('rs');
-    }
-
     chart.setMarkers([]);
     chart.fit();
 
     // 오실레이터 패널
     clear(panelWrap);
     const charts = [chart.chart];
+    if (bench) {
+      const benchView = resample(bench.candles.filter((c) => !state.end || c.date <= state.end), state.unit);
+      const pbox = el('div.osc-box', { style: { height: '150px' } });
+      panelWrap.append(el('div.osc-wrap', null, [
+        el('div.panel-head', { text: `상대강도 · ${bench.name} 대비 · 첫 공통 날짜 = 100` }), pbox,
+      ]));
+      const def = { compute: (cs) => [{ values: relativeStrength(cs, benchView), color: COLORS.ma200 }], guides: [100] };
+      const panel = createOscillatorPanel(pbox, def, view);
+      panels.push(panel); panel.fit(); charts.push(panel.chart);
+    }
     for (const [id, on] of Object.entries(state.oscillators)) {
       if (!on) continue;
       const def = OSCILLATORS[id];
@@ -300,7 +319,7 @@ export async function renderViewer(app) {
       ]);
       const pbox = el('div.osc-box', { style: { height: def.height + 'px' } });
       panelWrap.append(el('div.osc-wrap', null, [head, pbox]));
-      const panel = createOscillatorPanel(pbox, def, view, state.osc[id]);
+      const panel = createOscillatorPanel(pbox, def, view, state.osc[id], all);
       panels.push(panel);
       panel.fit();
       charts.push(panel.chart);
@@ -320,19 +339,18 @@ export async function renderViewer(app) {
     for (const c of view) { if (c.high > hi) hi = c.high; if (c.low < lo) lo = c.low; vol += c.volume; }
 
     // 최고점 대비 최대 낙폭
-    let peak = view[0].high;
-    let mdd = 0;
-    for (const c of view) {
-      if (c.high > peak) peak = c.high;
-      const dd = ((c.low - peak) / peak) * 100;
-      if (dd < mdd) mdd = dd;
-    }
+    const mdd = closeDrawdown(view);
 
     const unitLabel = UNITS.find((u) => u.id === state.unit).label;
     clear(meta).append(
       el('strong', { style: { fontSize: '18px' }, text: stock.name }),
       el('span.muted.small', { text: `${stock.ticker} · ${first.date} ~ ${last.date} · ${view.length}${unitLabel[0]}봉` })
     );
+    const bad = invalidCandles(stock.candles.filter((c) => c.date <= last.date));
+    const quality = inspectStock(stock);
+    if (!quality.eligible) meta.append(el('p.small.warn', { text: `이 종목은 정합성 오류 ${quality.issues.length}봉, 미해결 출처·결측 문제 ${quality.sourceConcerns.length}건 때문에 자동 학습 사례·통계·예측 실험에서 격리됐습니다. 두 수치는 중복될 수 있습니다. 여기서는 저장 자료 확인용으로 표시합니다. 현재 계산 구간의 정합성 오류는 ${bad.length}봉입니다.` }));
+    if (stock.provenance?.recoveryRun) meta.append(el('p.small.muted', { text: `자료 복구 ${stock.provenance.recoveryRun}: 두 공급자를 대조해 ${stock.provenance.corrections}봉을 복구하고, 확인된 무거래 표시 ${stock.provenance.nonTradingRemoved || 0}봉은 제외했습니다. 복구 전 원본과 변경 근거는 별도 보존되어 있습니다.` }));
+    if (state.unit !== 'day') meta.append(el('p.small.muted', { text: `현재 ${unitLabel}: 이동평균·지표의 기간 숫자는 ${unitLabel} 개수입니다. 마지막 봉은 기준일 시점의 미완성 봉일 수 있습니다.` }));
 
     const stat = (label, value, cls) =>
       el('div.stat', null, [el('span', { text: label }), el('b', { class: cls || '', text: value })]);
@@ -342,7 +360,7 @@ export async function renderViewer(app) {
       stat('마지막 종가', fmt(last.close, stock.currency)),
       stat('구간 최고가', fmt(hi, stock.currency), 'up'),
       stat('구간 최저가', fmt(lo, stock.currency), 'down'),
-      stat('최대 낙폭', signed(mdd), 'down'),
+      stat('종가 기준 최대 낙폭', signed(mdd), 'down'),
       stat('평균 거래량', Math.round(vol / view.length).toLocaleString('ko-KR'), 'muted')
     );
   }
@@ -360,14 +378,14 @@ export async function renderViewer(app) {
         }
         return dl;
       })(),
-      el('p.small.muted', { style: { margin: '6px 0 0' }, text: '좌우 5봉보다 높은(낮은) 극점을 1.5% 이내로 묶어, 2회 이상 반응한 가격대만 남긴 것입니다.' })
+      el('p.small.muted', { style: { margin: '6px 0 0' }, text: '좌우 5봉보다 높은(낮은) 극점을 1.5% 이내로 묶어, 3회 이상 반응한 가격대만 남긴 것입니다. 오른쪽 5봉이 끝나야 극점을 확인할 수 있습니다.' })
     );
   }
 
   function renderProfile(view, currency) {
     const vp = volumeProfile(view, 26);
     const max = Math.max(...vp.rows.map((r) => r.volume));
-    profileBox.append(el('div.profile-title', { text: '매물대' }));
+    profileBox.append(el('div.profile-title', { text: '추정 매물대' }));
     // 위쪽이 높은 가격이 되도록 뒤집어 그린다
     for (const row of [...vp.rows].reverse()) {
       const isPoc = row === vp.poc;
@@ -378,7 +396,7 @@ export async function renderViewer(app) {
         ])
       );
     }
-    profileBox.append(el('div.profile-note', { text: `가장 두꺼운 구간(POC) ${fmt(vp.poc.mid, currency)}` }));
+    profileBox.append(el('div.profile-note', { text: `가장 두꺼운 구간(POC) ${fmt(vp.poc.mid, currency)}. 봉의 고가~저가에 거래량을 균등 배분한 근사값이며 실제 가격별 체결량이 아닙니다.` }));
   }
 
   // ── 레이아웃 ──────────────────────────────────────────
@@ -397,7 +415,7 @@ export async function renderViewer(app) {
       el('details.param-details', null, [
         el('summary', { text: '지표 설정 직접 바꿔보기' }),
         el('p.small.muted', { style: { margin: '4px 0 10px' }, html:
-          '아래 값은 전부 <b>업계 표준 기본값</b>에서 시작합니다. 바꿔보면 같은 데이터에서도 교차 시점·밴드 폭·과매수 도달 횟수가 달라집니다. ' +
+          '아래 값은 <b>이 앱이 선택한 기본값</b>에서 시작합니다. 기간 단위는 현재 선택한 봉입니다. 주봉의 MA 20은 20주, 월봉의 MA 20은 20개월입니다. 바꿔보면 같은 데이터에서도 신호가 달라집니다. ' +
           '지표 값은 사실이 아니라 <b>설정에 따라 달라지는 계산 결과</b>라는 점을 직접 확인해보세요. ' +
           '(<a href="#/learn/indicator-settings">지표 설정값 읽는 법</a>)' }),
         el('h4.param-head', { text: '가격 차트' }),

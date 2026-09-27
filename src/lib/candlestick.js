@@ -16,6 +16,7 @@
 
 import { pct } from './indicators.js';
 import { outcomeAt, windowRange } from './outcome.js';
+import { trendBeforePattern as priorTrend } from './pattern-context.js';
 
 const body = (c) => Math.abs(c.close - c.open);
 const range = (c) => c.high - c.low;
@@ -39,12 +40,6 @@ function avgBody(candles, i, look = 20) {
   let s = 0;
   for (let k = from; k < i; k++) s += body(candles[k]);
   return s / (i - from);
-}
-
-/** 직전 추세 — n봉 전 종가 대비 몇 % 인가 */
-function priorTrend(candles, i, n = 10) {
-  if (i - n < 0) return null;
-  return pct(candles[i - n].close, candles[i].close);
 }
 
 const DOWNTREND = -3; // 직전 10봉 −3% 이하이면 하락 뒤
@@ -129,12 +124,12 @@ const DETECTORS = {
     if (i < 1) return null;
     const p = candles[i - 1];
     const c = candles[i];
-    const avg = avgBody(candles, i);
+    const avg = avgBody(candles, i - 1);
     if (!isBear(p) || !isBull(c)) return null;
     if (!(c.close > p.open && c.open < p.close)) return null;      // 전봉 몸통을 완전히 감쌈
     if (avg && body(c) < avg) return null;                          // 감싸는 봉이 평균 이상 크기
     if (body(p) < (avg || 0) * 0.3) return null;                    // 전봉이 너무 작으면 의미 없음
-    const t = priorTrend(candles, i);
+    const t = priorTrend(candles, i - 1);
     if (t == null || t > DOWNTREND) return null;
     return [
       { label: '전봉 (음봉) 시가 → 종가', value: round(p.open) + ' → ' + round(p.close) },
@@ -149,12 +144,12 @@ const DETECTORS = {
     if (i < 1) return null;
     const p = candles[i - 1];
     const c = candles[i];
-    const avg = avgBody(candles, i);
+    const avg = avgBody(candles, i - 1);
     if (!isBull(p) || !isBear(c)) return null;
     if (!(c.open > p.close && c.close < p.open)) return null;
     if (avg && body(c) < avg) return null;
     if (body(p) < (avg || 0) * 0.3) return null;
-    const t = priorTrend(candles, i);
+    const t = priorTrend(candles, i - 1);
     if (t == null || t < UPTREND) return null;
     return [
       { label: '전봉 (양봉) 시가 → 종가', value: round(p.open) + ' → ' + round(p.close) },
@@ -183,6 +178,8 @@ const DETECTORS = {
 
   'morning-star': (candles, i) => {
     if (i < 2) return null;
+    const t = priorTrend(candles, i - 2);
+    if (t == null || t > DOWNTREND) return null;
     const [a, b, c] = [candles[i - 2], candles[i - 1], candles[i]];
     const avg = avgBody(candles, i - 2);
     if (!avg) return null;
@@ -203,6 +200,8 @@ const DETECTORS = {
 
   'evening-star': (candles, i) => {
     if (i < 2) return null;
+    const t = priorTrend(candles, i - 2);
+    if (t == null || t < UPTREND) return null;
     const [a, b, c] = [candles[i - 2], candles[i - 1], candles[i]];
     const avg = avgBody(candles, i - 2);
     if (!avg) return null;
@@ -225,11 +224,11 @@ const DETECTORS = {
     if (i < 1) return null;
     const p = candles[i - 1];
     const c = candles[i];
-    const avg = avgBody(candles, i);
+    const avg = avgBody(candles, i - 1);
     if (!avg || !isBear(p) || body(p) < avg) return null;
     if (!isBull(c)) return null;
     if (!(bodyTop(c) < bodyTop(p) && bodyBottom(c) > bodyBottom(p))) return null; // 전봉 몸통 안에 완전히 들어감
-    const t = priorTrend(candles, i);
+    const t = priorTrend(candles, i - 1);
     if (t == null || t > DOWNTREND) return null;
     return [
       { label: '전봉 (음봉) 몸통', value: round(body(p)) },
@@ -243,11 +242,11 @@ const DETECTORS = {
     if (i < 1) return null;
     const p = candles[i - 1];
     const c = candles[i];
-    const avg = avgBody(candles, i);
+    const avg = avgBody(candles, i - 1);
     if (!avg || !isBull(p) || body(p) < avg) return null;
     if (!isBear(c)) return null;
     if (!(bodyTop(c) < bodyTop(p) && bodyBottom(c) > bodyBottom(p))) return null;
-    const t = priorTrend(candles, i);
+    const t = priorTrend(candles, i - 1);
     if (t == null || t < UPTREND) return null;
     return [
       { label: '전봉 (양봉) 몸통', value: round(body(p)) },
@@ -417,7 +416,7 @@ export const CANDLE_PATTERNS = {
   },
   doji: {
     name: '도지', lesson: 'candlestick-reversal', bars: 1, bias: 'none',
-    summary: '시가와 종가가 거의 같은 캔들. 매수·매도가 팽팽했다는 기록',
+    summary: '시가와 종가가 거의 같은 캔들. 매수·매도 참여자의 심리는 이 모양만으로 알 수 없음',
     rules: [
       '몸통이 전체폭의 5% 이하',
       '전체폭 ≥ 최근 20봉 평균 몸통 × 2 (하루 종일 움직임이 없던 날은 제외)',
@@ -467,18 +466,18 @@ export const CANDLE_PATTERNS = {
   },
   'three-white-soldiers': {
     name: '적삼병', lesson: 'candlestick-continuation', bars: 3, bias: 'up',
-    summary: '양봉 세 개가 계단처럼 이어지며 종가를 계속 높이는 형태',
+    summary: '양봉 세 개가 종가를 높이는 모양 후보. 선행 추세는 검사하지 않아 반전·지속을 자동 구분하지 않음',
     rules: [
       '3봉 모두 양봉',
       '각 봉의 몸통 ≥ 최근 20봉 평균 몸통 × 0.8',
-      '각 봉의 윗꼬리 ≤ 몸통 × 0.5 (장중에 밀리지 않았음)',
+      '각 봉의 윗꼬리 ≤ 몸통 × 0.5 (종가가 고가 근처; 장중 경로는 알 수 없음)',
       '종가가 매일 전봉보다 높음',
       '각 봉의 시가가 전봉 몸통 범위 안에서 출발',
     ],
   },
   'three-black-crows': {
     name: '흑삼병', lesson: 'candlestick-continuation', bars: 3, bias: 'down',
-    summary: '음봉 세 개가 계단처럼 이어지며 종가를 계속 낮추는 형태',
+    summary: '음봉 세 개가 종가를 낮추는 모양 후보. 선행 추세는 검사하지 않아 반전·지속을 자동 구분하지 않음',
     rules: [
       '3봉 모두 음봉',
       '각 봉의 몸통 ≥ 최근 20봉 평균 몸통 × 0.8',
@@ -489,7 +488,7 @@ export const CANDLE_PATTERNS = {
   },
   marubozu: {
     name: '마루보즈 (장대봉)', lesson: 'candlestick-continuation', bars: 1, bias: 'none',
-    summary: '꼬리가 거의 없는 큰 몸통 캔들. 하루 종일 한 방향으로만 밀린 날',
+    summary: '꼬리가 거의 없는 큰 몸통 캔들. 시가·종가가 고가·저가 근처이며 장중 경로는 알 수 없음',
     rules: [
       '몸통 ≥ 최근 20봉 평균 몸통 × 2',
       '몸통이 전체폭의 90% 이상 (위아래 꼬리가 거의 없음)',
@@ -507,6 +506,17 @@ export const CANDLE_PATTERNS = {
   },
 };
 
+const REVERSAL_TRENDS = {
+  hammer: -3, 'hanging-man': 3, 'inverted-hammer': -3, 'shooting-star': 3,
+  'bullish-engulfing': -3, 'bearish-engulfing': 3, 'bullish-harami': -3, 'bearish-harami': 3,
+  'morning-star': -3, 'evening-star': 3,
+};
+for (const [id, meta] of Object.entries(CANDLE_PATTERNS)) {
+  meta.rules = meta.rules.filter((r) => !r.startsWith('직전 10거래일 등락률'));
+  if (!id.startsWith('gap-')) meta.rules.unshift('패턴 첫 봉 이전 20봉 확보; 평균 몸통은 패턴 봉을 제외한 그 20봉으로 계산');
+  if (id in REVERSAL_TRENDS) meta.rules.push(
+    `패턴 첫 봉 전일을 끝점으로 한 10거래일 종가 변화가 ${REVERSAL_TRENDS[id] < 0 ? '−3% 이하' : '+3% 이상'} (앱 설정)`);
+}
 export const CANDLE_IDS = Object.keys(DETECTORS);
 
 /**
@@ -521,9 +531,11 @@ export function detectCandlePatterns(stock) {
     const meta = CANDLE_PATTERNS[id];
     const hits = [];
     for (let i = 0; i < candles.length; i++) {
+      const first = i - (meta.bars - 1);
+      if (first < (id.startsWith('gap-') ? 0 : 20)) continue;
       const evidence = fn(candles, i);
       if (!evidence) continue;
-      const first = Math.max(0, i - (meta.bars - 1));
+      if (id in REVERSAL_TRENDS) evidence.push({ label: '선행 추세 측정 구간', value: `${candles[first - 11].date} → ${candles[first - 1].date} (패턴 봉 제외)` });
       hits.push({
         ticker: stock.ticker,
         name: stock.name,

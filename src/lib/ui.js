@@ -77,5 +77,30 @@ export function signed(v) {
   return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 }
 
+/** 명시 단위를 우선하고 기존 근거 라벨의 비가격 단위를 호환한다. */
+const NON_PRICE = /(%|÷|배수|비율|거래일|거래량|횟수|R²|기울기|오차|포인트|RSI|OBV|ADX|[+−-]DI|스토캐스틱|이격도)/i;
+export function formatEvidence(e, currency) {
+  if (e.value == null) return '—';
+  if (typeof e.value !== 'number') return String(e.value);
+  if (e.unit ? e.unit !== 'price' : NON_PRICE.test(e.label)) {
+    return e.value.toLocaleString('ko-KR', { maximumFractionDigits: 4 });
+  }
+  return fmt(e.value, currency);
+}
+
 /** 등락 색 클래스 */
 export const dirClass = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : 'muted');
+
+/** 통계의 모집단 변경을 눈에 띄게 공개한다. 격리는 가격 정정이나 시장 대표성 인증이 아니다. */
+export function qualityNotice(meta) {
+  const q = meta?.quality;
+  if (!q) return el('span');
+  return el('details.rulebox.quality-notice', null, [
+    el('summary', { text: `자료 범위: ${q.totalStocks}개 중 ${q.eligibleStocks}개 종목 사용 · ${q.quarantinedStocks}개 격리` }),
+    el('p.small', { text: `남은 정합성 오류 ${q.invalidCandles}봉, 미해결 출처·결측 문제 ${q.sourceConcerns || 0}건이 있는 종목은 전체 이력을 학습 사례·통계·기준선에서 제외했습니다. 두 수치는 중복될 수 있습니다. 뷰어에서는 경고와 함께 확인할 수 있습니다.` }),
+    el('p.small', { text: `국내 ${q.recovery?.stocks || 0}개 종목을 두 공급자 자료로 대조해 ${q.recovery?.corrections || 0}봉을 복구하고, 확인된 무거래 표시 ${q.recovery?.nonTradingRemoved || 0}봉은 계산용 자료에서 뺐습니다. 복구 전 원본·수집 응답·변경 근거를 별도로 보존했습니다. 실제 거래 기록 전체의 정확성을 인증한 것은 아닙니다.` }),
+    el('p.small.muted', { text: '격리로 종목·시장 구성이 달라졌으므로 이전 통계와 승률만 직접 비교하지 마세요. 검사 통과도 원자료 가격이나 분할·배당 조정의 정확성을 인증하지는 않습니다.' }),
+    el('p.small.muted', { text: `규칙 ${meta.provenance?.rulesVersion || '미표시'} · 집계 생성 ${meta.generatedAt} · 20거래일 완전 관측만 집계` }),
+    el('p.small', { text: '격리 종목 코드: ' + q.excludedTickers.join(', ') }),
+  ]);
+}

@@ -1,0 +1,12 @@
+{
+  "provider": "naver",
+  "ticker": "122870.KQ",
+  "url": "https://api.finance.naver.com/siseJson.naver?symbol=122870&requestType=1&startTime=20150101&endTime=20260828&timeframe=day",
+  "retrievedAt": "2026-09-23T08:46:52.194Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-08-28",
+  "bytes": 170678,
+  "sha256": "394bbf578d0a77f68c9e3c0304987cb7f2b85c004695a826e37b6cdd24586532",
+  "rawFile": "naver-122870.KQ-2015-01-01-2026-08-28.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

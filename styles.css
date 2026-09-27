@@ -60,6 +60,9 @@ code { font-family: 'Cascadia Mono', Consolas, monospace; font-size: .88em; colo
 .brand em { display: block; font-style: normal; font-size: 11px; color: var(--muted); margin-top: -2px; }
 
 .nav { display: flex; gap: 4px; }
+.brand { flex-shrink: 0; }
+.nav { min-width: 0; overflow-x: auto; }
+.nav a { white-space: nowrap; flex-shrink: 0; }
 .nav a {
   padding: 7px 14px; border-radius: 8px; font-size: 14px; color: var(--muted);
   transition: background .12s, color .12s;
@@ -540,3 +543,23 @@ select optgroup {
   font-size: 12.5px;
 }
 select optgroup option { color: var(--text); font-weight: 400; }
+
+/* 근거를 먼저 쓰는 기초 학습 */
+.practice-card { max-width: 900px; margin-inline: auto; }
+.practice-card h2 { margin-top: 0; }
+.practice-card .chart-box { height: 280px; margin-block: 16px; }
+.practice-facts { padding: 14px; background: rgba(77,208,167,.07); border-left: 3px solid var(--accent); }
+.practice-options { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.practice-options legend, .practice-label { display: block; margin: 12px 0 8px; font-weight: 600; }
+.practice-option { display: flex; align-items: baseline; gap: 10px; padding: 13px; margin-block: 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.practice-option input { flex-shrink: 0; }
+.practice-card textarea { display: block; box-sizing: border-box; width: 100%; resize: vertical; min-height: 95px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.practice-feedback:not(:empty) { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+.practice-feedback .btn { margin: 6px 8px 0 0; }
+.curriculum { display: grid; gap: 12px; padding-left: 24px; }
+.curriculum li p { margin: 4px 0; }
+.real-study { max-width: 1000px; margin-inline: auto; }
+.real-study-card { margin-block: 20px; }
+.real-study-card .chart-box { height: 300px; margin-block: 16px; }
+.real-study textarea { display: block; box-sizing: border-box; width: 100%; resize: vertical; min-height: 90px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.real-study textarea[readonly] { border-style: dashed; }

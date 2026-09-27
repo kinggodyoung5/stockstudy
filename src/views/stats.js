@@ -11,7 +11,7 @@
 import { loadPatternIndex } from '../lib/data.js';
 import { confidence, directionalEdge } from '../lib/stats.js';
 import { LESSON_BY_ID } from '../content/lessons.js';
-import { el, clear, signed, dirClass } from '../lib/ui.js';
+import { el, clear, signed, dirClass, qualityNotice } from '../lib/ui.js';
 
 const GROUP_NAMES = {
   indicator: '지표 기반',
@@ -44,9 +44,10 @@ export async function renderStats(app) {
     { key: 'group', label: '분류', align: 'left' },
     { key: 'bias', label: '알려진 방향', align: 'left' },
     { key: 'count', label: '검출 건수', align: 'right' },
+    { key: 'samples', label: '20봉 완료 표본', align: 'right' },
     { key: 'winRate', label: `${data.outcomeDays}일 뒤 상승 비율`, align: 'right' },
     { key: 'edge', label: '상승 비율 − 기준선', align: 'right' },
-    { key: 'hit', label: '방향 적중', align: 'right' },
+    { key: 'hit', label: '방향 기준 차이', align: 'right' },
     { key: 'avgChange', label: '평균 수익률', align: 'right' },
     { key: 'medianChange', label: '중앙값', align: 'right' },
     { key: 'stdev', label: '편차', align: 'right' },
@@ -66,7 +67,7 @@ export async function renderStats(app) {
     const q = state.q.trim().toLowerCase();
     const rows = data.patterns
       .filter((r) => state.group === 'all' || r.group === state.group)
-      .filter((r) => curStats(r).count >= state.minSamples)
+      .filter((r) => (curStats(r).stats?.samples || 0) >= state.minSamples)
       .filter((r) => !q || (r.name + ' ' + r.summary + ' ' + r.pattern).toLowerCase().includes(q));
 
     rows.sort((a, b) => {
@@ -104,7 +105,7 @@ export async function renderStats(app) {
       const edge = s && b ? +(s.winRate - b.winRate).toFixed(1) : null;
       // 하락 신호는 상승 비율이 낮아야 맞힌 것 — 부호를 뒤집어 따로 보여준다
       const hit = directionalEdge(s, b, r.bias);
-      const conf = confidence(cur.count);
+      const conf = confidence(s?.samples || 0);
       const lesson = LESSON_BY_ID[r.lesson];
 
       const nameCell = el('td', null, [
@@ -120,6 +121,7 @@ export async function renderStats(app) {
           el('td.small.muted', { text: GROUP_NAMES[r.group] || r.group }),
           el('td.small', null, [el('span', { class: 'pill ' + (r.bias === 'up' ? 'up' : r.bias === 'down' ? 'down' : ''), text: BIAS_NAMES[r.bias] })]),
           el('td.num', { text: cur.count.toLocaleString() }),
+          el('td.num', { text: (s?.samples || 0).toLocaleString() }),
           el('td.num', { class: s ? (s.winRate >= 50 ? 'up' : 'down') : '', text: s ? s.winRate + '%' : '—' }),
           el('td.num.muted', { text: edge == null ? '—' : (edge > 0 ? '+' : '') + edge + '%p' }),
           el('td.num', { class: dirClass(hit), title: hit == null ? '방향을 가리키지 않는 신호입니다' : '',
@@ -142,7 +144,7 @@ export async function renderStats(app) {
 
   const minSel = el('select');
   for (const n of [0, 20, 60, 150]) {
-    minSel.append(el('option', { value: String(n), text: n === 0 ? '표본 수 제한 없음' : `${n}건 이상만` }));
+    minSel.append(el('option', { value: String(n), text: n === 0 ? '완료 표본 수 제한 없음' : `20봉 완료 ${n}건 이상` }));
   }
   minSel.value = '20';
   minSel.addEventListener('change', () => { state.minSamples = Number(minSel.value); draw(); });
@@ -193,14 +195,14 @@ export async function renderStats(app) {
         const bl = data.axisBaselines?.[state.axis]?.[k];
         const n = (data.profiles || []).filter((p) => p[state.axis] === k).length;
         return el('div.stat', { class: k === state.bucket ? 'on' : '' }, [
-          el('span', { text: def.labels[k] + ` · 종목 ${n}개` }),
+          el('span', { text: def.labels[k] + (def.byDate ? ` · 기준선 ${bl?.samples || 0}건` : ` · 종목 ${n}개`) }),
           el('b', { class: bl ? (bl.winRate >= base.winRate ? 'up' : 'down') : '', text: bl ? bl.winRate + '%' : '—' }),
           el('span.small.muted', { text: bl ? `평균 ${signed(bl.avgChange)}` : '' }),
         ]);
       })),
       spread != null
         ? el('p.small', { style: { margin: '12px 0 0' }, html:
-            `종목군에 따라 <b>아무 날이나 샀을 때의 승률이 ${spread}%p 벌어집니다.</b> ` +
+            `종목군에 따라 <b>5봉 간격 기준선의 상승 비율이 ${spread}%p 벌어집니다.</b> ` +
             `어떤 신호가 주로 한쪽 종목군에서만 나온다면, 그 신호의 승률은 전체 기준선이 아니라 ` +
             `<b>그 종목군의 기준선</b>과 비교해야 합니다. 위 버튼으로 종목군을 골라 표를 다시 보세요.` })
         : null
@@ -223,10 +225,10 @@ export async function renderStats(app) {
       : AXES[state.axis].name + ' · ' + AXES[state.axis].labels[state.bucket];
     clear(baseCard).append(
       el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: `먼저 기준선을 보세요 — ${label}` }),
-      el('p.small.muted', { style: { margin: '0 0 12px' }, text: '같은 종목·같은 기간에서 아무 날이나 사서 20거래일 들고 있었을 때의 결과입니다. 어떤 신호의 승률은 이 숫자와 비교해야 의미가 생깁니다.' }),
+      el('p.small.muted', { style: { margin: '0 0 12px' }, text: '정합성을 통과한 종목의 첫 봉부터 5봉 간격으로 종가를 택해 20거래일 뒤와 비교했습니다. 무작위 매수 실험이 아니며 종목·시점 구성도 개별 신호와 완전히 같지 않습니다. 차이는 참고용이지 신호의 인과 효과가 아닙니다.' }),
       b
         ? el('div.stat-row', null, [
-            el('div.stat', null, [el('span', { text: '아무 날이나 매수 시 상승 비율' }), el('b', { text: b.winRate + '%' })]),
+            el('div.stat', null, [el('span', { text: '5봉 간격 기준선 상승 비율' }), el('b', { text: b.winRate + '%' })]),
             el('div.stat', null, [el('span', { text: '평균 수익률' }), el('b', { class: dirClass(b.avgChange), text: signed(b.avgChange) })]),
             el('div.stat', null, [el('span', { text: '중앙값' }), el('b', { class: dirClass(b.medianChange), text: signed(b.medianChange) })]),
             el('div.stat', null, [el('span', { text: '표본' }), el('b', { text: b.samples.toLocaleString() + '건' })]),
@@ -236,10 +238,12 @@ export async function renderStats(app) {
   }
 
   clear(app).append(
-    el('h1.page-title', { text: '패턴 성과 통계' }),
+    el('h1.page-title', { text: '패턴 이후의 과거 집계' }),
     el('p.page-sub', {
-      text: `${data.tickers}개 종목 · ${data.from} ~ ${data.to} 기간에서 ${data.patterns.length}개 규칙이 찾아낸 ${data.totalHits.toLocaleString()}건의 신호를, 발생 ${data.outcomeDays}거래일 뒤 결과로 집계했습니다.`,
+      text: `${data.tickers}개 종목 · ${data.from} ~ ${data.to} · ${data.patterns.length}개 규칙에서 ${data.totalHits.toLocaleString()}건 검출. 결과 집계는 판정 확인일부터 ${data.outcomeDays}거래일을 모두 관측한 사례만 사용합니다.`,
     }),
+    qualityNotice(data),
+    el('p.small.warn', { text: '과거 집계는 매매 전략 검증이나 숙달 평가가 아닙니다. 유동성·변동성 분류는 최신 252봉으로 과거 사례를 묶은 사후 분류이며 당시 알 수 있던 분류가 아닙니다. 표본 중복·시장 구성·생존 편향과 거래비용도 고려해야 합니다.' }),
 
     el('div.panel', null, [baseCard]),
 
@@ -256,9 +260,9 @@ export async function renderStats(app) {
     el('div.panel', { style: { marginTop: '18px' } }, [
       el('p.small.muted', { style: { margin: '0 0 14px' }, html:
         '<b>두 숫자를 구분해서 보세요.</b> "상승 비율 − 기준선"은 방향과 무관하게 그냥 뺀 값입니다. ' +
-        '"방향 적중"은 그 신호가 가리킨 방향이 실제로 얼마나 더 맞았는지입니다 — ' +
-        '하락 신호는 상승 비율이 낮아야 맞힌 것이라 부호를 뒤집어 계산합니다. ' +
-        '방향을 가리키지 않는 신호는 이 칸이 비어 있습니다.' }),
+        '"방향 기준 차이"는 하락 신호에서 그 차이의 부호만 뒤집은 값입니다. ' +
+        '보합도 비상승에 포함되므로 하락 적중률이나 예측력의 증거가 아닙니다. ' +
+        '방향 없는 신호는 이 칸이 비어 있습니다. 비율·필터·표본 주의 표시는 검출 건수가 아닌 20봉 완료 표본을 씁니다.' }),
       el('div.row', { style: { marginBottom: '14px' } }, [
         search, groupSel, minSel,
         el('span.spacer'),
@@ -272,12 +276,12 @@ export async function renderStats(app) {
       el('ul.small', { style: { margin: '0', paddingLeft: '20px' } }, [
         el('li', { text: '매매 전략을 과거에 돌려본 검증이 아니라 단순 집계입니다. 수수료, 세금, 원하는 가격에 못 사고 밀리는 손실, 분산투자, 자금 배분이 전혀 들어 있지 않습니다.' }),
         el('li', { text: `종목이 ${data.tickers}개입니다. 고점 대비 크게 밀린 종목과 오래 부진한 종목을 일부러 섞었지만, 여전히 '지금까지 상장을 유지한 회사들'만 들어 있습니다. 같은 기간에 상장폐지된 회사는 한 곳도 없습니다 (생존 편향). 실제보다 낙관적인 숫자라고 보는 편이 맞습니다.` }),
-        el('li', { text: '표본이 20건 미만인 규칙은 흐리게 표시했습니다. 승률 100%라도 3건이면 아무 의미가 없습니다.' }),
+        el('li', { text: '20봉 완료 표본이 20건 미만인 규칙은 흐리게 표시했습니다. 3건 중 3건 상승은 그 세 사례에 대한 기록일 뿐 일반화할 근거는 부족합니다. 20건을 넘었다고 검증이 완료된 것도 아닙니다.' }),
         el('li', { text: '보유 기간을 20거래일로 고정했습니다. 기간을 바꾸면 순위가 달라집니다.' }),
         el('li', { html:
-          '<b>가장 큰 변수는 신호가 아니라 시기입니다.</b> 위에서 "시기 (연도)"로 나눠보면 ' +
-          '아무 날이나 샀을 때의 승률이 해마다 크게 벌어집니다. 어떤 신호의 승률이 높아 보여도 ' +
-          '그 신호가 상승장에 몰려 나왔다면 신호의 힘이 아니라 그 해의 힘입니다.' }),
+          '<b>시기의 영향도 살피세요.</b> "시기 (연도)"는 결과 측정 시작일의 연도입니다. ' +
+          '기준선과 신호 모두 연도별 구성이 다르면 전체 상승 비율이 달라질 수 있습니다. ' +
+          '이 차이만으로 신호 또는 시장 중 어느 쪽의 효과인지 분리할 수는 없습니다.' }),
         el('li', { text: '같은 데이터로 57개 규칙을 한꺼번에 평가하면, 순전히 우연으로 좋아 보이는 규칙이 몇 개는 나오게 돼 있습니다. 상위권 규칙을 곧바로 믿지 마세요.' }),
       ]),
     ])

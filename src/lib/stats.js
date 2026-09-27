@@ -9,6 +9,8 @@
  * 이 화면의 목적은 "신호는 확률이지 보장이 아니다"를 체감하는 것이다.
  */
 
+import { OUTCOME_DAYS } from './outcome.js';
+import { inspectStock } from './data-quality.js';
 const round = (v, d = 2) => (v == null || !Number.isFinite(v) ? null : +Number(v).toFixed(d));
 
 function median(nums) {
@@ -23,8 +25,9 @@ function median(nums) {
  * winRate 는 "신호 이후 20거래일 뒤 종가가 올랐는가"의 비율이다.
  * 하락 신호(bias: down)라도 여기서는 항상 "상승 비율"로 계산한다 — 해석은 화면에서 한다.
  */
-export function summarize(hits) {
-  const changes = hits.map((h) => h.outcome && h.outcome.changePct).filter((v) => v != null);
+export function summarize(hits, days = OUTCOME_DAYS) {
+  hits = hits.filter((h) => h.outcome?.days === days && Number.isFinite(h.outcome.changePct));
+  const changes = hits.map((h) => h.outcome.changePct);
   if (!changes.length) return null;
 
   const ups = changes.filter((v) => v > 0).length;
@@ -54,6 +57,7 @@ export function summarize(hits) {
 export function baseline(stocks, days = 20) {
   const changes = [];
   for (const stock of stocks) {
+    if (!inspectStock(stock).eligible) continue;
     const c = stock.candles;
     for (let i = 0; i + days < c.length; i += 5) {
       changes.push(((c[i + days].close - c[i].close) / c[i].close) * 100);
@@ -75,7 +79,7 @@ export function baseline(stocks, days = 20) {
  */
 export function confidence(samples) {
   if (samples == null) return { level: 'none', label: '표본 없음' };
-  if (samples < 20) return { level: 'low', label: '표본 부족 (20건 미만) — 우연일 가능성이 큼' };
+  if (samples < 20) return { level: 'low', label: '표본 부족 (20건 미만) — 비율 변동에 주의' };
   if (samples < 60) return { level: 'mid', label: '표본 적음 (60건 미만) — 참고용' };
   return { level: 'ok', label: `표본 ${samples}건` };
 }
@@ -175,7 +179,7 @@ export function assignBuckets(profiles) {
 export const AXES = {
   liquidity: {
     name: '유동성 (거래대금)',
-    why: '거래가 얇으면 가격이 띄엄띄엄 움직여 돌파·이탈 판정이 쉽게 흔들립니다. 같은 시장 안에서 일평균 거래대금 순위로 3등분했습니다.',
+    why: '최신 252봉의 일평균 거래대금을 같은 시장 안에서 순위로 3등분했습니다. 당시의 유동성을 복원한 분류가 아니며 과거 사례를 탐색하는 사후 분류입니다.',
     keys: ['high', 'mid', 'low'],
     labels: { high: '상위 1/3 (활발)', mid: '중위 1/3', low: '하위 1/3 (한산)' },
   },
@@ -187,7 +191,7 @@ export const AXES = {
   },
   board: {
     name: '시장',
-    why: '국내는 상·하한가(±30%) 제도가 있고 호가 단위가 다릅니다. 코스닥은 코스피보다 변동성이 큰 편입니다.',
+    why: '거래 시장에 따라 제도·거래 시간·종목 구성이 다릅니다. 현재 자료는 정합성 검사 후 시장별 표본 수가 불균형하므로 결과를 시장 전체의 성질로 일반화하지 마세요.',
     keys: ['KOSPI', 'KOSDAQ', 'US'],
     labels: { KOSPI: '코스피', KOSDAQ: '코스닥', US: '미국' },
   },
@@ -202,6 +206,7 @@ export const AXES = {
 export function baselineBy(stocks, days, keyOf) {
   const groups = new Map();
   for (const stock of stocks) {
+    if (!inspectStock(stock).eligible) continue;
     const c = stock.candles;
     for (let i = 0; i + days < c.length; i += 5) {
       const k = keyOf(c[i], stock);
@@ -235,7 +240,7 @@ export function periodAxis(years) {
   const keys = [...years].sort();
   return {
     name: '시기 (연도)',
-    why: '시장 전체가 오르는 해와 내리는 해는 결과가 통째로 다릅니다. 어떤 신호의 승률이 높아 보여도 그 신호가 상승장에 몰려 나왔다면 신호의 힘이 아니라 그 해의 힘입니다. 특정 시기를 빼는 대신 나눠서 보여줍니다.',
+    why: '결과 측정 시작일의 연도로 나눕니다. 시기별 시장 환경과 신호 발생 빈도가 다르면 전체 비율도 달라집니다. 연도별 비교는 차이를 살피는 도구이지 신호와 시장의 효과를 분리하는 검증은 아닙니다.',
     keys,
     labels: Object.fromEntries(keys.map((y) => [y, y + '년'])),
     byDate: true,
