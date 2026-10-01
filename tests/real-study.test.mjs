@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { expandStock } from '../src/lib/data-quality.js';
 import { outcomeAt } from '../src/lib/outcome.js';
-import { STUDY_PATTERNS, PROMPTS, comparisonPairs, studyWindow, studyKey, submitStudy, keepStudy } from '../src/lib/real-study.js';
+import { STUDY_PATTERNS, PROMPTS, comparisonPairs, studyWindow, studyKey, submitStudy, keepStudy, reflectStudy } from '../src/lib/real-study.js';
 
 const read = (file) => JSON.parse(fs.readFileSync(new URL('../' + file, import.meta.url)));
 const hit = (ticker, changePct, days = 20) => ({ ticker, date: '2020-01-01', confirmDate: '2020-01-06',
@@ -54,14 +54,24 @@ test('두 사례의 기록이 모두 필요하며 최초 근거는 입력 변경
   assert.equal(submitStudy(record, [draft(), draft()], 456), record);
 });
 
-test('자료 버전과 원자료 해시별로 기록을 분리하고 최근 30쌍만 보존', () => {
+test('자료 버전과 원자료 해시별로 기록을 분리하고, 30쌍을 넘거나 형식이 달라도 지우지 않는다', () => {
   const meta = { pattern: 'golden-cross', provenance: { sourceDigest: 'a', rulesVersion: 'v3' } };
   const pair = [hit('A', 1), hit('B', -1)];
   assert.equal(studyKey(meta, pair), studyKey(meta, [...pair].reverse()));
   assert.notEqual(studyKey(meta, pair), studyKey({ ...meta, provenance: { ...meta.provenance, sourceDigest: 'b' } }, pair));
-  let records = { corrupt: null };
+  // 예전 기준으로 짧았던 기록, 손상된 칸도 그대로 남긴다.
+  const old = { submittedAt: 0.5, drafts: [{ observation: '짧음' }, {}], reflection: '' };
+  let records = { corrupt: null, old };
   for (let i = 1; i <= 35; i++) records = keepStudy(records, 'key' + i, submitStudy(null, [draft(), draft()], i));
-  assert.equal(Object.keys(records).length, 30); assert.ok(!records.key1); assert.ok(records.key35);
+  assert.equal(Object.keys(records).length, 37); assert.ok(records.key1); assert.ok(records.key35);
+  assert.equal(records.old, old); assert.ok('corrupt' in records);
+  // 복기는 최초 근거를 바꾸지 않는다. 다른 최초 기록으로 덮어쓰려 해도 최초 근거는 그대로다.
+  const first = records.key1, reflected = reflectStudy(first, '  결과와 별개로 관찰은 맞았다  ', 99);
+  assert.deepEqual(reflected.drafts, first.drafts); assert.equal(reflected.reflectionAt, 99);
+  records = keepStudy(records, 'key1', { ...submitStudy(null, [draft(), draft()], 500), reflection: '다른 복기', reflectionAt: 501 });
+  assert.equal(records.key1.submittedAt, first.submittedAt);
+  assert.equal(records.key1.reflection, '다른 복기');
+  assert.throws(() => reflectStudy(first, '짧다'));
 });
 
 test('실제 4개 규칙의 모든 비교 쌍: 반례 포함, 공개 시점·20봉·원자료 정합성 일치', () => {

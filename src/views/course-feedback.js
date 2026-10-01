@@ -85,21 +85,30 @@ export function autoCheck(q, record) {
  * onSave(checks, note) 는 새 기록을 돌려주거나 예외를 던진다.
  */
 export function selfCheck(q, record, onSave) {
-  if (!q.selfChecks?.length) return null;
+  const ids = q.selfChecks || [];
   const status = el('p.small.muted', { 'aria-live': 'polite' });
-  const boxes = q.selfChecks.map((id) => {
+  const boxes = ids.map((id) => {
     const input = el('input', { type: 'checkbox', id: 'self-' + id, checked: record.self?.checks?.[id] === true });
     return { id, input, row: el('label.fb-self-item', { for: 'self-' + id }, [input, el('span', { text: SELF_CHECKS[id] })]) };
   });
   const note = el('textarea', { id: 'self-note', rows: 3, maxlength: 1000, placeholder: '해설을 보고 바뀐 생각이 있으면 적으세요. 처음 쓴 근거는 그대로 남습니다.' });
   note.value = record.self?.note || '';
-  const save = el('button.btn', { text: '자기 점검 저장' });
+  const save = el('button.btn', { text: ids.length ? '자기 점검 저장' : '생각 저장' });
   save.addEventListener('click', () => {
     try {
       const saved = onSave(Object.fromEntries(boxes.map((b) => [b.id, b.input.checked])), note.value);
-      status.textContent = saved?.self ? '저장했습니다. 이 표시는 점수에 들어가지 않습니다.' : '';
+      status.textContent = saved?.self ? '저장했습니다. 처음 답과 근거는 바뀌지 않았고, 이 기록은 점수에 들어가지 않습니다.' : '';
     } catch (error) { status.textContent = error.message; }
   });
+  if (!ids.length) {
+    // 객관식만 있는 문제: 체크 항목 없이 해설 뒤의 생각만 따로 남긴다.
+    note.setAttribute('aria-label', '해설을 본 뒤의 생각');
+    return el('section.fb-self', null, [
+      el('h4', { text: '해설을 본 뒤의 생각 (선택)' }),
+      el('p.small.muted', { text: '헷갈렸던 점이나 다음에 볼 자리를 적어두면 복습할 때 보입니다. 처음 고른 답은 그대로 남습니다.' }),
+      note, save, status,
+    ]);
+  }
   return el('section.fb-self', null, [
     el('h4', { text: '자기 점검 · 자동 채점하지 않습니다' }),
     el('p.small.muted', { text: '처음 쓴 근거를 해설의 숫자와 대조해 직접 표시하세요. 표시한 개수로 점수를 매기지 않습니다.' }),

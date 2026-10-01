@@ -6,6 +6,7 @@
 import { expandStock } from './data-quality.js';
 import { RULES_VERSION } from './rules-version.js';
 import { COURSE_VERSION } from './chart-course.js';
+import { ASSESSMENT_VERSION } from './assessment.js';
 const BASE = new URL('../../data/', import.meta.url);
 
 const stockCache = new Map();
@@ -101,6 +102,15 @@ export async function loadChartCourse() {
   if (course.version !== COURSE_VERSION || course.provenance?.sourceDigest !== index.provenance.sourceDigest
     || course.provenance?.rulesVersion !== RULES_VERSION) throw new Error('입문 교재 버전이 다릅니다. node tools/build-course.mjs 로 재생성하세요.');
   return course;
+}
+
+/** 새 구간 평가 자료. 입문 교재·탐지 자료와 같은 원자료 버전으로 만든 것만 쓴다. */
+export async function loadAssessment() {
+  const [assessment, index] = await Promise.all([getJson('assessment.json'), loadPatternIndex()]);
+  if (assessment.version !== ASSESSMENT_VERSION || assessment.courseVersion !== COURSE_VERSION
+    || assessment.provenance?.sourceDigest !== index.provenance.sourceDigest
+    || assessment.provenance?.rulesVersion !== RULES_VERSION) throw new Error('평가 자료 버전이 다릅니다. node tools/build-assessment.mjs 로 재생성하세요.');
+  return assessment;
 }
 
 /** 날짜 문자열로 캔들 인덱스 찾기 (없으면 -1) */

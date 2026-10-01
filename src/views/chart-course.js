@@ -1,16 +1,14 @@
 import { loadChartCourse, loadStock } from '../lib/data.js';
 import { COURSE_STEPS, TASKS, openCourseCase, courseRecord } from '../lib/chart-course.js';
-import { createStockChart, createOscillatorPanel, syncTimeScales } from '../lib/chart.js';
-import { OSCILLATORS } from '../lib/oscillators.js';
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
-import { reviewSelf, CONFIDENCE } from '../lib/course-feedback.js';
+import { reviewSelf } from '../lib/course-feedback.js';
 import { autoCheck, selfCheck } from './course-feedback.js';
+import { drawCaseCharts, factsList, optionsField, pickedChoice, confidenceField, numericField, caseHeader, rulesBox, legendNotes } from './case-view.js';
 
-let generation = 0, charts = [], unsync = null;
+let generation = 0, cleanup = null;
 function clearCharts() {
-  if (unsync) { unsync(); unsync = null; }
-  charts.forEach((c) => c.destroy()); charts = [];
+  if (cleanup) { cleanup(); cleanup = null; }
 }
 export function destroyChartCourse() { generation++; clearCharts(); }
 
@@ -82,26 +80,14 @@ export async function renderChartCourse(app, initialType = '') {
       const chartBox = el('div.chart-box', { 'aria-label': '관찰 마감일까지의 실제 일봉 차트' });
       const panelWrap = el('div.panels');
       const feedback = el('div.practice-feedback', { 'aria-live': 'polite' });
-      const options = el('fieldset.practice-options', null, [el('legend', { text: '차트에 맞는 설명 선택' })]);
       // 매번 정답 위치를 섞되 저장은 원래 선택지 인덱스로 한다.
-      const shift = Math.floor(Math.random() * q.options.length);
-      q.options.forEach((_, k) => {
-        const j = (k + shift) % q.options.length;
-        options.append(el('label.practice-option', null, [el('input', { type: 'radio', name: 'course-answer', value: j, checked: existing?.choice === j }), el('span', { text: q.options[j] })]));
-      });
+      const options = optionsField(q, 'course-answer', existing?.choice ?? null);
       const reflection = el('textarea', { id: 'course-reflection', rows: 3, maxlength: 1500, placeholder: '눈에 보이는 값이나 위치를 근거로 적어보세요.' });
       if (existing) reflection.value = existing.reflection || '';
-      const numericInput = q.numeric ? el('input', { type: 'text', id: 'course-numeric', inputmode: 'decimal', autocomplete: 'off',
-        placeholder: '예: 1.85', 'aria-describedby': 'course-numeric-help' }) : null;
+      const { box: numericBox, input: numericInput } = numericField(q, 'course-numeric',
+        q.numeric && `‘차트에서 비교할 값’의 숫자로 나눠보세요. 소수 ${q.numeric.decimals}째 자리까지 적고, 실제 값과 ${10 ** -q.numeric.decimals} 이내면 맞게 읽은 것으로 봅니다.`);
       if (numericInput && existing?.auto?.numeric) numericInput.value = String(existing.auto.numeric.input);
-      const numericBox = q.numeric ? el('div.course-numeric', null, [
-        el('label.practice-label', { for: 'course-numeric', text: `직접 계산: ${q.numeric.label} (${q.numeric.unit})` }),
-        numericInput,
-        el('p.small.muted', { id: 'course-numeric-help', text: `‘차트에서 비교할 값’의 숫자로 나눠보세요. 소수 ${q.numeric.decimals}째 자리까지 적고, 실제 값과 ${10 ** -q.numeric.decimals} 이내면 맞게 읽은 것으로 봅니다.` }),
-      ]) : null;
-      const confidence = el('fieldset.course-confidence', null, [el('legend', { text: '내 답의 확신 (선택)' }),
-        ...Object.entries(CONFIDENCE).map(([id, label]) => el('label', null, [
-          el('input', { type: 'radio', name: 'course-confidence', value: id, checked: existing?.confidence === id }), el('span', { text: label })]))]);
+      const confidence = confidenceField('course-confidence', existing?.confidence ?? null);
       const submit = el('button.btn.primary', { text: '선택하고 해설 확인' });
       let submitted = !!existing;
       function reveal(record) {
@@ -115,7 +101,7 @@ export async function renderChartCourse(app, initialType = '') {
           el('p', { text: `정답: ${q.options[q.answer]}` }),
           el('p', { text: q.explanation }),
           selfCheck(q, record, (checks, note) => {
-            const updated = reviewSelf(records[key], q.selfChecks, checks, note);
+            const updated = reviewSelf(records[key], q.selfChecks || [], checks, note);
             records[key] = updated;
             if (!storage.save(storageKey, records)) throw new Error('저장하지 못했습니다. 브라우저 저장이 막혀 있거나 공간이 부족할 수 있습니다.');
             return updated;
@@ -127,48 +113,26 @@ export async function renderChartCourse(app, initialType = '') {
       submit.addEventListener('click', () => {
         if (submitted) return;
         try {
-          const picked = options.querySelector('input:checked');
           const level = confidence.querySelector('input:checked');
-          const record = courseRecord(null, picked ? Number(picked.value) : null, q, reflection.value, Date.now(),
+          const record = courseRecord(null, pickedChoice(options), q, reflection.value, Date.now(),
             { numeric: numericInput?.value, confidence: level?.value });
           records[key] = record; submitted = true;
           if (!storage.save(storageKey, records)) saveNote.textContent = '저장하지 못했습니다. 현재 화면에서는 확인할 수 있지만 새로고침 후 기록이 유지되지 않을 수 있습니다.';
           updateProgress(); reveal(record);
         } catch (error) { clear(feedback).append(el('p.warn', { text: error.message })); }
       });
-      const facts = el('dl.course-facts');
-      q.facts.forEach(([label, value, unit]) => facts.append(el('div', null, [el('dt', { text: label }), el('dd', { text: value + (unit === 'price' ? (stock.currency === 'USD' ? ' 달러' : ' 원') : '') })])));
+      const facts = factsList(q, stock.currency);
       clear(area).append(...[
-        el('p.small.muted', { text: `${stock.name} (${stock.ticker}) · 일봉 · 관찰 마감 ${ref.date} · 이 주제 ${(cursors[type] || 0) % refs.length + 1}/${refs.length} 사례` }),
-        el('h2', { text: q.title }), el('p.course-prompt', { text: q.prompt }),
+        ...caseHeader(q, `${stock.name} (${stock.ticker}) · 일봉 · 관찰 마감 ${ref.date} · 이 주제 ${(cursors[type] || 0) % refs.length + 1}/${refs.length} 사례`),
         el('details.course-help', null, [el('summary', { text: '처음이라면 · 읽는 방법' }), el('p', { text: q.hint })]),
-        q.rules ? el('details.rulebox', { open: true }, [el('summary', { text: '이번에 확인할 조건 (이 앱의 기준)' }), el('ul', null, q.rules.map((rule) => el('li', { text: rule })))]) : null,
-        chartBox, panelWrap,
-        (q.overlays.ma20 || q.overlays.ma60) ? el('p.small.muted', { text: '이동평균: 노랑 5일 · 초록 20일 · 보라 60일. 문제에 필요한 선만 표시합니다.' }) : null,
-        q.overlays.volume ? el('p.small.muted', { text: '가격 차트 아래쪽 막대는 거래량(주)입니다. 높이는 가격과 별도 눈금으로 그립니다.' }) : null,
+        rulesBox(q),
+        chartBox, panelWrap, ...legendNotes(q),
         el('details.course-help', { open: ['candle', 'wick', 'timeframe', 'volume'].includes(q.type) }, [el('summary', { text: '차트에서 비교할 값' }), facts]),
         numericBox, options, confidence,
         q.reflection ? el('label.practice-label', { for: 'course-reflection', text: q.reflection }) : null,
         q.reflection ? reflection : null, submit, feedback
       ].filter(Boolean));
-      const chart = createStockChart(chartBox, { height: 280 }); charts.push(chart);
-      chart.setOverlays(q.overlays); chart.setCandles(view, history);
-      chart.setMarkers(q.markers.length ? q.markers : [{ date: q.focusDate || ref.date, text: '관찰 대상', position: 'aboveBar' }]);
-      q.lines.forEach((line, j) => chart.drawSegment('course-line-' + j, [{ date: line.from, value: line.value }, { date: ref.date, value: line.value }]));
-      chart.fit();
-      const synced = [chart.chart];
-      for (const id of q.panels) {
-        const def = OSCILLATORS[id], box = el('div.osc-box', { style: { height: def.height + 'px' } });
-        panelWrap.append(el('div.osc-wrap', null, [el('div.panel-head', { text: def.name }), box]));
-        const panel = createOscillatorPanel(box, def, view, undefined, history); charts.push(panel); synced.push(panel.chart); panel.fit();
-      }
-      if (synced.length > 1) unsync = syncTimeScales(synced);
-      if (q.weekly) {
-        const box = el('div.chart-box', { 'aria-label': '완료된 주까지만 표시한 주봉 차트' });
-        panelWrap.append(el('p.small', { text: '주봉 비교 · 진행 중일 수 있는 마지막 주는 제외. 주봉 끝 날짜가 각 봉의 날짜입니다.' }), box);
-        const weekly = createStockChart(box, { height: 240 }); charts.push(weekly);
-        weekly.setCandles(q.weekly); weekly.setMarkers([{ date: q.focusDate, text: '비교할 주' }]); weekly.fit();
-      }
+      cleanup = drawCaseCharts(chartBox, panelWrap, q, view, history, ref.date);
       if (existing) reveal(existing);
     } catch (error) {
       if (token === generation && drawToken === serial && app.isConnected) clear(area).append(el('p.error', { text: error.message }));
@@ -178,7 +142,7 @@ export async function renderChartCourse(app, initialType = '') {
   }
   clear(app).append(el('h1.page-title', { text: '실제 차트 · 입문 6단계' }),
     el('p.page-sub', { text: '가격을 읽고 → 조건을 구별하고 → 근거를 연결합니다. 처음에는 읽는 방법과 숫자를 펼쳐보고, 익숙해지면 접고 차트에서 먼저 찾아보세요.' }),
-    el('div.row', null, [el('a.btn', { href: '#/practice', text: '구성 예제로 기초 다지기' }), el('a.btn', { href: '#/practice/real', text: '같은 신호 · 다른 결과 비교' })]),
+    el('div.row', null, [el('a.btn', { href: '#/practice', text: '구성 예제로 기초 다지기' }), el('a.btn', { href: '#/practice/real', text: '같은 신호 · 다른 결과 비교' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' })]),
     steps, introduction,
     el('div.course-toolbar', null, [el('label', { for: 'course-task', text: '연습 주제' }), taskSelect, nextCase]), progress, area, saveNote,
     el('details.rulebox', null, [el('summary', { text: '어떤 실제 자료로 연습하나요?' }), el('p.small', { text: course.policy }), el('p.small', { text: '자료 검사를 통과한 종목만 씁니다. 한쪽 모양만 외우지 않도록 다른 상태와 경계 사례를 함께 골랐습니다. 화면에 나온 사례 비율을 시장에서의 발생 비율로 해석하면 안 됩니다. 차트·지표 계산·해설은 모두 관찰 마감일까지의 자료만 사용합니다.' })])

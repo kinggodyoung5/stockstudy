@@ -2,7 +2,7 @@ import { loadPattern, loadPatternIndex, loadStock } from '../lib/data.js';
 import { createStockChart, COLORS } from '../lib/chart.js';
 import { el, clear, signed, formatEvidence } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
-import { STUDY_PATTERNS, PROMPTS, comparisonPairs, studyKey, studyWindow, submitStudy, keepStudy, validDraft } from '../lib/real-study.js';
+import { STUDY_PATTERNS, PROMPTS, comparisonPairs, studyKey, studyWindow, submitStudy, keepStudy, reflectStudy } from '../lib/real-study.js';
 
 let charts = [], generation = 0;
 function clearCharts() { for (const c of charts.splice(0)) c.destroy(); }
@@ -14,7 +14,7 @@ export async function renderRealStudy(app) {
   const loaded = storage.load('real-study:v1', {});
   let records = loaded && typeof loaded === 'object' && !Array.isArray(loaded) ? loaded : {};
   const area = el('section.real-study'), status = el('p.small', { 'aria-live': 'polite' });
-  const saveNote = el('p.small.muted', { text: '제출한 근거와 복기는 이 브라우저에 최근 30쌍까지 저장합니다. 제출 전 초안은 이동하면 사라집니다. 서술의 질은 자동 채점하지 않습니다.' });
+  const saveNote = el('p.small.muted', { text: '제출한 근거와 복기는 개수 제한 없이 이 브라우저에 저장합니다. 제출 전 초안은 이동하면 사라집니다. 서술의 질은 자동 채점하지 않습니다. 다른 기기로 옮기려면 ‘기록과 백업’에서 내보내세요.' });
   const select = el('select', { id: 'real-pattern' }, STUDY_PATTERNS.map((p) => el('option', { value: p.id, text: p.name })));
   const next = el('button.btn', { text: '다른 두 사례', disabled: true });
   clear(app).append(el('h1.page-title', { text: '실제 차트 비교 연습' }),
@@ -25,7 +25,8 @@ export async function renderRealStudy(app) {
 
   function save(key, record) {
     records = keepStudy(records, key, record);
-    if (!storage.save('real-study:v1', records)) saveNote.textContent = '브라우저 저장이 불가능합니다. 이번 화면에서만 기록이 유지되며 새로고침하면 사라질 수 있습니다.';
+    if (!storage.save('real-study:v1', records)) { saveNote.textContent = '브라우저 저장이 불가능합니다. 저장 공간이 부족하거나 막혀 있습니다. 이번 화면에서만 기록이 유지되며 새로고침하면 사라질 수 있습니다. ‘기록과 백업’에서 먼저 내보내세요.'; saveNote.className = 'small warn'; return false; }
+    return true;
   }
   async function load() {
     const token = ++generation;
@@ -41,8 +42,8 @@ export async function renderRealStudy(app) {
       const stocks = await Promise.all(pair.map((h) => loadStock(h.ticker)));
       if (token !== generation || !app.isConnected) return;
       stocks.forEach((s, i) => studyWindow(s, pair[i])); // 렌더 전 전체 품질/날짜 검사
-      let record = records[key];
-      if (!record?.submittedAt || record.drafts?.length !== 2 || !record.drafts.every(validDraft)) record = null;
+      // 형식이 지금 기준과 달라도 제출 기록이면 지우거나 덮어쓰지 않고 그대로 보여준다.
+      let record = records[key]?.submittedAt ? records[key] : null;
       let revealed = !!record;
       status.textContent = `${cursor + 1}/${pairs.length}쌍 · ${record ? '이전에 기록한 사례 복습 (최초 근거 유지)' : '새 기록'} · 일봉 · ${meta.name}`;
       next.disabled = pairs.length < 2;
@@ -58,7 +59,7 @@ export async function renderRealStudy(app) {
             ? el('p.small', { text: '20일선: 초록 · 60일선: 보라 · 거래량 표시. 확인일은 교차 후 5개 거래 봉 유지가 확인된 날입니다.' })
             : el('p.small', { text: '캔들과 거래량을 표시합니다. 앞선 추세와 장악하는 두 봉을 함께 살펴보세요.' }),
           box, ...PROMPTS.flatMap(([field, label]) => [el('label.practice-label', { for: inputs[field].id, text: label }), inputs[field]]), info]);
-        for (const [field, input] of Object.entries(inputs)) { input.value = record?.drafts[i][field] || ''; input.readOnly = revealed; }
+        for (const [field, input] of Object.entries(inputs)) { input.value = record?.drafts?.[i]?.[field] || ''; input.readOnly = revealed; }
         return { box, inputs, info, c };
       });
       const feedback = el('div', { 'aria-live': 'polite' });
@@ -94,9 +95,8 @@ export async function renderRealStudy(app) {
           el('ul', null, ['내가 쓴 관찰 사실이 판정 근거와 맞는가?', '반대 결과가 나온 사례에서도 당시 관찰 자체는 맞았는가?', '결과가 좋았다는 이유만으로 잘못된 설명을 정답으로 바꾸지 않았는가?', '내 무효 조건은 사전에 관찰할 수 있는 구체적 기준인가?'].map((text) => el('li', { text }))),
           el('label.practice-label', { for: 'real-reflection', text: '두 사례에서 배운 점과 수정할 설명' }), reflection,
           el('button.btn', { text: '복기 저장', onclick: () => {
-            if (reflection.value.trim().length < 8) { saved.textContent = '복기를 8자 이상 적어주세요. 글의 질을 자동 평가하는 기준은 아닙니다.'; return; }
-            record = { ...record, reflection: reflection.value.trim().slice(0, 2000) }; save(key, record);
-            saved.textContent = '이번 화면에 복기를 기록했습니다. 최초 근거는 그대로 유지합니다. 브라우저 저장 여부는 아래 안내를 확인하세요.';
+            try { record = reflectStudy(record, reflection.value); } catch (e) { saved.textContent = e.message; return; }
+            saved.textContent = save(key, record) ? '복기를 저장했습니다. 최초 근거는 그대로 유지합니다.' : '복기를 저장하지 못했습니다. 아래 안내를 확인하세요.';
           } }), saved, el('a.btn', { href: `#/learn/${meta.lesson}`, text: '관련 개념 다시 읽기' }));
       }
       reveal.addEventListener('click', () => {

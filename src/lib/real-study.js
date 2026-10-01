@@ -68,9 +68,24 @@ export function submitStudy(previous, drafts, now = Date.now()) {
   return { submittedAt: now, drafts: drafts.map((d) => Object.fromEntries(PROMPTS.map(([k]) => [k, d[k].trim()]))), reflection: '' };
 }
 
+/**
+ * 기록을 하나 더하거나 바꾼다. 다른 기록은 그대로 둔다.
+ * 예전에는 최근 30쌍만 남기고 지금 기준에 맞지 않는 기록을 지웠다. 이제는 아무것도 지우지 않는다.
+ * 저장 공간이 모자라면 저장 실패로 알리고, 내보내기로 백업하도록 안내한다.
+ * 이미 기록이 있으면 최초 근거(submittedAt·drafts)는 바꾸지 않고 복기만 받는다.
+ */
 export function keepStudy(records, key, record) {
-  // 자료 버전별 기록을 분리하되 무제한으로 localStorage를 키우지 않는다.
-  return Object.fromEntries(Object.entries({ ...records, [key]: record })
-    .filter(([, r]) => r && Number.isFinite(r.submittedAt) && r.drafts?.length === 2 && r.drafts.every(validDraft))
-    .sort((a, b) => b[1].submittedAt - a[1].submittedAt).slice(0, 30));
+  const previous = records?.[key];
+  const next = previous?.submittedAt && record?.submittedAt !== previous.submittedAt
+    ? { ...previous, reflection: record.reflection, reflectionAt: record.reflectionAt }
+    : record;
+  return { ...records, [key]: next };
+}
+
+/** 해설을 본 뒤의 복기. 최초 근거는 건드리지 않는다. */
+export function reflectStudy(record, text, now = Date.now()) {
+  if (!record?.submittedAt) throw new Error('먼저 두 사례의 근거를 기록하세요.');
+  const reflection = String(text || '').trim();
+  if (reflection.length < 8) throw new Error('복기를 8자 이상 적어주세요. 글의 질을 자동 평가하는 기준은 아닙니다.');
+  return { ...record, reflection: reflection.slice(0, 2000), reflectionAt: now };
 }
