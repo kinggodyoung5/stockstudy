@@ -4,6 +4,8 @@ import { createStockChart, createOscillatorPanel, syncTimeScales } from '../lib/
 import { OSCILLATORS } from '../lib/oscillators.js';
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
+import { reviewSelf, CONFIDENCE } from '../lib/course-feedback.js';
+import { autoCheck, selfCheck } from './course-feedback.js';
 
 let generation = 0, charts = [], unsync = null;
 function clearCharts() {
@@ -28,7 +30,7 @@ export async function renderChartCourse(app, initialType = '') {
   const progress = el('p.small.muted', { 'aria-live': 'polite' });
   const introduction = el('p');
   const area = el('section.panel.practice-card');
-  const saveNote = el('p.small.muted', { text: '기록은 이 브라우저에만 남습니다. 선택지만 자동 채점하며 글의 내용은 채점하지 않습니다. 제출하지 않은 선택·메모는 이동하면 사라집니다.' });
+  const saveNote = el('p.small.muted', { text: '기록은 이 브라우저에만 남습니다. 선택지·직접 계산한 수치·정해진 조건만 자동으로 확인하고, 글은 채점하지 않습니다. 제출하지 않은 선택·메모는 이동하면 사라집니다.' });
   const nextCase = el('button.btn', { text: '같은 주제 · 다른 실제 사례', onclick: () => { cursors[type] = (cursors[type] || 0) + 1; draw(); } });
 
   function queue() {
@@ -89,16 +91,35 @@ export async function renderChartCourse(app, initialType = '') {
       });
       const reflection = el('textarea', { id: 'course-reflection', rows: 3, maxlength: 1500, placeholder: '눈에 보이는 값이나 위치를 근거로 적어보세요.' });
       if (existing) reflection.value = existing.reflection || '';
+      const numericInput = q.numeric ? el('input', { type: 'text', id: 'course-numeric', inputmode: 'decimal', autocomplete: 'off',
+        placeholder: '예: 1.85', 'aria-describedby': 'course-numeric-help' }) : null;
+      if (numericInput && existing?.auto?.numeric) numericInput.value = String(existing.auto.numeric.input);
+      const numericBox = q.numeric ? el('div.course-numeric', null, [
+        el('label.practice-label', { for: 'course-numeric', text: `직접 계산: ${q.numeric.label} (${q.numeric.unit})` }),
+        numericInput,
+        el('p.small.muted', { id: 'course-numeric-help', text: `‘차트에서 비교할 값’의 숫자로 나눠보세요. 소수 ${q.numeric.decimals}째 자리까지 적고, 실제 값과 ${10 ** -q.numeric.decimals} 이내면 맞게 읽은 것으로 봅니다.` }),
+      ]) : null;
+      const confidence = el('fieldset.course-confidence', null, [el('legend', { text: '내 답의 확신 (선택)' }),
+        ...Object.entries(CONFIDENCE).map(([id, label]) => el('label', null, [
+          el('input', { type: 'radio', name: 'course-confidence', value: id, checked: existing?.confidence === id }), el('span', { text: label })]))]);
       const submit = el('button.btn.primary', { text: '선택하고 해설 확인' });
       let submitted = !!existing;
       function reveal(record) {
-        options.disabled = true; reflection.readOnly = true; submit.disabled = true;
+        options.disabled = true; confidence.disabled = true; reflection.readOnly = true; submit.disabled = true;
+        if (numericInput) numericInput.readOnly = true;
         const flat = COURSE_STEPS.flatMap((s) => s.ids), nextType = flat[flat.indexOf(selectedType) + 1];
         clear(feedback).append(...[
-          el('h3', { text: record.correct ? '관찰과 선택이 맞았습니다' : '이 부분을 다시 비교해보세요' }),
+          el('h3', { text: record.correct ? '관찰과 선택이 맞았습니다' : '다시 볼 관찰이 있습니다' }),
+          autoCheck(q, record),
+          el('h4', { text: '해설' }),
           el('p', { text: `정답: ${q.options[q.answer]}` }),
           el('p', { text: q.explanation }),
-          q.reflection ? el('p.small.muted', { text: '위에 남긴 글은 자동 채점하지 않았습니다. 해설의 숫자와 내 관찰이 맞는지, 해석을 확정 예측으로 바꾸지는 않았는지 직접 대조하세요.' }) : null,
+          selfCheck(q, record, (checks, note) => {
+            const updated = reviewSelf(records[key], q.selfChecks, checks, note);
+            records[key] = updated;
+            if (!storage.save(storageKey, records)) throw new Error('저장하지 못했습니다. 브라우저 저장이 막혀 있거나 공간이 부족할 수 있습니다.');
+            return updated;
+          }),
           el('a.btn', { href: `#/learn/${q.lesson}`, text: '관련 개념 읽기' }),
           nextType ? el('button.btn', { text: '다음 주제로', onclick: () => selectType(nextType) }) : el('a.btn', { href: '#/practice/real', text: '같은 신호 · 다른 결과 비교로' })
         ].filter(Boolean));
@@ -107,7 +128,9 @@ export async function renderChartCourse(app, initialType = '') {
         if (submitted) return;
         try {
           const picked = options.querySelector('input:checked');
-          const record = courseRecord(null, picked ? Number(picked.value) : null, q, reflection.value);
+          const level = confidence.querySelector('input:checked');
+          const record = courseRecord(null, picked ? Number(picked.value) : null, q, reflection.value, Date.now(),
+            { numeric: numericInput?.value, confidence: level?.value });
           records[key] = record; submitted = true;
           if (!storage.save(storageKey, records)) saveNote.textContent = '저장하지 못했습니다. 현재 화면에서는 확인할 수 있지만 새로고침 후 기록이 유지되지 않을 수 있습니다.';
           updateProgress(); reveal(record);
@@ -123,7 +146,8 @@ export async function renderChartCourse(app, initialType = '') {
         chartBox, panelWrap,
         (q.overlays.ma20 || q.overlays.ma60) ? el('p.small.muted', { text: '이동평균: 노랑 5일 · 초록 20일 · 보라 60일. 문제에 필요한 선만 표시합니다.' }) : null,
         q.overlays.volume ? el('p.small.muted', { text: '가격 차트 아래쪽 막대는 거래량(주)입니다. 높이는 가격과 별도 눈금으로 그립니다.' }) : null,
-        el('details.course-help', { open: ['candle', 'wick', 'timeframe'].includes(q.type) }, [el('summary', { text: '차트에서 비교할 값' }), facts]), options,
+        el('details.course-help', { open: ['candle', 'wick', 'timeframe', 'volume'].includes(q.type) }, [el('summary', { text: '차트에서 비교할 값' }), facts]),
+        numericBox, options, confidence,
         q.reflection ? el('label.practice-label', { for: 'course-reflection', text: q.reflection }) : null,
         q.reflection ? reflection : null, submit, feedback
       ].filter(Boolean));

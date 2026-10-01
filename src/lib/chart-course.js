@@ -1,6 +1,7 @@
 import { closes, sma, bollinger, pivots, resample, crossAt, pct } from './indicators.js';
 import { rsi, macd, atr } from './oscillators.js';
-import { crossCondition, volumeCondition } from './signal-conditions.js';
+import { CROSS_HOLD, crossCondition, volumeCondition } from './signal-conditions.js';
+import { diagnose, checkNumeric, CONFIDENCE } from './course-feedback.js';
 import { candleEvidence, CANDLE_PATTERNS } from './candlestick.js';
 import { trendBeforePattern } from './pattern-context.js';
 import { inspectStock } from './data-quality.js';
@@ -46,12 +47,23 @@ export function makeCourseQuestion(ctx, i, type) {
   const price = (label, value) => [label, n(value), 'price'];
   const num = (label, value, unit = '') => [label, n(value) + unit];
   const choose = (options, answer, bucket = String(answer)) => Object.assign(q, { options, answer, bucket });
+  // 학생이 읽어야 할 관찰. truth 는 정답을 정한 바로 그 비교에서 나온다.
+  // text 는 실제 수치, look 은 차트에서 볼 자리. 선택지가 주장하는 값은 q.claims 에 둔다.
+  const read = (id, label, truth, values, text, look) => {
+    (q.reads ||= []).push({ id, label, truth, values, text, look });
+    return truth;
+  };
   const past = () => cs.slice(0, i + 1);
   if (type === 'candle') {
     q.viewBars = 20;
     const b = today.close - today.open, d = today.close - prev.close;
     if (!b || !d) return null;
     choose(['양봉이며 전일 종가보다 올랐다', '양봉이지만 전일 종가보다 내렸다', '음봉이지만 전일 종가보다 올랐다', '음봉이며 전일 종가보다 내렸다'], b > 0 ? (d > 0 ? 0 : 1) : (d > 0 ? 2 : 3));
+    read('body', '봉의 색 · 오늘 시가와 종가', b > 0 ? 'up' : 'down', { up: '양봉', down: '음봉' },
+      `종가 ${n(today.close)} ${b > 0 ? '>' : '<'} 시가 ${n(today.open)}`, '마지막 봉 몸통의 위·아래 끝');
+    read('change', '전일 대비 · 전일 종가와 오늘 종가', d > 0 ? 'up' : 'down', { up: '전일보다 올랐다', down: '전일보다 내렸다' },
+      `오늘 종가 ${n(today.close)} ${d > 0 ? '>' : '<'} 전일 종가 ${n(prev.close)}`, '마지막 봉의 종가와 바로 앞 봉의 종가');
+    q.claims = [{ body: 'up', change: 'up' }, { body: 'up', change: 'down' }, { body: 'down', change: 'up' }, { body: 'down', change: 'down' }];
     q.prompt = '마지막 봉의 몸통과 전일 대비 등락을 함께 읽으면?';
     q.hint = '양봉·음봉은 오늘 시가와 종가를 비교합니다. 전일 등락은 어제 종가와 비교합니다.';
     q.facts = [price('전일 종가', prev.close), price('오늘 시가', today.open), price('오늘 종가', today.close)];
@@ -61,6 +73,12 @@ export function makeCourseQuestion(ctx, i, type) {
     const upper = today.high - Math.max(today.open, today.close), lower = Math.min(today.open, today.close) - today.low;
     if (Math.abs(upper - lower) < today.close * .0001) return null;
     choose(['윗꼬리가 더 길다. 고가·저가에 도달한 순서는 알 수 없다', '아랫꼬리가 더 길다. 고가·저가에 도달한 순서는 알 수 없다', '긴 꼬리 쪽 가격에 반드시 먼저 도달했다'], upper > lower ? 0 : 1);
+    read('longer', '더 긴 꼬리', upper > lower ? 'upper' : 'lower', { upper: '윗꼬리', lower: '아랫꼬리' },
+      `윗꼬리 ${n(upper)} (고가 ${n(today.high)} − 몸통 위 ${n(Math.max(today.open, today.close))}), 아랫꼬리 ${n(lower)} (몸통 아래 ${n(Math.min(today.open, today.close))} − 저가 ${n(today.low)})`,
+      '마지막 봉 몸통 위아래로 뻗은 가는 선');
+    read('order', '장중에 가격을 거친 순서', 'unknown', { unknown: '일봉만으로는 알 수 없다', known: '알 수 있다' },
+      '일봉에는 시가·고가·저가·종가 네 값만 남습니다. 어느 가격을 먼저 거쳤는지는 기록되지 않습니다.', '봉 하나에 담긴 정보의 종류');
+    q.claims = [{ longer: 'upper', order: 'unknown' }, { longer: 'lower', order: 'unknown' }, { order: 'known' }];
     q.prompt = '마지막 봉의 꼬리에서 확인할 수 있는 사실은?';
     q.hint = '윗꼬리 = 고가 − 몸통 위쪽. 아랫꼬리 = 몸통 아래쪽 − 저가.';
     q.facts = [price('시가', today.open), price('고가', today.high), price('저가', today.low), price('종가', today.close)];
@@ -74,6 +92,12 @@ export function makeCourseQuestion(ctx, i, type) {
     const dailySign = Math.sign(days.at(-1).close - days.at(-1).open), weekSign = Math.sign(w.close - w.open);
     if (!dailySign || !weekSign) return null;
     choose(['마지막 일봉과 주봉 모두 양봉', '마지막 일봉은 양봉, 주봉은 음봉', '마지막 일봉은 음봉, 주봉은 양봉', '마지막 일봉과 주봉 모두 음봉'], dailySign > 0 ? (weekSign > 0 ? 0 : 1) : (weekSign > 0 ? 2 : 3));
+    const UPDOWN = { up: '양봉', down: '음봉' };
+    read('daily', '마지막 일봉', dailySign > 0 ? 'up' : 'down', UPDOWN,
+      `${days.at(-1).date} 시가 ${n(days.at(-1).open)} → 종가 ${n(days.at(-1).close)}`, '위 일봉 차트에서 그 주의 마지막 봉');
+    read('weekly', '그 주의 주봉', weekSign > 0 ? 'up' : 'down', UPDOWN,
+      `주 첫 시가 ${n(w.open)} → 주 마지막 종가 ${n(w.close)}`, '아래 주봉 차트의 ‘비교할 주’ 표시');
+    q.claims = [{ daily: 'up', weekly: 'up' }, { daily: 'up', weekly: 'down' }, { daily: 'down', weekly: 'up' }, { daily: 'down', weekly: 'down' }];
     q.prompt = `${days[0].date}~${w.date}에 해당하는 일봉과 주봉을 비교하면?`;
     q.hint = '주봉 시가는 그 주 첫 거래일의 시가, 주봉 종가는 마지막 거래일의 종가입니다. 봉 하나의 길이가 다릅니다.';
     q.facts = [price('그 주 첫 시가', w.open), price('마지막 날 시가', days.at(-1).open), price('마지막 날 종가', w.close), ['해당 주 거래일 수', String(days.length) + '일']];
@@ -85,6 +109,14 @@ export function makeCourseQuestion(ctx, i, type) {
     const hs = p.highs.slice(-2).map((j) => cs[start + j]), ls = p.lows.slice(-2).map((j) => cs[start + j]);
     const h = hs[1].high - hs[0].high, l = ls[1].low - ls[0].low;
     choose(['표시된 고점·저점 모두 높아졌다', '표시된 고점·저점 모두 낮아졌다', '두 비교가 엇갈리거나 같은 값이 있다'], h > 0 && l > 0 ? 0 : h < 0 && l < 0 ? 1 : 2);
+    const dir = (x) => x > 0 ? 'up' : x < 0 ? 'down' : 'same';
+    const DIR = { up: '높아졌다', down: '낮아졌다', same: '같다' };
+    read('high', '고점 1 → 고점 2', dir(h), DIR, `${n(hs[0].high)} (${hs[0].date}) → ${n(hs[1].high)} (${hs[1].date})`, '차트의 ‘고1’, ‘고2’ 표시');
+    read('low', '저점 1 → 저점 2', dir(l), DIR, `${n(ls[0].low)} (${ls[0].date}) → ${n(ls[1].low)} (${ls[1].date})`, '차트의 ‘저1’, ‘저2’ 표시');
+    read('structure', '두 비교를 합친 구조', h > 0 && l > 0 ? 'up' : h < 0 && l < 0 ? 'down' : 'mixed',
+      { up: '모두 높아졌다', down: '모두 낮아졌다', mixed: '엇갈리거나 같은 값이 있다' },
+      `고점은 ${DIR[dir(h)]}, 저점은 ${DIR[dir(l)]}`, '고점끼리, 저점끼리 따로 비교한 뒤 합친다');
+    q.claims = [{ high: 'up', low: 'up' }, { high: 'down', low: 'down' }, { structure: 'mixed' }];
     q.prompt = '최근 80봉에서 표시한 마지막 고점 둘과 저점 둘의 구조는?';
     q.hint = '이 연습은 좌우 각 3봉보다 높은 고점·낮은 저점을 씁니다. 오른쪽 3봉이 이미 끝난 지점만 표시합니다.';
     q.facts = [...hs.map((c, j) => price(`고점 ${j + 1} (${c.date})`, c.high)), ...ls.map((c, j) => price(`저점 ${j + 1} (${c.date})`, c.low))];
@@ -94,6 +126,12 @@ export function makeCourseQuestion(ctx, i, type) {
     const level = Math.max(...cs.slice(i - 20, i).map((c) => c.high));
     const state = today.close > level ? 0 : today.high > level ? 1 : 2;
     choose(['종가가 후보선 위에서 끝났다', '장중에는 넘었지만 종가는 선 위가 아니다', '장중 고가도 후보선을 넘지 않았다'], state);
+    const ABOVE = { above: '후보선보다 높다', below: '후보선보다 높지 않다' };
+    read('close', '종가와 후보선', today.close > level ? 'above' : 'below', ABOVE,
+      `종가 ${n(today.close)} · 후보선 ${n(level)}`, '마지막 봉 몸통의 끝(종가)과 가로선');
+    read('high', '고가와 후보선', today.high > level ? 'above' : 'below', ABOVE,
+      `고가 ${n(today.high)} · 후보선 ${n(level)}`, '마지막 봉 윗꼬리의 끝(고가)과 가로선');
+    q.claims = [{ close: 'above' }, { high: 'above', close: 'below' }, { high: 'below' }];
     q.prompt = '직전 20봉의 최고가를 저항 후보로 정했습니다. 마지막 봉은?';
     q.hint = '“돌파”를 종가가 선보다 높은 경우로 정합니다. 고가만 넘은 경우와 구분하세요.';
     q.facts = [price('후보선 (오늘 제외)', level), price('오늘 고가', today.high), price('오늘 종가', today.close)];
@@ -102,10 +140,14 @@ export function makeCourseQuestion(ctx, i, type) {
   } else if (type.startsWith('ma-')) {
     q.overlays = { ma5: type === 'ma-settings', ma20: true, ma60: true };
     q.facts = [price('종가', today.close), price('20일 평균', m20[i]), price('60일 평균', m60[i])];
+    const SIDE = { above: '위', below: '아래' };
     if (type === 'ma-position') {
       const a = c[i] - m20[i], b = c[i] - m60[i];
       if (!a || !b) return null;
       choose(['종가는 두 평균선 모두 위', '종가는 20일선 위, 60일선 아래', '종가는 20일선 아래, 60일선 위', '종가는 두 평균선 모두 아래'], a > 0 ? (b > 0 ? 0 : 1) : (b > 0 ? 2 : 3));
+      read('vs20', '종가와 20일 평균', a > 0 ? 'above' : 'below', SIDE, `종가 ${n(c[i])} · 20일 평균 ${n(m20[i])}`, '마지막 봉과 초록선');
+      read('vs60', '종가와 60일 평균', b > 0 ? 'above' : 'below', SIDE, `종가 ${n(c[i])} · 60일 평균 ${n(m60[i])}`, '마지막 봉과 보라선');
+      q.claims = [{ vs20: 'above', vs60: 'above' }, { vs20: 'above', vs60: 'below' }, { vs20: 'below', vs60: 'above' }, { vs20: 'below', vs60: 'below' }];
       q.prompt = '마지막 종가의 위치를 정확히 읽으면?';
       q.hint = '초록선은 20일 평균, 보라선은 60일 평균입니다. 위치만 묻습니다. 선의 기울기와 혼동하지 마세요.';
       q.explanation = `종가 ${n(c[i])}는 20일 평균 ${n(m20[i])}의 ${sign(a)}, 60일 평균 ${n(m60[i])}의 ${sign(b)}입니다. 위에 있다는 사실만으로 선이 오르고 있거나 앞으로 오른다고 말할 수는 없습니다.`;
@@ -113,6 +155,10 @@ export function makeCourseQuestion(ctx, i, type) {
       const slope = m20[i] - m20[i - 5], location = c[i] - m20[i];
       if (!slope || !location) return null;
       choose(['20일선은 5거래일 전보다 높고 종가는 선 위', '20일선은 높아졌지만 종가는 선 아래', '20일선은 낮아졌지만 종가는 선 위', '20일선은 낮아졌고 종가는 선 아래'], slope > 0 ? (location > 0 ? 0 : 1) : (location > 0 ? 2 : 3));
+      read('slope', '20일선의 5거래일 변화', slope > 0 ? 'up' : 'down', { up: '높아졌다', down: '낮아졌다' },
+        `${n(m20[i - 5])} → ${n(m20[i])}`, '초록선의 오른쪽 끝과 다섯 봉 앞 지점');
+      read('loc', '종가와 20일선', location > 0 ? 'above' : 'below', SIDE, `종가 ${n(c[i])} · 20일 평균 ${n(m20[i])}`, '마지막 봉과 초록선');
+      q.claims = [{ slope: 'up', loc: 'above' }, { slope: 'up', loc: 'below' }, { slope: 'down', loc: 'above' }, { slope: 'down', loc: 'below' }];
       q.prompt = '20일선의 변화와 종가의 위치를 함께 설명하면?';
       q.hint = '기울기는 같은 선의 과거 값과 비교합니다. 위치는 오늘 가격과 오늘 선을 비교합니다.';
       q.facts.push(price('5거래일 전 20일 평균', m20[i - 5]));
@@ -121,6 +167,10 @@ export function makeCourseQuestion(ctx, i, type) {
       const short = m5[i] > m20[i], long = m20[i] > m60[i];
       if (m5[i] === m20[i] || m20[i] === m60[i]) return null;
       choose(['5일 > 20일, 20일 > 60일', '5일 > 20일, 20일 < 60일', '5일 < 20일, 20일 > 60일', '5일 < 20일, 20일 < 60일'], short ? (long ? 0 : 1) : (long ? 2 : 3));
+      const GT = { gt: '짧은 쪽이 위', lt: '짧은 쪽이 아래' };
+      read('short', '5일 평균과 20일 평균', short ? 'gt' : 'lt', GT, `5일 ${n(m5[i])} · 20일 ${n(m20[i])}`, '노란선과 초록선의 오른쪽 끝');
+      read('long', '20일 평균과 60일 평균', long ? 'gt' : 'lt', GT, `20일 ${n(m20[i])} · 60일 ${n(m60[i])}`, '초록선과 보라선의 오른쪽 끝');
+      q.claims = [{ short: 'gt', long: 'gt' }, { short: 'gt', long: 'lt' }, { short: 'lt', long: 'gt' }, { short: 'lt', long: 'lt' }];
       q.prompt = '5/20일 조합과 20/60일 조합의 위치 관계를 읽으면?';
       q.hint = '노란선은 5일 평균입니다. 같은 차트라도 평균 내는 기간이 다르면 서로 다른 움직임을 요약합니다.';
       q.facts.unshift(price('5일 평균', m5[i]));
@@ -138,6 +188,15 @@ export function makeCourseQuestion(ctx, i, type) {
     q.overlays = { ma20: true, ma60: true };
     q.facts = [price('교차일 20일선', m20[start]), price('교차일 60일선', m60[start]), ['교차 후 지난 거래일', String(state.elapsed)], ['교차 직전 20거래일 반대 교차', state.clean ? '없음' : '있음'], ['지금까지 교차 방향 유지', state.held ? '유지' : '깨짐']];
     q.markers = [{ date: cs[start].date, text: '교차 후보' }];
+    q.conditions = [
+      { id: 'cross', label: `20일선이 60일선을 ${direction > 0 ? '아래→위' : '위→아래'}로 교차`, status: state.cross ? 'pass' : 'fail',
+        text: `${cs[start].date} · 20일선 ${n(m20[start])}, 60일선 ${n(m60[start])}`, look: '차트의 ‘교차 후보’ 표시' },
+      { id: 'clean', label: '교차 직전 20거래일 안에 반대 교차가 없다', status: state.clean ? 'pass' : 'fail',
+        text: state.clean ? '반대 교차 없음' : '반대 교차 있음', look: '교차 후보 왼쪽 20봉 구간의 두 선' },
+      { id: 'held', label: `교차 후 ${CROSS_HOLD}거래일 동안 방향 유지`, status: !state.held ? 'fail' : state.elapsed < CROSS_HOLD ? 'pending' : 'pass',
+        text: `교차 후 ${state.elapsed}거래일 지남 · 지금까지 ${state.held ? '유지' : '깨짐'}`, look: '교차 후보 오른쪽에서 두 선의 위아래' },
+    ];
+    q.verdicts = ['pass', 'fail', 'pending'];
     q.explanation = `교차 후 ${state.elapsed}거래일이 지났고, 직전 반대 교차는 ${state.clean ? '없습니다' : '있습니다'}. ${state.status === 'pending' ? '5거래일 유지 여부는 아직 알 수 없습니다. 나중에 실패할 수도 있으므로 지금 완료 신호로 세면 안 됩니다.' : state.status === 'pass' ? '5거래일 유지까지 확인됐습니다. “조건 충족”이지 이후 방향 보장은 아닙니다.' : '직전 반대 교차가 있거나 유지 조건이 깨졌으므로 이 앱의 조건에는 맞지 않습니다. 교차 모양 자체가 없었다는 뜻은 아닙니다.'}`;
   } else if (type === 'volume' || type === 'volume-rule') {
     const v = ctx.volume[i]; if (v.ratio == null) return null;
@@ -145,6 +204,12 @@ export function makeCourseQuestion(ctx, i, type) {
     q.facts = [num('오늘 거래량', today.volume, '주'), num('직전 20봉 평균 (오늘 제외)', v.avg, '주'), num('종가의 전일 대비 등락', v.change, '%')];
     if (type === 'volume') {
       choose(['평균 미만', '평균 이상 2배 미만', '평균의 2배 이상'], v.ratio < 1 ? 0 : v.ratio < 2 ? 1 : 2);
+      read('band', '오늘 거래량 ÷ 직전 20봉 평균', v.ratio < 1 ? 'under' : v.ratio < 2 ? 'mid' : 'over',
+        { under: '평균 미만', mid: '평균 이상 2배 미만', over: '평균의 2배 이상' },
+        `${n(today.volume)} ÷ ${n(v.avg)} = ${n(v.ratio)}배`, '마지막 거래량 막대와 앞 20개 막대의 평균 높이');
+      q.claims = [{ band: 'under' }, { band: 'mid' }, { band: 'over' }];
+      // 직접 나눠보는 연습. 판정 문턱(1배·2배)은 반올림 전 값으로 정한다.
+      q.numeric = { label: '오늘 거래량 ÷ 직전 20봉 평균', unit: '배', decimals: 2, value: v.ratio, thresholds: [1, 2] };
       q.prompt = '마지막 거래량을 직전 20봉 평균과 비교하면?';
       q.hint = '오늘 거래량 ÷ 직전 20봉 평균. 거래량은 거래된 주식 수이며 매수자 수나 순매수액이 아닙니다.';
       q.explanation = `${n(today.volume)} ÷ ${n(v.avg)} = ${n(v.ratio)}배입니다. 모든 체결에는 매수와 매도가 함께 있습니다. 거래량 증가만으로 누가 샀는지, 내일 오를지 알 수 없습니다.`;
@@ -156,12 +221,27 @@ export function makeCourseQuestion(ctx, i, type) {
       q.hint = '2배에 가까운 것과 2배 이상은 다릅니다. 거래량뿐 아니라 가격 변화와 중복 조건도 확인합니다.';
       q.rules = PATTERNS['volume-spike'].rules;
       q.facts.push(num('평균 대비 거래량', v.ratio, '배'), ['직전 10거래일에 두 수치 조건을 만족한 날', v.spaced ? '없음' : '있음']);
+      q.conditions = [
+        { id: 'ratio', label: '거래량이 직전 20봉 평균의 2배 이상', status: v.ratio >= 2 ? 'pass' : 'fail',
+          text: `${n(today.volume)} ÷ ${n(v.avg)} = ${n(v.ratio)}배`, look: '마지막 거래량 막대' },
+        { id: 'change', label: '종가의 전일 대비 등락이 ±2% 이상', status: Math.abs(v.change) >= 2 ? 'pass' : 'fail',
+          text: `${n(v.change)}%`, look: '마지막 봉 종가와 앞 봉 종가' },
+        { id: 'spaced', label: '직전 10거래일에 두 수치 조건을 만족한 날이 없다', status: v.spaced ? 'pass' : 'fail',
+          text: v.spaced ? '그런 날 없음' : '그런 날 있음', look: '앞 10봉의 거래량 막대' },
+      ];
+      q.verdicts = ['pass', 'fail', 'unknown'];
+      q.trap = { 2: '세 조건은 모두 오늘까지의 거래량과 종가로 계산됩니다. 판정에 필요한 자료는 이미 화면에 있습니다.' };
       q.explanation = `거래량 ${n(v.ratio)}배, 종가 변화 ${n(v.change)}%이며 직전 반복 조건은 ${v.spaced ? '통과' : '불통과'}입니다. 세 조건을 모두 만족해야 합니다. “거의 2배”를 반올림해 통과시키지 않습니다. 이는 앱의 사례 선택 기준이지 보편적인 매수·매도 규칙이 아닙니다.`;
     }
   } else if (type === 'atr') {
     const current = ctx.atr[i] / c[i] * 100, before = ctx.atr[i - 20] / c[i - 20] * 100;
     if (Math.abs(current - before) < .001) return null;
     choose(['가격 대비 변동 폭이 커졌다. 방향은 별도로 봐야 한다', '가격 대비 변동 폭이 작아졌다. 방향은 별도로 봐야 한다', 'ATR%의 크기는 다음 날 상승률 예측값이다'], current > before ? 0 : 1);
+    read('change', '20거래일 전과 지금의 ATR%', current > before ? 'up' : 'down', { up: '커졌다', down: '작아졌다' },
+      `${n(before)}% → ${n(current)}%`, '아래 ATR 패널 선의 높이 변화');
+    read('meaning', 'ATR%가 담고 있는 정보', 'size', { size: '최근 흔들림의 크기', forecast: '다음 날 상승률 예측' },
+      'ATR은 하루 가격 범위를 평균낸 값입니다. 오를지 내릴지, 얼마나 오를지는 담고 있지 않습니다.', 'ATR의 계산 방식');
+    q.claims = [{ change: 'up', meaning: 'size' }, { change: 'down', meaning: 'size' }, { meaning: 'forecast' }];
     q.prompt = 'ATR을 종가로 나눈 비율(ATR%)을 20거래일 전과 비교하면?';
     q.hint = 'ATR(14)은 전일 종가와의 벌어짐도 포함한 하루 가격 범위를 평균낸 값입니다. 가격으로 나눈 ATR%는 가격 대비 폭입니다.';
     q.panels = ['atr'];
@@ -170,6 +250,10 @@ export function makeCourseQuestion(ctx, i, type) {
   } else if (type === 'bands') {
     const { upper, lower } = ctx.bb;
     choose(['종가가 상단선 위', '종가가 두 밴드 사이 (경계 포함)', '종가가 하단선 아래'], c[i] > upper[i] ? 0 : c[i] < lower[i] ? 2 : 1);
+    read('position', '종가와 두 밴드', c[i] > upper[i] ? 'above' : c[i] < lower[i] ? 'below' : 'inside',
+      { above: '상단선 위', inside: '두 선 사이 (경계 포함)', below: '하단선 아래' },
+      `하단 ${n(lower[i])} · 종가 ${n(c[i])} · 상단 ${n(upper[i])}`, '마지막 봉 종가와 위아래 두 선');
+    q.claims = [{ position: 'above' }, { position: 'inside' }, { position: 'below' }];
     q.prompt = '볼린저밴드(20일, 표준편차 2배)에서 마지막 종가의 위치는?';
     q.hint = '이 문제는 위치만 묻습니다. 레슨의 “상단 이탈 사례”에 붙는 0.5%·중복 제외 조건과 다릅니다.';
     q.overlays = { bollinger: true }; q.facts = [price('상단선', upper[i]), price('종가', c[i]), price('하단선', lower[i])];
@@ -177,6 +261,9 @@ export function makeCourseQuestion(ctx, i, type) {
   } else if (type === 'rsi') {
     const value = ctx.rsi[i]; if (value == null) return null;
     choose(['70 이상인 높은 구간. 하락 확정은 아니다', '30 초과 70 미만. 상승·하락 확정은 아니다', '30 이하인 낮은 구간. 반등 확정은 아니다'], value >= 70 ? 0 : value <= 30 ? 2 : 1);
+    read('zone', 'RSI(14) 값의 구간', value >= 70 ? 'high' : value <= 30 ? 'low' : 'mid',
+      { high: '70 이상', mid: '30 초과 70 미만', low: '30 이하' }, `현재 RSI ${n(value)}`, 'RSI 패널 선의 오른쪽 끝');
+    q.claims = [{ zone: 'high' }, { zone: 'mid' }, { zone: 'low' }];
     q.prompt = 'RSI(14)의 현재 상태를 범위 안에서 설명하면?';
     q.hint = '이 연습은 70 이상을 높은 구간, 30 이하를 낮은 구간으로 부릅니다. 상태와 경계선을 처음 넘는 사건은 다릅니다.';
     q.panels = ['rsi']; q.facts = [num('현재 RSI', value)];
@@ -185,6 +272,11 @@ export function makeCourseQuestion(ctx, i, type) {
     const line = ctx.macd.line[i], signal = ctx.macd.signal[i], hist = ctx.macd.hist[i];
     if (line == null || !hist || !line) return null;
     choose(['MACD선은 0 위, 시그널선 위', 'MACD선은 0 위, 시그널선 아래', 'MACD선은 0 아래, 시그널선 위', 'MACD선은 0 아래, 시그널선 아래'], line > 0 ? (hist > 0 ? 0 : 1) : (hist > 0 ? 2 : 3));
+    const SIDE = { above: '위', below: '아래' };
+    read('zero', 'MACD선과 0선', line > 0 ? 'above' : 'below', SIDE, `MACD선 ${n(line)}`, 'MACD 패널의 초록선과 0 가로선');
+    read('signal', 'MACD선과 시그널선', hist > 0 ? 'above' : 'below', SIDE,
+      `MACD선 ${n(line)} − 시그널선 ${n(signal)} = 막대 ${n(hist)}`, '초록선과 빨간선, 막대가 0 위인지 아래인지');
+    q.claims = [{ zero: 'above', signal: 'above' }, { zero: 'above', signal: 'below' }, { zero: 'below', signal: 'above' }, { zero: 'below', signal: 'below' }];
     q.prompt = 'MACD선의 0선 위치와 시그널선과의 관계를 구분하면?';
     q.hint = '초록 MACD선 = 12일 지수평균 − 26일 지수평균. 빨간 시그널선 = MACD선의 9일 지수평균. 막대 = MACD선 − 시그널선.';
     q.panels = ['macd']; q.facts = [price('MACD선', line), price('시그널선', signal), price('히스토그램 (막대)', hist)];
@@ -203,6 +295,18 @@ export function makeCourseQuestion(ctx, i, type) {
     q.facts = [price('앞 음봉 몸통', body(prev)), price('뒤 양봉 몸통', body(today)), price('패턴 전 20봉 평균 몸통', average), num('패턴 첫 봉 전일까지 10거래일 등락', trend, '%')];
     q.explanation = `앞선 흐름은 ${n(trend)}% (−3% 이하 요구), 뒤 몸통은 평균의 ${n(body(today) / average)}배 (1배 이상), 앞 몸통은 ${n(body(prev) / average)}배 (0.3배 이상)입니다. 감싸는 모양만으로 반전 조건을 충족하지는 않습니다. 내일 결과를 보고 오늘 패턴을 판정하지 않습니다.`;
     q.markers = [{ date: prev.date, text: '첫 봉' }, { date: today.date, text: '둘째 봉' }];
+    q.conditions = [
+      { id: 'shape', label: '뒤 양봉 몸통이 앞 음봉 몸통을 감쌌다', status: 'pass',
+        text: `앞 음봉 ${n(prev.open)} → ${n(prev.close)} · 뒤 양봉 ${n(today.open)} → ${n(today.close)}`, look: '‘첫 봉’, ‘둘째 봉’ 표시' },
+      { id: 'size', label: '뒤 양봉 몸통이 패턴 전 20봉 평균 몸통 이상', status: body(today) >= average ? 'pass' : 'fail',
+        text: `${n(body(today))} · 평균 ${n(average)} (${n(body(today) / average)}배)`, look: '둘째 봉 몸통과 앞쪽 봉들의 몸통' },
+      { id: 'prev-size', label: '앞 음봉 몸통이 평균의 0.3배 이상', status: body(prev) >= average * .3 ? 'pass' : 'fail',
+        text: `${n(body(prev))} (${n(body(prev) / average)}배)`, look: '첫 봉 몸통' },
+      { id: 'trend', label: '패턴 첫 봉 전일까지 10거래일 종가 변화가 −3% 이하', status: trend != null && trend <= -3 ? 'pass' : 'fail',
+        text: `${n(trend)}%`, look: '‘첫 봉’ 왼쪽 열 봉의 흐름' },
+    ];
+    q.verdicts = ['pass', 'fail', 'future'];
+    q.trap = { 2: '네 조건은 모두 오늘까지의 봉으로 계산됩니다. 내일 결과를 보고 오늘 패턴을 판정하지 않습니다.' };
   } else if (type === 'integrated' || type === 'limits') {
     const above = c[i] > m20[i], rising = m20[i] > m20[i - 5], positive = ctx.macd.hist[i] > 0;
     if (c[i] === m20[i] || m20[i] === m20[i - 5]) return null;
@@ -215,6 +319,15 @@ export function makeCourseQuestion(ctx, i, type) {
         `종가는 20일선 ${above ? '위' : '아래'}, 20일선은 5거래일 전보다 ${rising ? '낮고' : '높고'}, MACD선은 시그널선 ${positive ? '위' : '아래'}`,
         `종가는 20일선 ${above ? '위' : '아래'}, 20일선은 5거래일 전보다 ${rising ? '높고' : '낮고'}, MACD선은 시그널선 ${positive ? '아래' : '위'}`,
       ], 0, above === rising && rising === positive ? 'aligned' : 'mixed');
+      const SIDE = { above: '위', below: '아래' }, flip = { above: 'below', below: 'above', up: 'down', down: 'up' };
+      const truth = {
+        loc: read('loc', '종가와 20일선', above ? 'above' : 'below', SIDE, `종가 ${n(c[i])} · 20일 평균 ${n(m20[i])}`, '마지막 봉과 초록선'),
+        slope: read('slope', '20일선의 5거래일 변화', rising ? 'up' : 'down', { up: '높아졌다', down: '낮아졌다' },
+          `${n(m20[i - 5])} → ${n(m20[i])}`, '초록선의 오른쪽 끝과 다섯 봉 앞 지점'),
+        macd: read('macd', 'MACD선과 시그널선', positive ? 'above' : 'below', SIDE, `MACD 막대 ${n(ctx.macd.hist[i])}`, 'MACD 패널의 막대가 0 위인지 아래인지'),
+      };
+      q.claims = [truth, { ...truth, loc: flip[truth.loc] }, { ...truth, slope: flip[truth.slope] }, { ...truth, macd: flip[truth.macd] }];
+      q.selfChecks = ['number', 'separate', 'counter', 'noforecast'];
       q.prompt = '세 가지 관찰을 빠뜨리지 않고 설명한 문장은?';
       q.hint = '한 지표가 다른 지표의 대답을 대신하지 않습니다. 엇갈리면 엇갈린 상태 그대로 적습니다.';
       q.explanation = summary + '입니다. 서로 다른 기간·관계를 요약한 값이므로 다수결로 다음 방향을 정하지 않습니다.';
@@ -224,6 +337,11 @@ export function makeCourseQuestion(ctx, i, type) {
       q.lines = [{ name: '직전 20봉 최저가', value: level, from: cs[i - 20].date }];
       q.facts.push(price('직전 20봉 최저가', level));
       choose(['현재 확인한 사실이다', '현재 차트에 대한 해석이다', '앞으로 확인할 무효 조건이다'], 2, above ? 'above' : 'below');
+      read('kind', '이 문장의 종류', 'invalidation', { fact: '확인한 사실', interp: '해석', invalidation: '무효 조건' },
+        `“앞으로 …하면 다시 검토한다”는 미래에 점검할 기준입니다. 오늘 종가 ${n(c[i])}와 후보 ${n(level)}의 위치는 사실, 그 위치에 붙인 뜻은 해석입니다.`,
+        '문장에 “앞으로”, “~하면 다시 검토”가 있는지');
+      q.claims = [{ kind: 'fact' }, { kind: 'interp' }, { kind: 'invalidation' }];
+      q.selfChecks = ['number', 'separate', 'counter', 'invalidation', 'noforecast'];
       q.prompt = `“앞으로 종가가 ${n(level)} 아래로 끝나면 이 가격대가 지켜진다는 생각을 다시 검토한다”는 무엇인가요?`;
       q.hint = '관찰은 이미 본 값, 해석은 그 값에 붙인 의미, 무효 조건은 내 생각을 바꾸기로 미리 정한 관찰 기준입니다.';
       q.explanation = `미래에 점검할 기준이므로 무효 조건입니다. 오늘 종가 ${n(c[i])}가 후보 가격 ${n(level)}보다 ${sign(c[i] - level)}라는 사실과 구분하세요. 무효 조건은 손실이 제한된다는 보장이나 매매 지시가 아닙니다.`;
@@ -244,9 +362,26 @@ export function openCourseCase(stock, ref) {
   return { question, history, view: history.slice(-question.viewBars) };
 }
 
-export function courseRecord(previous, choice, question, reflection, now = Date.now()) {
+/**
+ * 최초 제출 기록. 한 번 만든 기록은 다시 제출해도 바뀌지 않는다.
+ * auto 는 제출 시점의 자동 확인 결과다. 나중에 정의가 바뀌어도 이 기록을 다시 채점하지 않는다.
+ * self(자기 점검)는 해설을 본 뒤 따로 붙으며, 여기서는 비워둔다.
+ * 8자 검사는 제출 여부 확인일 뿐 글의 질 판정이 아니다.
+ */
+export function courseRecord(previous, choice, question, reflection, now = Date.now(), extra = {}) {
   if (previous?.submittedAt) return previous;
   if (!Number.isInteger(choice) || !question.options[choice]) throw new Error('답을 선택하세요.');
+  let numeric = null;
+  if (question.numeric) {
+    numeric = checkNumeric(question.numeric, extra.numeric);
+    if (!numeric) throw new Error(`‘${question.numeric.label}’ 값을 숫자로 적으세요. 예: 1.85`);
+  }
   if (question.reflection && String(reflection).trim().length < 8) throw new Error('종합 문제는 관찰 근거를 8자 이상 기록한 뒤 확인하세요.');
-  return { submittedAt: now, choice, correct: choice === question.answer, reflection: String(reflection || '').trim().slice(0, 1500) };
+  const d = diagnose(question, choice);
+  const auto = d.kind === 'reads'
+    ? { wrong: d.wrong.map((r) => r.id), numeric }
+    : { claimed: d.claimed, truth: d.truth, numeric };
+  return { v: 2, submittedAt: now, choice, correct: d.correct,
+    confidence: CONFIDENCE[extra.confidence] ? extra.confidence : null,
+    reflection: String(reflection || '').trim().slice(0, 1500), auto, self: null };
 }

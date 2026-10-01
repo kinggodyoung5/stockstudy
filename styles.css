@@ -576,6 +576,30 @@ select optgroup option { color: var(--text); font-weight: 400; }
 .course-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 0; }
 .course-facts dt { font-size: 12px; color: var(--muted); }
 .course-facts dd { margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+
+/* ── 입문 피드백: 자동 확인과 자기 점검을 눈으로도 나눈다 ───────────── */
+.course-numeric input { width: 100%; max-width: 220px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
+.course-confidence { border: 0; padding: 0; margin: 4px 0 16px; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.course-confidence legend { font-size: 13px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+.course-confidence label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.fb-auto, .fb-self { padding: 14px 16px; margin-block: 14px; border: 1px solid var(--line); border-radius: 8px; }
+.fb-auto { border-left: 3px solid var(--accent); }
+.fb-self { border-left: 3px solid var(--warn); }
+.fb-auto h4, .fb-self h4 { margin: 0 0 8px; font-size: 14px; }
+.fb-head { margin: 12px 0 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.fb-list { margin: 0; padding-left: 20px; }
+.fb-list li { margin-bottom: 8px; }
+/* 관찰·조건 상태는 가격 방향이 아니므로 빨강(상승)·파랑(하락)을 쓰지 않는다 */
+.fb-wrong li::marker { color: var(--warn); }
+.fb-right li::marker { color: var(--accent); }
+.st-pass { color: var(--accent); white-space: nowrap; }
+.st-fail { color: var(--text); font-weight: 700; white-space: nowrap; }
+.st-pending { color: var(--warn); white-space: nowrap; }
+.fb-conditions td { vertical-align: top; }
+.fb-quote { margin: 8px 0 12px; padding: 10px 12px; border-left: 3px solid var(--line); color: var(--muted); white-space: pre-wrap; }
+.fb-self-item { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; cursor: pointer; }
+.fb-self-item input { flex-shrink: 0; }
 @media (max-width: 600px) {
   .course-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .course-facts { grid-template-columns: 1fr; }
