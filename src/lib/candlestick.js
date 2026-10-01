@@ -519,6 +519,13 @@ for (const [id, meta] of Object.entries(CANDLE_PATTERNS)) {
 }
 export const CANDLE_IDS = Object.keys(DETECTORS);
 
+/** 미래 봉·결과를 보지 않는 하루의 판정. 입문 교재도 같은 함수를 사용한다. */
+export function candleEvidence(id, candles, index) {
+  if (!DETECTORS[id] || !candles[index]) return null;
+  if (index - (CANDLE_PATTERNS[id].bars - 1) < (id.startsWith('gap-') ? 0 : 20)) return null;
+  return DETECTORS[id](candles, index);
+}
+
 /**
  * 한 종목에 모든 캔들 패턴을 적용.
  * patterns.js 의 detectStock 과 같은 형태의 결과를 돌려주므로 학습 탭에서 동일하게 다룰 수 있다.

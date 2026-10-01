@@ -372,7 +372,8 @@ export async function renderLearn(app, params) {
   content.append(el('div.rulebox', null, [
     el('h3', { text: '읽고 나서 설명할 수 있나요?' }),
     el('p', { text: '① 무엇을 관찰했나? ② 어떤 설정과 조건으로 판단했나? ③ 무엇은 아직 알 수 없나? 결과가 오른 것과 판단 근거가 타당한 것은 따로 확인합니다.' }),
-    el('a.btn', { href: '#/practice', text: '기초 읽기 연습으로 확인' }),
+    el('a.btn', { href: '#/practice', text: '구성 예제로 기초 확인' }),
+    el('a.btn', { href: '#/practice/chart', text: '실제 차트 · 입문 6단계' }),
   ]));
   for (const sec of lesson.body) {
     const node = el('section', null, [

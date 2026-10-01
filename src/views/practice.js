@@ -3,9 +3,11 @@ import { createStockChart } from '../lib/chart.js';
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
 import { renderRealStudy, destroyRealStudy } from './real-study.js';
+import { renderChartCourse, destroyChartCourse } from './chart-course.js';
 
 let chart = null;
 export function destroyPractice() {
+  destroyChartCourse();
   destroyRealStudy();
   if (chart) { chart.destroy(); chart = null; }
 }
@@ -13,6 +15,7 @@ export function destroyPractice() {
 export function renderPractice(app, params = []) {
   destroyPractice();
   if (params[0] === 'real') return renderRealStudy(app);
+  if (params[0] === 'chart') return renderChartCourse(app, params[1]);
   const bank = buildPractice(Math.floor(Math.random() * 20));
   const loaded = storage.load('practice:v1', {});
   const records = loaded && typeof loaded === 'object' && !Array.isArray(loaded) ? loaded : {};
@@ -98,6 +101,7 @@ export function renderPractice(app, params = []) {
     el('div.row', { style: { marginBottom: '16px' } }, [
       el('button.btn', { text: '전체 개념 연습', onclick: () => resetQueue(false) }),
       el('button.btn', { text: '복습할 개념만', onclick: () => resetQueue(true) }),
+      el('a.btn.primary', { href: '#/practice/chart', text: '실제 차트 · 입문 6단계' }),
       el('a.btn', { href: '#/practice/real', text: '실제 차트 비교 연습' }),
     ]), area, saveNote,
     el('section.panel', { style: { marginTop: '20px' } }, [

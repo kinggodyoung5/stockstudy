@@ -7,9 +7,9 @@
 import { loadEligibleStockList, loadStock } from '../lib/data.js';
 import { inspectStock } from '../lib/data-quality.js';
 import { createStockChart, COLORS } from '../lib/chart.js';
-import { sma, bollinger, ichimoku, cloudBounds, closes, volumes, crossAt, pct, disparity } from '../lib/indicators.js';
-import { rsi, macd, stochastic, adx } from '../lib/oscillators.js';
-import { el, clear, overlayBar, signed, dirClass } from '../lib/ui.js';
+import { pct } from '../lib/indicators.js';
+import { evaluateSignals } from '../lib/quiz-signals.js';
+import { el, clear, signed, dirClass } from '../lib/ui.js';
 import { createOscillatorPanel, syncTimeScales } from '../lib/chart.js';
 import { OSCILLATORS } from '../lib/oscillators.js';
 import * as storage from '../lib/storage.js';
@@ -40,88 +40,6 @@ const ANSWERS = [
 const verdictOf = (changePct) =>
   changePct > FLAT_BAND ? 'up' : changePct < -FLAT_BAND ? 'down' : 'flat';
 
-/**
- * 앞구간(setup)만 보고 계산할 수 있는 신호들.
- * 각 신호는 "있었는가(present)"와 "어느 방향을 가리키는가(bias)"를 가진다.
- */
-function evaluateSignals(setup) {
-  const c = closes(setup);
-  const v = volumes(setup);
-  const last = setup.length - 1;
-  const m5 = sma(c, 5), m20 = sma(c, 20), m60 = sma(c, 60);
-  const bb = bollinger(c, 20, 2);
-  const cloud = cloudBounds(ichimoku(setup));
-  const r = rsi(c, 14);
-  const m = macd(c);
-  const st = stochastic(setup);
-  const ax = adx(setup, 14);
-  const dis = disparity(c, 20);
-
-  const recentCross = (a, b, dir, within) => {
-    for (let i = Math.max(1, last - within); i <= last; i++) if (crossAt(a, b, i) === dir) return true;
-    return false;
-  };
-  const recentBand = (side, within) => {
-    for (let i = Math.max(0, last - within); i <= last; i++) {
-      if (side === 'upper' && bb.upper[i] != null && c[i] > bb.upper[i]) return true;
-      if (side === 'lower' && bb.lower[i] != null && c[i] < bb.lower[i]) return true;
-    }
-    return false;
-  };
-  const recentVolumeSpike = (within) => {
-    for (let i = Math.max(21, last - within); i <= last; i++) {
-      let avg = 0;
-      for (let k = i - 20; k < i; k++) avg += v[k];
-      avg /= 20;
-      if (avg > 0 && v[i] / avg >= 3) return true;
-    }
-    return false;
-  };
-  const near = (arr) => arr[last];
-
-  return [
-    // 추세
-    { id: 'golden', group: '추세', label: '최근 10일 안에 골든크로스 (20일선이 60일선 상향 돌파)', bias: 'up', present: recentCross(m20, m60, 1, 10) },
-    { id: 'dead', group: '추세', label: '최근 10일 안에 데드크로스 (20일선이 60일선 하향 돌파)', bias: 'down', present: recentCross(m20, m60, -1, 10) },
-    { id: 'align', group: '추세', label: '이동평균선 정배열 (5일 > 20일 > 60일)', bias: 'up', present: m5[last] > m20[last] && m20[last] > m60[last] },
-    { id: 'revalign', group: '추세', label: '이동평균선 역배열 (5일 < 20일 < 60일)', bias: 'down', present: m5[last] < m20[last] && m20[last] < m60[last] },
-    { id: 'above20', group: '추세', label: '종가가 20일선 위', bias: 'up', present: m20[last] != null && c[last] > m20[last] },
-    { id: 'adxtrend', group: '추세', label: 'ADX 25 이상 (뚜렷한 추세 국면)', bias: 'none', present: near(ax.adx) != null && near(ax.adx) >= 25 },
-    { id: 'diplus', group: '추세', label: '+DI 가 −DI 보다 위 (상승 방향 우위)', bias: 'up', present: near(ax.plusDI) != null && near(ax.plusDI) > near(ax.minusDI) },
-
-    // 모멘텀
-    { id: 'rsihigh', group: '모멘텀', label: 'RSI 70 이상 (과매수 구간)', bias: 'down', present: near(r) != null && near(r) >= 70 },
-    { id: 'rsilow', group: '모멘텀', label: 'RSI 30 이하 (과매도 구간)', bias: 'up', present: near(r) != null && near(r) <= 30 },
-    { id: 'macdup', group: '모멘텀', label: '최근 10일 안에 MACD 골든크로스', bias: 'up', present: recentCross(m.line, m.signal, 1, 10) },
-    { id: 'macddown', group: '모멘텀', label: '최근 10일 안에 MACD 데드크로스', bias: 'down', present: recentCross(m.line, m.signal, -1, 10) },
-    { id: 'macdpos', group: '모멘텀', label: 'MACD 히스토그램이 0 위 (단기 우위)', bias: 'up', present: near(m.hist) != null && near(m.hist) > 0 },
-    { id: 'stochlow', group: '모멘텀', label: '스토캐스틱 %K 20 이하 (침체 구간)', bias: 'up', present: near(st.k) != null && near(st.k) <= 20 },
-    { id: 'stochhigh', group: '모멘텀', label: '스토캐스틱 %K 80 이상 (과열 구간)', bias: 'down', present: near(st.k) != null && near(st.k) >= 80 },
-    { id: 'dishigh', group: '모멘텀', label: '이격도 110 이상 (20일선에서 크게 위로 벌어짐)', bias: 'down', present: near(dis) != null && near(dis) >= 110 },
-    { id: 'dislow', group: '모멘텀', label: '이격도 92 이하 (20일선에서 크게 아래로 벌어짐)', bias: 'up', present: near(dis) != null && near(dis) <= 92 },
-
-    // 변동성 · 위치
-    { id: 'bbup', group: '변동성', label: '최근 5일 안에 볼린저밴드 상단 이탈', bias: 'up', present: recentBand('upper', 5) },
-    { id: 'bbdown', group: '변동성', label: '최근 5일 안에 볼린저밴드 하단 이탈', bias: 'down', present: recentBand('lower', 5) },
-    { id: 'squeeze', group: '변동성', label: '밴드폭이 최근 60일 중 하위권 (스퀴즈 상태)', bias: 'none', present: (() => {
-      const w = bb.width.slice(Math.max(0, last - 60), last + 1).filter((x) => x != null);
-      if (w.length < 30 || bb.width[last] == null) return false;
-      const sorted = [...w].sort((x, y) => x - y);
-      return bb.width[last] <= sorted[Math.floor(sorted.length * 0.2)];
-    })() },
-    { id: 'cloudup', group: '변동성', label: '주가가 일목 구름대 위', bias: 'up', present: cloud.top[last] != null && c[last] > cloud.top[last] },
-    { id: 'clouddown', group: '변동성', label: '주가가 일목 구름대 아래', bias: 'down', present: cloud.bottom[last] != null && c[last] < cloud.bottom[last] },
-
-    // 거래량
-    { id: 'volspike', group: '거래량', label: '최근 5일 안에 거래량 급증 (평균 3배 이상)', bias: 'none', present: recentVolumeSpike(5) },
-    { id: 'voldry', group: '거래량', label: '최근 5일 평균 거래량이 20일 평균의 70% 이하 (거래 위축)', bias: 'none', present: (() => {
-      if (last < 25) return false;
-      const a5 = v.slice(last - 4, last + 1).reduce((x, y) => x + y, 0) / 5;
-      const a20 = v.slice(last - 19, last + 1).reduce((x, y) => x + y, 0) / 20;
-      return a20 > 0 && a5 / a20 <= 0.7;
-    })() },
-  ];
-}
 export async function renderQuiz(app) {
   destroyQuiz();
   const version = quizVersion;
@@ -222,7 +140,7 @@ export async function renderQuiz(app) {
       stock, setup, future, changePct,
       actual: verdictOf(changePct),
       cutDate: setup[setup.length - 1].date,
-      signals: evaluateSignals(all.slice(0, start + SETUP_BARS)),
+      signals: evaluateSignals(stock, start + SETUP_BARS - 1),
       checked: new Set(),
       answered: false,
     };
@@ -310,7 +228,7 @@ export async function renderQuiz(app) {
           el('span.spacer'),
           el('strong', { class: dirClass(current.changePct), text: signed(current.changePct) }),
         ]),
-        el('p.small.muted', { style: { margin: '10px 0 4px' }, text: '간이 조건이 있었는지 복습하는 체크리스트입니다. 한 번 결과 방향이 일치했다고 그 신호의 유효성이 검증된 것은 아닙니다.' }),
+        el('p.small.muted', { style: { margin: '10px 0 4px' }, text: '레슨과 같은 조건을 마지막 관찰일까지의 자료로 검사합니다. RSI 같은 지표의 상태와 이후 주가의 방향은 별개입니다. 결과를 본 뒤 체크하는 복습이며 사전 판단 점수가 아닙니다.' }),
         signalChecklist(presentSignals),
       ])
     );
@@ -335,30 +253,21 @@ export async function renderQuiz(app) {
           return;
         }
         if (!s.present) {
-          verdict.textContent = '이 구간에는 없던 신호입니다.';
+          verdict.textContent = '최근 10거래일 안에 확인 완료된 조건은 없습니다. 아직 형성 중인 후보는 세지 않습니다.';
           verdict.className = 'verdict muted';
           label.className = 'miss';
           return;
         }
-        if (s.bias === 'none') {
-          verdict.textContent = `있었음 — 방향을 알려주는 신호는 아닙니다. 실제 결과는 ${signed(current.changePct)}.`;
-          verdict.className = 'verdict muted';
-          label.className = 'hit';
-          return;
-        }
-        const matched = (s.bias === 'up' && current.changePct > 0) || (s.bias === 'down' && current.changePct < 0);
-        verdict.textContent = matched
-          ? `있었음 — 이번에는 방향이 맞았습니다 (${signed(current.changePct)}).`
-          : `있었음 — 이번에는 방향이 빗나갔습니다 (${signed(current.changePct)}).`;
-        verdict.className = 'verdict ' + (matched ? 'up' : 'down');
+        verdict.textContent = '조건 확인일: ' + s.dates.join(', ') + '. 이후 방향이나 매매 시점을 보장하지 않습니다.';
+        verdict.className = 'verdict muted';
         label.className = 'hit';
       };
 
       input.addEventListener('change', evaluate);
-      wrap.append(label);
+      wrap.append(label, el('details.small', null, [el('summary', { text: '이 앱의 정확한 판정 기준' }), el('ul', null, s.rules.map((rule) => el('li', { text: rule })))]));
     }
     wrap.append(
-      el('p.small.muted', { style: { margin: '8px 0 0' }, text: `이번 구간에 실제로 있던 신호는 ${current.signals.length}개 중 ${presentSignals.length}개입니다. 신호가 여러 개 있어도 방향이 빗나가는 경우가 흔하다는 점을 함께 확인하세요.` })
+      el('p.small.muted', { style: { margin: '8px 0 0' }, text: `마지막 관찰일까지 최근 10거래일 안에 확인된 조건은 ${current.signals.length}개 중 ${presentSignals.length}개입니다. 조건이 있었다는 사실과 이후 방향의 적중은 나눠서 확인하세요.` })
     );
     return wrap;
   }
@@ -366,7 +275,7 @@ export async function renderQuiz(app) {
   clear(app).append(
     el('h1.page-title', { text: '방향 예측 실험 (보조 활동)' }),
     el('p.page-sub', { text: '실제 과거 구간의 이후 방향을 예상해보는 실험입니다. 방향 적중률은 차트 읽기 숙달 점수가 아닙니다. 상승·횡보·하락의 출현 비율도 같지 않습니다. 기초 공부는 “기초 읽기 연습”에서 시작하세요.' }),
-    el('p.small.warn', { text: `정합성을 통과한 ${index.length}개 종목에서만 출제합니다. 간이 신호 체크리스트는 레슨의 탐지 엔진과 조건이 다릅니다. 정의 통합 전까지는 복습 참고용이며, 결과를 본 뒤 고른 근거는 사전 판단 기록이 아닙니다.` }),
+    el('p.small.warn', { text: `정합성을 통과한 ${index.length}개 종목에서만 출제합니다. 체크리스트는 레슨과 같은 탐지 엔진으로 마지막 10거래일의 확인 완료 조건만 셉니다. 결과를 본 뒤 고른 근거는 사전 판단 기록이 아닙니다.` }),
     el('div.quiz-grid', null, [
       el('div.panel', null, [questionMeta, box, panelWrap, resultArea]),
       el('div', null, [

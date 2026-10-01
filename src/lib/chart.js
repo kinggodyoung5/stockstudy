@@ -87,6 +87,8 @@ export function createStockChart(container, opts = {}) {
   const volumeSeries = chart.addHistogramSeries({
     priceFormat: { type: 'volume' },
     priceScaleId: 'vol',
+    lastValueVisible: false,
+    priceLineVisible: false,
   });
   chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 }, visible: false });
 

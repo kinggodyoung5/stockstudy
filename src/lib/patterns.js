@@ -20,7 +20,7 @@ export { OUTCOME_DAYS };
  * 사실이므로, 성과는 신호일이 아니라 조건이 확정되는 날부터 잰다.
  * (confirmedOutcome 주석 참고)
  */
-const CROSS_HOLD = 5;   // 골든/데드크로스 — 교차 후 유지 확인
+import { CROSS_HOLD, crossCondition, volumeCondition } from './signal-conditions.js';
 const ALIGN_HOLD = 10;  // 정배열 성립 — 배열 유지 확인
 const CLOUD_HOLD = 3;   // 구름대 돌파 — 돌파 유지 확인
 
@@ -124,21 +124,8 @@ function detectCross(stock, direction) {
   for (let i = 1; i < candles.length; i++) {
     if (crossAt(short, long, i) !== direction) continue;
 
-    // 조건 2: 교차 후 CROSS_HOLD 거래일 유지.
-    // 이 조건이 참인지는 CROSS_HOLD 일이 지나야 알 수 있으므로, 성과는 그날부터 잰다.
-    let held = true;
-    for (let k = i; k <= i + CROSS_HOLD && k < candles.length; k++) {
-      if (short[k] == null || long[k] == null) { held = false; break; }
-      if (direction === 1 ? short[k] <= long[k] : short[k] >= long[k]) { held = false; break; }
-    }
-    if (!held) continue;
-
-    // 조건 3: 직전 20거래일 내 반대 교차 없음
-    let clean = true;
-    for (let k = Math.max(1, i - 20); k < i; k++) {
-      if (crossAt(short, long, k) === -direction) { clean = false; break; }
-    }
-    if (!clean) continue;
+    const state = crossCondition(short, long, i, candles.length - 1, direction);
+    if (state.status === 'fail') continue;
 
     hits.push({
       index: i,
@@ -233,20 +220,11 @@ function detectVolumeSpike(stock) {
   let last = -999;
 
   for (let i = 21; i < candles.length; i++) {
-    let avg = 0;
-    for (let k = i - 20; k < i; k++) avg += v[k];
-    avg /= 20;
-    if (avg <= 0) continue;
-
-    const ratio = v[i] / avg;
-    if (ratio < 2) continue;   // 2배가 가장 널리 쓰이는 기준
-
-    const chg = pct(candles[i - 1].close, candles[i].close);
-    if (Math.abs(chg) < 2) continue;
-
-    const isFirst = i - last > 10;
+    const condition = volumeCondition(candles, i, last);
+    if (!condition.candidate) continue;
     last = i;
-    if (!isFirst) continue;
+    if (condition.status !== 'pass') continue;
+    const { avg, ratio, change: chg } = condition;
 
     hits.push({
       index: i,

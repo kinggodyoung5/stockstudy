@@ -5,6 +5,7 @@
 
 import { expandStock } from './data-quality.js';
 import { RULES_VERSION } from './rules-version.js';
+import { COURSE_VERSION } from './chart-course.js';
 const BASE = new URL('../../data/', import.meta.url);
 
 const stockCache = new Map();
@@ -93,6 +94,13 @@ export async function loadPatternIndex() {
     patternIndexCache = payload;
   }
   return patternIndexCache;
+}
+
+export async function loadChartCourse() {
+  const [course, index] = await Promise.all([getJson('chart-course.json'), loadPatternIndex()]);
+  if (course.version !== COURSE_VERSION || course.provenance?.sourceDigest !== index.provenance.sourceDigest
+    || course.provenance?.rulesVersion !== RULES_VERSION) throw new Error('입문 교재 버전이 다릅니다. node tools/build-course.mjs 로 재생성하세요.');
+  return course;
 }
 
 /** 날짜 문자열로 캔들 인덱스 찾기 (없으면 -1) */

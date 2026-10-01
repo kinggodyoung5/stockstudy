@@ -1,4 +1,5 @@
 /** 작은 DOM 헬퍼들 (프레임워크 없이 쓰기 위한 최소 도구) */
+import { EVIDENCE_UNITS } from './evidence-units.js';
 
 /**
  * el('div.foo', { onclick }, ['텍스트', childNode])
@@ -77,15 +78,14 @@ export function signed(v) {
   return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 }
 
-/** 명시 단위를 우선하고 기존 근거 라벨의 비가격 단위를 호환한다. */
-const NON_PRICE = /(%|÷|배수|비율|거래일|거래량|횟수|R²|기울기|오차|포인트|RSI|OBV|ADX|[+−-]DI|스토캐스틱|이격도)/i;
+/** 등록되지 않은 수치는 통화로 추측하지 않고 단위 미확인으로 표시한다. */
 export function formatEvidence(e, currency) {
   if (e.value == null) return '—';
   if (typeof e.value !== 'number') return String(e.value);
-  if (e.unit ? e.unit !== 'price' : NON_PRICE.test(e.label)) {
-    return e.value.toLocaleString('ko-KR', { maximumFractionDigits: 4 });
-  }
-  return fmt(e.value, currency);
+  const unit = e.unit || EVIDENCE_UNITS[e.label];
+  if (unit === 'price') return fmt(e.value, currency);
+  const value = e.value.toLocaleString('ko-KR', { maximumFractionDigits: 4 });
+  return unit ? value : value + ' (단위 미확인)';
 }
 
 /** 등락 색 클래스 */

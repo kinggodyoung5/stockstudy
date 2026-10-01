@@ -183,12 +183,12 @@ export const OSC_PATTERNS = {
   'rsi-oversold': {
     name: 'RSI 과매도 진입', lesson: 'rsi', bias: 'up',
     summary: 'RSI(14)가 30 아래로 내려간 첫날',
-    rules: ['전일 RSI > 30 이고 당일 RSI ≤ 30', '직전 20거래일 안에 같은 신호가 없었음'],
+    rules: ['전일 RSI > 30 이고 당일 RSI ≤ 30', '직전 같은 조건 충족 후보부터 20거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'rsi-overbought': {
     name: 'RSI 과매수 진입', lesson: 'rsi', bias: 'down',
     summary: 'RSI(14)가 70 위로 올라간 첫날',
-    rules: ['전일 RSI < 70 이고 당일 RSI ≥ 70', '직전 20거래일 안에 같은 신호가 없었음'],
+    rules: ['전일 RSI < 70 이고 당일 RSI ≥ 70', '직전 같은 조건 충족 후보부터 20거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'rsi-bullish-divergence': {
     name: 'RSI 강세 다이버전스', lesson: 'divergence', bias: 'up',
@@ -224,7 +224,7 @@ export const OSC_PATTERNS = {
     rules: [
       'MACD선이 시그널선을 상향 교차',
       '교차 시점의 MACD선이 0 아래 (하락 국면에서의 반전만 잡는다)',
-      '직전 15거래일 안에 같은 신호가 없었음',
+      '직전 같은 조건 충족 후보부터 15거래일 이상 간격 (미표시 후보도 간격 재시작)',
     ],
   },
   'macd-dead-cross': {
@@ -233,7 +233,7 @@ export const OSC_PATTERNS = {
     rules: [
       'MACD선이 시그널선을 하향 교차',
       '교차 시점의 MACD선이 0 위',
-      '직전 15거래일 안에 같은 신호가 없었음',
+      '직전 같은 조건 충족 후보부터 15거래일 이상 간격 (미표시 후보도 간격 재시작)',
     ],
   },
   'macd-bullish-divergence': {
@@ -295,32 +295,32 @@ export const OSC_PATTERNS = {
   'stochastic-oversold-cross': {
     name: '스토캐스틱 과매도 반등', lesson: 'stochastic', bias: 'up',
     summary: '과매도 구간(20 이하)에서 %K가 %D를 위로 뚫는 지점',
-    rules: ['%K가 %D를 상향 교차', '교차 시점의 %K, %D 모두 20 이하 (표준 과매도선)', '직전 15거래일 안에 같은 신호가 없었음'],
+    rules: ['%K가 %D를 상향 교차', '교차 시점의 %K, %D 모두 20 이하 (표준 과매도선)', '직전 같은 조건 충족 후보부터 15거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'stochastic-overbought-cross': {
     name: '스토캐스틱 과열 꺾임', lesson: 'stochastic', bias: 'down',
     summary: '과매수 구간(80 이상)에서 %K가 %D를 아래로 뚫는 지점',
-    rules: ['%K가 %D를 하향 교차', '교차 시점의 %K, %D 모두 80 이상 (표준 과매수선)', '직전 15거래일 안에 같은 신호가 없었음'],
+    rules: ['%K가 %D를 하향 교차', '교차 시점의 %K, %D 모두 80 이상 (표준 과매수선)', '직전 같은 조건 충족 후보부터 15거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'adx-uptrend-start': {
     name: 'ADX 상승추세 발생', lesson: 'adx', bias: 'up',
     summary: '횡보하던 흐름에서 ADX가 25를 넘어서고 +DI가 우위인 지점',
-    rules: ['전일 ADX < 25 이고 당일 ADX ≥ 25', '당일 +DI > −DI (상승 방향)', '직전 20거래일 안에 같은 신호가 없었음'],
+    rules: ['전일 ADX < 25 이고 당일 ADX ≥ 25', '당일 +DI > −DI (상승 방향)', '직전 같은 조건 충족 후보부터 20거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'adx-downtrend-start': {
     name: 'ADX 하락추세 발생', lesson: 'adx', bias: 'down',
     summary: 'ADX가 25를 넘어서고 −DI가 우위인 지점',
-    rules: ['전일 ADX < 25 이고 당일 ADX ≥ 25', '당일 −DI > +DI (하락 방향)', '직전 20거래일 안에 같은 신호가 없었음'],
+    rules: ['전일 ADX < 25 이고 당일 ADX ≥ 25', '당일 −DI > +DI (하락 방향)', '직전 같은 조건 충족 후보부터 20거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'disparity-overheat': {
     name: '이격도 과열', lesson: 'disparity', bias: 'down',
     summary: '종가가 20일선보다 10% 이상 위로 벌어진 지점',
-    rules: ['이격도(종가 ÷ 20일선 × 100) ≥ 110', '직전 20거래일 안에 같은 신호가 없었음'],
+    rules: ['전일 이격도 < 110 이고 당일 이격도(종가 ÷ 20일선 × 100) ≥ 110', '직전 같은 조건 충족 후보부터 20거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'disparity-oversold': {
     name: '이격도 침체', lesson: 'disparity', bias: 'up',
     summary: '종가가 20일선보다 10% 이상 아래로 벌어진 지점',
-    rules: ['이격도 ≤ 90', '직전 20거래일 안에 같은 신호가 없었음'],
+    rules: ['전일 이격도 > 90 이고 당일 이격도 ≤ 90', '직전 같은 조건 충족 후보부터 20거래일 이상 간격 (미표시 후보도 간격 재시작)'],
   },
   'squeeze-breakout-up': {
     name: '볼린저 스퀴즈 상향 돌파', lesson: 'squeeze', bias: 'up',

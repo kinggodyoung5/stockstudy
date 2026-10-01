@@ -16,6 +16,7 @@ import { SHAPE_PATTERNS, detectShapePatterns } from './patterns-shape.js';
 import { OSC_PATTERNS, detectOscillatorPatterns } from './patterns-oscillator.js';
 import { CANDLE_PATTERNS, detectCandlePatterns } from './candlestick.js';
 import { inspectStock } from './data-quality.js';
+import { withEvidenceUnit } from './evidence-units.js';
 
 /** 패턴 정의 전체 — id → { name, lesson, summary, rules, bias } */
 export const ALL_PATTERNS = {
@@ -55,7 +56,7 @@ export function detectStock(stock) {
     currency: stock.currency,
   };
   for (const [id, hits] of Object.entries(merged)) {
-    merged[id] = hits.map((h) => ({ ...stamp, pattern: id, ...h }));
+    merged[id] = hits.map((h) => ({ ...stamp, pattern: id, ...h, evidence: h.evidence.map(withEvidenceUnit) }));
   }
   return merged;
 }
