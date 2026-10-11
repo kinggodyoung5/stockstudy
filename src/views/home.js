@@ -22,7 +22,7 @@ const STEPS = [
     n: 1,
     title: '개념을 배운다',
     href: '#/learn/chart-basics',
-    body: '지표와 패턴이 무엇을 재는 것인지 먼저 읽습니다. 각 레슨에는 그 신호의 판정 기준이 수치 그대로 공개돼 있고, 실제 과거 데이터에서 자동으로 찾아낸 사례가 근거 수치와 함께 붙어 있습니다.',
+    body: '봉과 지표가 무엇을 나타내는지 배웁니다. 각 레슨에서 판정 기준과 실제 차트 사례를 함께 살펴보세요.',
     cta: '가격과 봉부터 시작',
   },
   {
@@ -34,17 +34,17 @@ const STEPS = [
   },
   {
     n: 3,
-    title: '실제 데이터로 눈을 훈련한다',
+    title: '실제 차트를 읽는다',
     href: '#/practice/chart',
     body: '실제 차트에서 봉·추세·평균·거래량·RSI와 MACD를 순서대로 읽습니다. 충족·불충족·확인 대기와 엇갈리는 근거도 구별합니다. 익숙해지면 데이터 뷰어에서 자유롭게 연습하세요.',
     cta: '실제 차트 입문 6단계',
   },
   {
     n: 4,
-    title: '다른 차트에서 다시 설명한다',
-    href: '#/learn/analysis-process',
-    body: '며칠 뒤 다른 종목에서 도움말 없이 관찰·해석·반대 증거·무효 조건을 적습니다. 다음 주가를 맞히는 것과 차트를 정확히 읽는 것은 별도로 평가합니다.',
-    cta: '종합 복기 방법 읽기',
+    title: '다른 차트로 확인한다',
+    href: '#/practice/check',
+    body: '연습과 겹치지 않는 구간에서 배운 내용을 확인합니다. 어려웠던 개념은 복습하고, 처음 쓴 근거와 해설을 본 뒤의 생각을 비교하세요.',
+    cta: '새 구간에서 확인하기',
   },
 ];
 
@@ -58,8 +58,12 @@ export async function renderHome(app) {
   const hero = el('div.hero', null, [
     el('h1', { text: '차트를 읽고, 근거를 설명하는 공부' }),
     el('p', { text:
-      '목표는 기술적 분석의 기초를 익히는 것입니다. 가격과 추세를 관찰하고, 지표가 재는 것을 이해하고, ' +
-      '해석의 근거와 한계를 스스로 설명하는 연습을 합니다. 과거 사례와 통계는 그 연습을 돕는 자료이지 정답 예측기가 아닙니다.' }),
+      '봉과 추세부터 이동평균, 거래량, 보조지표까지. 실제 차트를 보며 기술적 분석의 기초를 익힙니다. ' +
+      '다음 주가를 맞히기보다, 지금 차트에서 무엇을 읽었고 왜 그렇게 판단했는지 설명해보세요.' }),
+    el('div.row', { style: { marginBottom: '24px' } }, [
+      el('a.btn.primary', { href: '#/practice/chart', text: '실제 차트로 공부하기' }),
+      el('a.btn', { href: '#/learn/chart-basics', text: '기초 개념부터 읽기' }),
+    ]),
     data
       ? el('div.hero-stats', null, [
           el('div', null, [el('b', { text: String(data.patterns.length) }), el('span', { text: '탐지 규칙' })]),
@@ -101,11 +105,11 @@ export async function renderHome(app) {
     hero,
     qualityNotice(data),
     el('div.step-section', null, [
-      el('h2.section-title', { text: '어떤 순서로 보면 되나' }),
+      el('h2.section-title', { text: '이 순서로 공부해보세요' }),
       steps,
     ]),
     el('section.panel', { style: { marginTop: '18px' } }, [
-      el('h2.section-title', { text: '기초 마스터를 위한 7단계' }),
+      el('h2.section-title', { text: '기초 개념 학습 순서' }),
       el('p.small.muted', { text: '입문자는 이 순서로 시작하세요. 단계를 읽었다고 완료 처리하지 않습니다. 새 차트에서 직접 설명할 수 있는지가 기준입니다.' }),
       el('ol.curriculum', null, CURRICULUM.map((step) => el('li', null, [
         el('a', { href: `#/learn/${step.lesson}`, text: step.title.replace(/^\d+\. /, '') }), el('p.small.muted', { text: step.goal }),
@@ -114,7 +118,7 @@ export async function renderHome(app) {
     ]),
     el('div.panel', { style: { marginTop: '18px' } }, [
       el('h2.section-title', { style: { marginTop: 0 }, text: `학습 레슨 ${LESSONS.length}개` }),
-      el('p.small.muted', { style: { margin: '0 0 14px' }, text: '아래는 찾아보기용 전체 목록입니다. 처음에는 위의 기초 순서를 따라가고, 필요한 지표와 패턴을 확장하세요.' }),
+      el('p.small.muted', { style: { margin: '0 0 14px' }, text: '아래는 찾아보기용 전체 목록입니다. 처음에는 위 순서대로 공부하고, 이후에 필요한 지표와 패턴을 찾아보세요.' }),
       toc,
     ]),
     el('div.panel.caution', { style: { marginTop: '18px' } }, [

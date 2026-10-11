@@ -12,7 +12,7 @@ import { DOMAINS, DOMAIN_OF, HELP, itemId, assessmentRecord, normalizeAssessment
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
 import { autoCheck, selfCheck } from './course-feedback.js';
-import { drawCaseCharts, factsList, optionsField, pickedChoice, confidenceField, numericField, caseHeader, rulesBox, legendNotes } from './case-view.js';
+import { drawCaseCharts, factsList, optionsField, pickedChoice, confidenceField, numericField, caseHeader, rulesBox, legendNotes, arrangeStudyDesk } from './case-view.js';
 
 export const ASSESSMENT_KEY = 'assessment:v1';
 const WHY = { wrong: '오답', unsure: '확신 낮음', help: '도움 받음', self: '자기 점검에서 표시 못 한 항목' };
@@ -47,8 +47,8 @@ export async function renderAssessment(app) {
     state = { ...state, session: ids.length ? { startedAt: Date.now(), ids, missing, help: {}, retry: null } : null };
     persist();
     if (!ids.length) {
-      clear(area).append(el('h2', { text: '새 구간이 남지 않았습니다' }),
-        el('p', { text: `평가 문항 ${items.length}개를 모두 화면에 냈습니다. 이미 푼 문항을 다시 풀 수는 있지만 재시도로 따로 기록합니다. 처음 보는 구간이라고 표시하지 않습니다.` }));
+      clear(area).append(el('h2', { text: '새로 풀 구간이 없습니다' }),
+        el('p', { text: `평가 문항 ${items.length}개를 모두 확인했습니다. 이미 푼 문항을 다시 풀 수는 있지만 재시도로 따로 기록합니다. 처음 보는 구간이라고 표시하지 않습니다.` }));
       return;
     }
     draw();
@@ -86,8 +86,8 @@ export async function renderAssessment(app) {
       const options = optionsField(q, 'assess-answer');
       const confidence = confidenceField('assess-confidence');
       const { box: numericBox, input: numericInput } = numericField(q, 'assess-numeric',
-        q.numeric && `선택 입력입니다. 비워도 제출됩니다. 숫자는 ‘비교 값 보기’를 열어야 보이며, 열면 도움을 받은 것으로 기록합니다. 소수 ${q.numeric.decimals}째 자리까지 적습니다.`);
-      const reflection = el('textarea', { id: 'assess-reflection', rows: 3, maxlength: 1500, placeholder: '눈에 보이는 값이나 위치를 근거로 적어보세요.' });
+        q.numeric && `입력하지 않아도 제출할 수 있습니다. 숫자는 ‘비교 값 보기’를 열어야 보이며, 열면 도움을 받은 것으로 기록합니다. 소수 ${q.numeric.decimals}째 자리까지 적습니다.`);
+      const reflection = el('textarea', { id: 'assess-reflection', rows: 3, maxlength: 1500, placeholder: '차트에서 읽은 가격, 날짜, 선의 위치를 근거로 적어보세요.' });
 
       // 도움: 열면 그 자리에서 기록한다. 제출 전에 연 것만 도움으로 센다.
       const helpStatus = el('p.small.muted', { 'aria-live': 'polite' });
@@ -128,7 +128,7 @@ export async function renderAssessment(app) {
           helpButtons.forEach((b) => { b.disabled = true; });
           if (numericInput) numericInput.readOnly = true;
           clear(feedback).append(...[
-            el('h3', { text: record.correct ? '관찰과 선택이 맞았습니다' : '다시 볼 관찰이 있습니다' }),
+            el('h3', { text: record.correct ? '선택한 설명이 맞습니다' : '차트에서 다시 확인할 부분이 있습니다' }),
             retry ? el('p.small.warn', { text: '재시도입니다. 같은 차트와 해설을 이미 봤으므로 첫 시도와 따로 셉니다.' }) : null,
             usedHelp(record) ? el('p.small.muted', { text: '도움을 열고 푼 결과로 기록했습니다.' }) : null,
             autoCheck(q, record),
@@ -158,6 +158,7 @@ export async function renderAssessment(app) {
         q.reflection ? el('label.practice-label', { for: 'assess-reflection', text: q.reflection }) : null,
         q.reflection ? reflection : null, submit, feedback,
       ].filter(Boolean));
+      arrangeStudyDesk(area, chartBox, panelWrap);
       cleanup = drawCaseCharts(chartBox, panelWrap, q, view, history, ref.date);
     } catch (error) {
       if (token === generation && drawToken === serial && app.isConnected) clear(area).append(el('p.error', { text: error.message }), startButton);
@@ -171,7 +172,7 @@ export async function renderAssessment(app) {
       if (!ref || !first) return null;
       const domain = DOMAINS.find((d) => d.id === DOMAIN_OF[ref.type]);
       return el('li', null, [
-        el('b', { text: `${domain.title} · ${TASKS[ref.type][0]}` }), ` — ${first.correct ? '맞음' : '다시 볼 관찰 있음'}`,
+        el('b', { text: `${domain.title} · ${TASKS[ref.type][0]}` }), ` — ${first.correct ? '맞음' : '다시 확인할 부분 있음'}`,
         usedHelp(first) ? ' · 도움 받음' : '', first.confidence ? ` · 확신: ${CONFIDENCE[first.confidence]}` : '',
         first.correct ? null : el('button.btn.small-btn', { text: '같은 차트 다시 풀기 (재시도)', onclick: () => {
           state = { ...state, session: { ...state.session, retry: id } }; persist(); draw();
@@ -181,7 +182,7 @@ export async function renderAssessment(app) {
     clear(area).append(...[
       el('h2', { text: '이번 점검을 마쳤습니다' }),
       el('ul.assess-summary', null, rows),
-      s.missing?.length ? el('p.small.warn', { text: `새 구간이 남지 않아 이번 점검에서 뺀 영역: ${s.missing.map((m) => DOMAINS.find((d) => d.id === m).title).join(', ')}. 이미 본 문항으로 몰래 채우지 않았습니다.` }) : null,
+      s.missing?.length ? el('p.small.warn', { text: `새 구간이 남지 않아 이번 점검에서 뺀 영역: ${s.missing.map((m) => DOMAINS.find((d) => d.id === m).title).join(', ')}. 이미 본 문항은 대신 넣지 않습니다.` }) : null,
       el('p.small.muted', { text: '한 번의 점검은 영역마다 한 문항뿐입니다. 맞고 틀린 결과 하나로 그 영역을 안다·모른다고 판단하지 마세요.' }),
       el('div.row', null, [startButton, el('a.btn', { href: '#/practice/review', text: '복습할 주제 보기' })]),
     ].filter(Boolean));
@@ -193,7 +194,7 @@ export async function renderAssessment(app) {
     const count = (a, b) => `${b}개 중 ${a}개`;
     clear(report).append(...[
       el('h2', { text: '영역별 기록' }),
-      el('p.small.muted', { text: '맞힌 개수만 셉니다. 합격선이나 숙달 인증은 없습니다. 이후 주가가 어떻게 움직였는지는 점수에 들어가지 않습니다. 자기 점검과 서술은 자동 채점하지 않고 따로 셉니다.' }),
+      el('p.small.muted', { text: '맞힌 개수만 셉니다. 합격선이나 숙달 인증은 없습니다. 이후 주가가 어떻게 움직였는지는 점수에 들어가지 않습니다. 자기 점검과 작성한 근거는 자동 채점하지 않고 따로 기록합니다.' }),
       el('div.assess-grid', null, rows.map((r) => el('section.assess-card', null, [
         el('h3', { text: r.domain.title }),
         r.first ? el('dl.assess-kv', null, [
@@ -222,7 +223,7 @@ export async function renderAssessment(app) {
   const tried = Object.values(state.items).filter((e) => e?.first).length;
   clear(app).append(
     el('h1.page-title', { text: '새 구간에서 다시 읽기' }),
-    el('p.page-sub', { text: '입문 과정의 차트나 정답 문장을 기억하는 것과, 다른 구간을 실제로 읽는 것은 다릅니다. 연습 화면에 나오지 않은 구간에서 같은 관찰을 해봅니다. 시간 제한은 없습니다.' }),
+    el('p.page-sub', { text: '입문 과정의 차트나 정답 문장을 기억하는 것과, 다른 구간을 실제로 읽는 것은 다릅니다. 연습 화면에 나오지 않은 구간에서 배운 내용을 다시 확인해보세요. 시간 제한은 없습니다.' }),
     el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '입문 6단계로' }), el('a.btn', { href: '#/practice/review', text: '복습' }), el('a.btn', { href: '#/practice/records', text: '기록과 백업' })]),
     el('details.rulebox', null, [el('summary', { text: '‘새 구간’은 무엇을 뜻하나요?' }),
       el('p.small', { text: `평가 문항 ${items.length}개(${data.summary.tickers}개 종목)는 입문 과정 ${data.exposure.courseCases}사례와 실제 비교 연습 ${data.exposure.studyCases / 2}쌍의 화면 구간과 한 봉도 겹치지 않는 날짜에서 골랐습니다. 지표 계산에 쓰는 앞쪽 이력은 화면에 나오지 않으므로 겹침으로 세지 않습니다.` }),

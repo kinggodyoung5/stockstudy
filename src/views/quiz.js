@@ -274,7 +274,7 @@ export async function renderQuiz(app) {
 
   clear(app).append(
     el('h1.page-title', { text: '방향 예측 실험 (보조 활동)' }),
-    el('p.page-sub', { text: '실제 과거 구간의 이후 방향을 예상해보는 실험입니다. 방향 적중률은 차트 읽기 숙달 점수가 아닙니다. 상승·횡보·하락의 출현 비율도 같지 않습니다. 기초 공부는 “기초 읽기 연습”에서 시작하세요.' }),
+    el('p.page-sub', { text: '실제 과거 구간의 이후 방향을 예상해보는 실험입니다. 방향 적중률은 차트 읽기 숙달 점수가 아닙니다. 상승·횡보·하락의 출현 비율도 같지 않습니다. 기초 공부는 ‘학습하기’의 입문 과정에서 시작하세요.' }),
     el('p.small.warn', { text: `정합성을 통과한 ${index.length}개 종목에서만 출제합니다. 체크리스트는 레슨과 같은 탐지 엔진으로 마지막 10거래일의 확인 완료 조건만 셉니다. 결과를 본 뒤 고른 근거는 사전 판단 기록이 아닙니다.` }),
     el('div.quiz-grid', null, [
       el('div.panel', null, [questionMeta, box, panelWrap, resultArea]),
@@ -286,7 +286,7 @@ export async function renderQuiz(app) {
           ]),
         ]),
         el('div.panel', { style: { marginTop: '16px' } }, [
-          el('h3', { style: { margin: '0 0 10px', fontSize: '15px' }, text: '이번 세션 기록' }),
+          el('h3', { style: { margin: '0 0 10px', fontSize: '15px' }, text: '이번 연습 기록' }),
           scoreArea,
         ]),
         el('div.panel', { style: { marginTop: '16px' } }, [

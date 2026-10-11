@@ -16,7 +16,7 @@ import { el, clear, signed, dirClass, qualityNotice } from '../lib/ui.js';
 const GROUP_NAMES = {
   indicator: '지표 기반',
   shape: '도형 패턴',
-  oscillator: '오실레이터 · 다이버전스',
+  oscillator: '보조지표 · 다이버전스',
   candlestick: '캔들스틱',
 };
 
@@ -189,7 +189,7 @@ export async function renderStats(app) {
       : null;
 
     axisPanel.append(
-      el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: def.name + ' 으로 나눈 기준선' }),
+      el('h3', { style: { margin: '0 0 4px', fontSize: '15px' }, text: def.name + '별 기준선' }),
       el('p.small.muted', { style: { margin: '0 0 12px' }, text: def.why }),
       el('div.stat-row', null, def.keys.map((k) => {
         const bl = data.axisBaselines?.[state.axis]?.[k];
@@ -272,7 +272,7 @@ export async function renderStats(app) {
     ]),
 
     el('div.panel.caution', { style: { marginTop: '18px' } }, [
-      el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '이 표를 읽을 때 반드시 감안할 것' }),
+      el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '통계를 읽을 때 주의할 점' }),
       el('ul.small', { style: { margin: '0', paddingLeft: '20px' } }, [
         el('li', { text: '매매 전략을 과거에 돌려본 검증이 아니라 단순 집계입니다. 수수료, 세금, 원하는 가격에 못 사고 밀리는 손실, 분산투자, 자금 배분이 전혀 들어 있지 않습니다.' }),
         el('li', { text: `종목이 ${data.tickers}개입니다. 고점 대비 크게 밀린 종목과 오래 부진한 종목을 일부러 섞었지만, 여전히 '지금까지 상장을 유지한 회사들'만 들어 있습니다. 같은 기간에 상장폐지된 회사는 한 곳도 없습니다 (생존 편향). 실제보다 낙관적인 숫자라고 보는 편이 맞습니다.` }),

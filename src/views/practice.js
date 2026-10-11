@@ -76,11 +76,11 @@ export function renderPractice(app, params = []) {
       progress();
       submit.disabled = true; choices.disabled = true; reason.readOnly = true; confidence.disabled = true;
       clear(feedback).append(...[
-        el('h3', { text: correct ? '선택지 정답 — 근거도 대조해보세요' : '다시 확인할 개념이 있습니다' }),
+        el('h3', { text: correct ? '선택한 답이 맞습니다. 근거도 해설과 비교해보세요.' : '다시 확인할 개념이 있습니다' }),
         el('p', { text: `정답: ${q.options[q.answer]}` }),
         el('p', { text: q.explanation }),
-        !correct && confidence.value === 'sure' ? el('p.warn', { text: '확신했던 부분이 해설과 다릅니다. 어떤 기준을 혼동했는지 특히 확인하세요.' }) : null,
-        el('p.small.muted', { text: '내 근거에 관찰 사실이 있는지, 해석을 확정 예측으로 바꾸지는 않았는지 직접 점검하세요. 근거 내용은 자동 채점하지 않았습니다.' }),
+        !correct && confidence.value === 'sure' ? el('p.warn', { text: '확신했던 답이 해설과 다릅니다. 어떤 기준을 혼동했는지 특히 확인하세요.' }) : null,
+        el('p.small.muted', { text: '내 근거에 관찰 사실이 있는지, 해석을 확실한 예측처럼 쓰지는 않았는지 직접 점검하세요. 근거 내용은 자동 채점하지 않았습니다.' }),
         previous?.reason ? el('details', null, [el('summary', { text: '지난 근거와 비교' }), el('p', { text: previous.reason })]) : null,
         el('a.btn', { href: `#/learn/${q.lesson}`, text: '관련 개념 다시 읽기' }),
         el('button.btn', { text: index + 1 < queue.length ? '다음 개념' : '이번 연습 마치기', onclick: () => {

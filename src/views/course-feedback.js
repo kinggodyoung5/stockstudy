@@ -14,7 +14,7 @@ const fmt = (v) => Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 4 
 
 function readItem(r, mode) {
   const head = mode === 'wrong'
-    ? `고른 읽기 ‘${r.values[r.claimed]}’ · 실제 ‘${r.values[r.truth]}’`
+    ? `내가 고른 답 ‘${r.values[r.claimed]}’ · 차트에서 확인한 내용 ‘${r.values[r.truth]}’`
     : r.values[r.truth];
   return el('li', null, [
     el('b', { text: r.label }), ' — ', head,
@@ -63,7 +63,7 @@ export function autoCheck(q, record) {
   const d = diagnose(q, record.choice);
   const legacy = !record.auto;
   const box = el('section.fb-auto', null, [
-    el('h4', { text: '자동 확인 · 숫자와 관계, 정해진 조건' }),
+    el('h4', { text: '선택한 답과 차트 비교' }),
     el('p', null, [el('b', { text: record.correct ? '선택: 맞음' : '선택: 다시 볼 부분이 있음' }), ` — ‘${q.options[record.choice]}’`]),
     numericBlock(q.numeric, record.auto?.numeric || null),
   ]);
@@ -71,11 +71,11 @@ export function autoCheck(q, record) {
     if (!record.correct) box.append(el('p', { text: d.message || '' }));
     box.append(conditionTable(d));
   } else {
-    if (d.wrong.length) box.append(el('p.fb-head', { text: '다시 볼 관찰' }), el('ul.fb-list.fb-wrong', null, d.wrong.map((r) => readItem(r, 'wrong'))));
-    if (d.right.length) box.append(el('p.fb-head', { text: '맞게 읽은 관찰' }), el('ul.fb-list.fb-right', null, d.right.map((r) => readItem(r, 'right'))));
+    if (d.wrong.length) box.append(el('p.fb-head', { text: '다시 확인할 부분' }), el('ul.fb-list.fb-wrong', null, d.wrong.map((r) => readItem(r, 'wrong'))));
+    if (d.right.length) box.append(el('p.fb-head', { text: '정확히 읽은 부분' }), el('ul.fb-list.fb-right', null, d.right.map((r) => readItem(r, 'right'))));
     if (d.context.length && !record.correct) box.append(el('p.fb-head', { text: '함께 볼 값' }), el('ul.fb-list', null, d.context.map((r) => readItem(r, 'right'))));
   }
-  if (record.confidence) box.append(el('p.small.muted', { text: `제출할 때 고른 확신: ${CONFIDENCE[record.confidence]}` }));
+  if (record.confidence) box.append(el('p.small.muted', { text: `답을 제출할 때의 확신: ${CONFIDENCE[record.confidence]}` }));
   if (legacy) box.append(el('p.small.muted', { text: '이 기록은 이전 형식이라 관찰별 설명을 지금 다시 계산해 보여줍니다. 저장된 정답 여부는 바꾸지 않았습니다.' }));
   return box;
 }

@@ -27,9 +27,9 @@ function svg(h, body, alt = '') {
   return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="${alt}" xmlns="http://www.w3.org/2000/svg">
 <style>
   .l{fill:none;stroke-linecap:round;stroke-linejoin:round}
-  .t{font:600 12.5px Pretendard,-apple-system,'Malgun Gothic',sans-serif;fill:${C.muted}}
-  .ts{font:500 11.5px Pretendard,-apple-system,'Malgun Gothic',sans-serif;fill:${C.muted}}
-  .tb{font:800 13px Pretendard,-apple-system,'Malgun Gothic',sans-serif;fill:${C.text}}
+  .t{font:600 12.5px SUIT,'Malgun Gothic',sans-serif;fill:${C.muted}}
+  .ts{font:500 11.5px SUIT,'Malgun Gothic',sans-serif;fill:${C.muted}}
+  .tb{font:750 13px SUIT,'Malgun Gothic',sans-serif;fill:${C.text}}
   .ax{stroke:${C.line};stroke-width:1}
   .dash{stroke-dasharray:5 5}
 </style>
@@ -383,7 +383,7 @@ export const FIGURES = {
 
   // ── 스토캐스틱 ──────────────────────────────────────────
   'stochastic-position': {
-    caption: '최근 며칠간의 최고가와 최저가 사이에서 오늘 끝가가 어디쯤인지를 %로 나타낸 것입니다. 꼭대기 근처에서 끝나면 100에 가깝고, 바닥 근처에서 끝나면 0에 가깝습니다.',
+    caption: '최근 며칠간의 최고가와 최저가 사이에서 오늘 종가가 어디쯤인지를 %로 나타낸 것입니다. 꼭대기 근처에서 끝나면 100에 가깝고, 바닥 근처에서 끝나면 0에 가깝습니다.',
     alt: '스토캐스틱이 재는 것: 범위 안에서의 위치',
     svg: () => svg(230, `
       ${band(60, 50, 500, 120, C.muted, 0.07)}
@@ -401,7 +401,7 @@ export const FIGURES = {
       <circle cx="470" cy="158" r="7" fill="${C.down}"/>
       ${txt(470, 200, '바닥 근처에서 마감', 'ts', 'middle')}
       ${txt(470, 190, '≈ 10', 'tb', 'middle', C.down)}
-      ${txt(320, 224, '오늘 끝가가 최근 범위의 어디쯤인가', 'ts', 'middle', C.warn)}
+      ${txt(320, 224, '오늘 종가가 최근 범위의 어디쯤인가', 'ts', 'middle', C.warn)}
     `),
   },
 

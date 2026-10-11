@@ -25,7 +25,7 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  font-family: SUIT, 'Malgun Gothic', sans-serif;
   font-size: 15px;
   line-height: 1.7;
 

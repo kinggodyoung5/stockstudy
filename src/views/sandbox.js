@@ -220,7 +220,7 @@ export async function renderSandbox(app) {
         rows.length > 25 ? `검출 건수 상위 25개만 표시했습니다 (전체 ${rows.length}종).` : '' }),
 
       el('div.panel.caution', { style: { marginTop: '16px' } }, [
-        el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '이 실험이 말하는 것과 말하지 않는 것' }),
+        el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '이 실험에서 확인할 수 있는 것과 한계' }),
         el('ul.small', { style: { margin: 0, paddingLeft: '20px' } }, [
           el('li', { text: '말하는 것: 어떤 규칙이 신호를 "찾아낸다"는 사실 자체는 아무것도 증명하지 않습니다. 정보가 0인 데이터에서도 규칙은 부지런히 신호를 만들어냅니다.' }),
           el('li', { text: '말하는 것: 무작위 데이터의 승률은 그 데이터의 기준선 근처에 머뭅니다. 실제 데이터에서 어떤 규칙의 승률이 기준선과 비슷하다면, 무작위와 구별되지 않는다는 뜻입니다.' }),
@@ -252,7 +252,7 @@ export async function renderSandbox(app) {
     ]),
 
     el('div.panel', { style: { marginTop: '18px' } }, [
-      el('h3', { style: { margin: '0 0 6px', fontSize: '17px' }, text: '무작위 데이터에 탐지 엔진 돌려보기' }),
+      el('h3', { style: { margin: '0 0 6px', fontSize: '17px' }, text: '무작위 차트에서도 신호가 나타날까요?' }),
       el('p.small.muted', { style: { margin: '0 0 14px' }, text:
         '추세도 기억도 없는 순수 난수 차트를 대량으로 만들어, 실제 종목에 쓰는 것과 완전히 같은 57개 규칙을 적용합니다. ' +
         '규칙 코드도, 판정 조건도 하나도 바꾸지 않습니다.' }),

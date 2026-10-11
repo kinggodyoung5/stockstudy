@@ -72,7 +72,7 @@ export async function renderRecords(app) {
         ...shown.map(({ kind, version, id, r, retries = [], reviews }) => {
           const [type, ticker, date] = id.split('|');
           return el('details.record-item', null, [
-            el('summary', { text: `${TASKS[type]?.[0] || type} · ${ticker} ${date} · ${r.correct ? '맞음' : '다시 볼 관찰'}${retries.length ? ` · 재시도 ${retries.length}` : ''}${reviews.length ? ` · 복습 ${reviews.length}` : ''}` }),
+            el('summary', { text: `${TASKS[type]?.[0] || type} · ${ticker} ${date} · ${r.correct ? '맞음' : '다시 확인할 부분'}${retries.length ? ` · 재시도 ${retries.length}` : ''}${reviews.length ? ` · 복습 ${reviews.length}` : ''}` }),
             el('dl.assess-kv', null, [
               el('dt', { text: '기록' }), el('dd', { text: `${kind} · ${version} · ${new Date(r.submittedAt).toLocaleString('ko-KR')}` }),
               el('dt', { text: '고른 답' }), el('dd', { text: r.choiceText || `선택지 ${r.choice + 1}번 (문장 미저장)` }),
@@ -81,8 +81,8 @@ export async function renderRecords(app) {
             ].filter(Boolean)),
             r.reflection ? el('blockquote.fb-quote', { text: r.reflection }) : null,
             r.self?.note ? el('p.small', { text: '해설 뒤 생각: ' + r.self.note }) : null,
-            retries.length ? el('p.small', { text: '재시도: ' + retries.map((x) => `${new Date(x.submittedAt).toLocaleDateString('ko-KR')} ${x.correct ? '맞음' : '다시 볼 관찰'}`).join(' · ') }) : null,
-            reviews.length ? el('p.small', { text: '복습: ' + reviews.map((x) => `${new Date(x.submittedAt).toLocaleDateString('ko-KR')} ${x.ref.ticker} ${x.correct ? '맞음' : '다시 볼 관찰'}`).join(' · ') }) : null,
+            retries.length ? el('p.small', { text: '재시도: ' + retries.map((x) => `${new Date(x.submittedAt).toLocaleDateString('ko-KR')} ${x.correct ? '맞음' : '다시 확인할 부분'}`).join(' · ') }) : null,
+            reviews.length ? el('p.small', { text: '복습: ' + reviews.map((x) => `${new Date(x.submittedAt).toLocaleDateString('ko-KR')} ${x.ref.ticker} ${x.correct ? '맞음' : '다시 확인할 부분'}`).join(' · ') }) : null,
           ].filter(Boolean));
         }),
         !all && rows.length > LIMIT ? el('button.btn', { text: `나머지 ${rows.length - LIMIT}개 더 보기`, onclick: () => draw(true) }) : null,

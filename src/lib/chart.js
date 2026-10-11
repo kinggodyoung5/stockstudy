@@ -50,9 +50,10 @@ const MA_PERIODS = { ma5: 5, ma20: 20, ma60: 60, ma120: 120, ma200: 200 };
 function baseOptions(extra = {}) {
   return {
     layout: {
-      background: { type: 'solid', color: 'transparent' },
-      textColor: '#a9b2c3',
-      fontFamily: "'Pretendard', -apple-system, 'Malgun Gothic', sans-serif",
+      background: { type: 'solid', color: '#182b29' },
+      textColor: '#becfc7',
+      fontFamily: "SUIT, 'Malgun Gothic', sans-serif",
+      fontSize: 12,
     },
     grid: {
       vertLines: { color: 'rgba(255,255,255,0.04)' },
@@ -71,6 +72,7 @@ function baseOptions(extra = {}) {
 
 /** 가격 차트 */
 export function createStockChart(container, opts = {}) {
+  container.classList?.add('market-chart');
   const { logScale = false, ...rest } = opts;
   const chart = LWC().createChart(container, baseOptions(rest));
   if (logScale) chart.priceScale('right').applyOptions({ mode: 1 }); // 1 = logarithmic

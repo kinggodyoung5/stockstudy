@@ -47,7 +47,7 @@ export const LESSONS = [
       },
       {
         h: '실제로 얼마나 달라지나',
-        p: '아래 그림은 똑같은 가격에 RSI 기간만 바꿔 그린 것입니다. 가격은 하나도 안 바뀌었는데 70선을 넘는 횟수가 완전히 달라집니다. **"RSI가 70을 넘었다"는 말만으로는 아무것도 알 수 없고, 몇 일짜리 RSI인지를 함께 말해야 합니다.**',
+        p: '아래 그림은 똑같은 가격에 RSI 기간만 바꿔 그린 것입니다. 가격은 하나도 안 바뀌었는데 70선을 넘는 횟수가 완전히 달라집니다. **"RSI가 70을 넘었다"는 말만으로는 아무것도 알 수 없고, 며칠짜리 RSI인지를 함께 말해야 합니다.**',
         fig: 'param-sensitivity',
       },
       {
@@ -441,14 +441,14 @@ export const LESSONS = [
     id: 'stochastic',
     group: 'momentum',
     title: '스토캐스틱',
-    tagline: '최근 오르내린 범위에서 오늘 끝가가 어디쯤인가',
+    tagline: '최근 오르내린 범위에서 오늘 종가가 어디쯤인가',
     overlays: { ma20: true },
     oscillator: 'stochastic',
     patterns: ['stochastic-oversold-cross', 'stochastic-overbought-cross'],
     body: [
       {
         h: '한 줄 요약',
-        p: '최근 14일의 **가장 높았던 값과 가장 낮았던 값 사이**에서, 오늘 끝가가 몇 %쯤 위치하는지를 나타냅니다.',
+        p: '최근 14일의 **가장 높았던 값과 가장 낮았던 값 사이**에서, 오늘 종가가 몇 %쯤 위치하는지를 나타냅니다.',
         fig: 'stochastic-position',
       },
       {

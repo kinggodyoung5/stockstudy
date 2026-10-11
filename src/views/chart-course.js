@@ -4,7 +4,7 @@ import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
 import { reviewSelf } from '../lib/course-feedback.js';
 import { autoCheck, selfCheck } from './course-feedback.js';
-import { drawCaseCharts, factsList, optionsField, pickedChoice, confidenceField, numericField, caseHeader, rulesBox, legendNotes } from './case-view.js';
+import { drawCaseCharts, factsList, optionsField, pickedChoice, confidenceField, numericField, caseHeader, rulesBox, legendNotes, arrangeStudyDesk } from './case-view.js';
 
 let generation = 0, cleanup = null;
 function clearCharts() {
@@ -24,6 +24,7 @@ export async function renderChartCourse(app, initialType = '') {
   let type = TASKS[initialType] ? initialType : 'candle', serial = 0;
   const cursors = {};
   const steps = el('div.course-steps', { 'aria-label': '입문 학습 단계' });
+  const topicSummary = el('summary');
   const taskSelect = el('select', { id: 'course-task' });
   const progress = el('p.small.muted', { 'aria-live': 'polite' });
   const introduction = el('p');
@@ -47,7 +48,7 @@ export async function renderChartCourse(app, initialType = '') {
   function updateProgress() {
     const tried = course.cases.filter((r) => records[keyOf(r)]?.submittedAt);
     const topics = new Set(tried.map((r) => r.type));
-    progress.textContent = `${Object.keys(TASKS).length}개 주제 중 ${topics.size}개 시도 · 실제 사례 ${tried.length}/${course.cases.length}개 기록. 시도 수는 숙달이나 예측 능력 인증이 아닙니다.`;
+    progress.textContent = `${Object.keys(TASKS).length}개 주제 중 ${topics.size}개 시도 · 실제 사례 ${tried.length}/${course.cases.length}개 기록. 푼 개수만으로 실력을 판단하지 않습니다.`;
   }
   function selectType(id) {
     type = id;
@@ -55,6 +56,7 @@ export async function renderChartCourse(app, initialType = '') {
     clear(taskSelect).append(...step.ids.map((id) => el('option', { value: id, text: TASKS[id][0] })));
     taskSelect.value = type;
     introduction.textContent = step.intro;
+    topicSummary.textContent = `${COURSE_STEPS.indexOf(step) + 1}단계 · ${step.title} / ${TASKS[type][0]} — 주제 바꾸기`;
     [...steps.children].forEach((button, i) => button.setAttribute('aria-pressed', String(COURSE_STEPS[i] === step)));
     if (cursors[type] == null) {
       const pending = queue().findIndex((r) => !records[keyOf(r)]?.submittedAt);
@@ -82,7 +84,7 @@ export async function renderChartCourse(app, initialType = '') {
       const feedback = el('div.practice-feedback', { 'aria-live': 'polite' });
       // 매번 정답 위치를 섞되 저장은 원래 선택지 인덱스로 한다.
       const options = optionsField(q, 'course-answer', existing?.choice ?? null);
-      const reflection = el('textarea', { id: 'course-reflection', rows: 3, maxlength: 1500, placeholder: '눈에 보이는 값이나 위치를 근거로 적어보세요.' });
+      const reflection = el('textarea', { id: 'course-reflection', rows: 3, maxlength: 1500, placeholder: '차트에서 읽은 가격, 날짜, 선의 위치를 근거로 적어보세요.' });
       if (existing) reflection.value = existing.reflection || '';
       const { box: numericBox, input: numericInput } = numericField(q, 'course-numeric',
         q.numeric && `‘차트에서 비교할 값’의 숫자로 나눠보세요. 소수 ${q.numeric.decimals}째 자리까지 적고, 실제 값과 ${10 ** -q.numeric.decimals} 이내면 맞게 읽은 것으로 봅니다.`);
@@ -95,7 +97,7 @@ export async function renderChartCourse(app, initialType = '') {
         if (numericInput) numericInput.readOnly = true;
         const flat = COURSE_STEPS.flatMap((s) => s.ids), nextType = flat[flat.indexOf(selectedType) + 1];
         clear(feedback).append(...[
-          el('h3', { text: record.correct ? '관찰과 선택이 맞았습니다' : '다시 볼 관찰이 있습니다' }),
+          el('h3', { text: record.correct ? '선택한 설명이 맞습니다' : '차트에서 다시 확인할 부분이 있습니다' }),
           autoCheck(q, record),
           el('h4', { text: '해설' }),
           el('p', { text: `정답: ${q.options[q.answer]}` }),
@@ -124,7 +126,7 @@ export async function renderChartCourse(app, initialType = '') {
       const facts = factsList(q, stock.currency);
       clear(area).append(...[
         ...caseHeader(q, `${stock.name} (${stock.ticker}) · 일봉 · 관찰 마감 ${ref.date} · 이 주제 ${(cursors[type] || 0) % refs.length + 1}/${refs.length} 사례`),
-        el('details.course-help', null, [el('summary', { text: '처음이라면 · 읽는 방법' }), el('p', { text: q.hint })]),
+        el('details.course-help', null, [el('summary', { text: '차트 읽는 방법' }), el('p', { text: q.hint })]),
         rulesBox(q),
         chartBox, panelWrap, ...legendNotes(q),
         el('details.course-help', { open: ['candle', 'wick', 'timeframe', 'volume'].includes(q.type) }, [el('summary', { text: '차트에서 비교할 값' }), facts]),
@@ -132,6 +134,7 @@ export async function renderChartCourse(app, initialType = '') {
         q.reflection ? el('label.practice-label', { for: 'course-reflection', text: q.reflection }) : null,
         q.reflection ? reflection : null, submit, feedback
       ].filter(Boolean));
+      arrangeStudyDesk(area, chartBox, panelWrap);
       cleanup = drawCaseCharts(chartBox, panelWrap, q, view, history, ref.date);
       if (existing) reveal(existing);
     } catch (error) {
@@ -141,10 +144,11 @@ export async function renderChartCourse(app, initialType = '') {
     }
   }
   clear(app).append(el('h1.page-title', { text: '실제 차트 · 입문 6단계' }),
-    el('p.page-sub', { text: '가격을 읽고 → 조건을 구별하고 → 근거를 연결합니다. 처음에는 읽는 방법과 숫자를 펼쳐보고, 익숙해지면 접고 차트에서 먼저 찾아보세요.' }),
-    el('div.row', null, [el('a.btn', { href: '#/practice', text: '구성 예제로 기초 다지기' }), el('a.btn', { href: '#/practice/real', text: '같은 신호 · 다른 결과 비교' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' })]),
-    steps, introduction,
-    el('div.course-toolbar', null, [el('label', { for: 'course-task', text: '연습 주제' }), taskSelect, nextCase]), progress, area, saveNote,
+    el('p.page-sub', { text: '실제 차트에서 가격과 추세를 읽고, 판단 근거를 설명하는 연습입니다.' }),
+    el('div.course-context', null, [
+      el('details.course-selector', null, [topicSummary, steps, introduction,
+        el('div.course-toolbar', null, [el('label', { for: 'course-task', text: '연습 주제' }), taskSelect])]), nextCase,
+    ]), progress, area, saveNote,
     el('details.rulebox', null, [el('summary', { text: '어떤 실제 자료로 연습하나요?' }), el('p.small', { text: course.policy }), el('p.small', { text: '자료 검사를 통과한 종목만 씁니다. 한쪽 모양만 외우지 않도록 다른 상태와 경계 사례를 함께 골랐습니다. 화면에 나온 사례 비율을 시장에서의 발생 비율로 해석하면 안 됩니다. 차트·지표 계산·해설은 모두 관찰 마감일까지의 자료만 사용합니다.' })])
   );
   updateProgress(); selectType(type);

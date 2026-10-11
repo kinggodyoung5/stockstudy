@@ -143,7 +143,8 @@ function settingsBox(lessonId) {
 export function figureEl(id, opts) {
   const f = FIGURES[id];
   return el('figure.fig', null, [
-    el('div.fig-svg', { html: f.svg(opts) }),
+    el('div.fig-svg', { html: f.svg(opts), tabindex: 0, role: 'region', 'aria-label': '개념 설명 그림. 좁은 화면에서는 좌우로 움직여 볼 수 있습니다.' }),
+    el('p.figure-scroll-note', { text: '그림을 좌우로 움직여 전체를 볼 수 있습니다.' }),
     el('figcaption', { text: f.caption }),
   ]);
 }

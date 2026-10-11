@@ -11,7 +11,7 @@ import { el } from '../lib/ui.js';
 export function drawCaseCharts(chartBox, panelWrap, q, view, history, cutoff) {
   const made = [];
   let unsync = null;
-  const chart = createStockChart(chartBox, { height: 280 }); made.push(chart);
+  const chart = createStockChart(chartBox, { height: chartBox.clientHeight || 380 }); made.push(chart);
   chart.setOverlays(q.overlays); chart.setCandles(view, history);
   chart.setMarkers(q.markers.length ? q.markers : [{ date: q.focusDate || cutoff, text: '관찰 대상', position: 'aboveBar' }]);
   q.lines.forEach((line, j) => chart.drawSegment('course-line-' + j, [{ date: line.from, value: line.value }, { date: cutoff, value: line.value }]));
@@ -56,7 +56,7 @@ export const pickedChoice = (options) => {
 };
 
 export function confidenceField(name, checked = null) {
-  return el('fieldset.course-confidence', null, [el('legend', { text: '내 답의 확신 (선택)' }),
+  return el('fieldset.course-confidence', null, [el('legend', { text: '내 답에 얼마나 확신하나요? (선택)' }),
     ...Object.entries(CONFIDENCE).map(([id, label]) => el('label', null, [
       el('input', { type: 'radio', name, value: id, checked: checked === id }), el('span', { text: label })]))]);
 }
@@ -74,8 +74,8 @@ export function numericField(q, id, help) {
 /** 문제 위쪽(종목·제목·질문·조건) */
 export function caseHeader(q, meta) {
   return [
-    el('p.small.muted', { text: meta }),
-    el('h2', { text: q.title }), el('p.course-prompt', { text: q.prompt }),
+    el('p.small.muted.case-meta', { text: meta }),
+    el('h2.course-title', { text: q.title }), el('p.course-prompt', { text: q.prompt }),
   ];
 }
 export function rulesBox(q) {
@@ -83,7 +83,22 @@ export function rulesBox(q) {
 }
 export function legendNotes(q) {
   return [
-    (q.overlays.ma20 || q.overlays.ma60) ? el('p.small.muted', { text: '이동평균: 노랑 5일 · 초록 20일 · 보라 60일. 문제에 필요한 선만 표시합니다.' }) : null,
-    q.overlays.volume ? el('p.small.muted', { text: '가격 차트 아래쪽 막대는 거래량(주)입니다. 높이는 가격과 별도 눈금으로 그립니다.' }) : null,
+    (q.overlays.ma20 || q.overlays.ma60) ? el('p.small.muted.chart-legend', { text: '이동평균: 노랑 5일, 초록 20일, 보라 60일. 문제에 필요한 선만 표시합니다.' }) : null,
+    q.overlays.volume ? el('p.small.muted.chart-legend', { text: '아래쪽 막대는 거래량(주)입니다. 가격과는 다른 눈금을 사용합니다.' }) : null,
   ];
+}
+
+/** Move the existing controls, without cloning them or changing their event handlers. */
+export function arrangeStudyDesk(area, chartBox, panelWrap) {
+  const children = [...area.children];
+  const chartSide = el('section.study-chart-side', { 'aria-label': '차트 관찰' });
+  const noteSide = el('section.study-note-side', { 'aria-label': '관찰 노트' }, [el('div.note-heading', { text: '관찰 노트' })]);
+  const metaIndex = children.findIndex((node) => node.classList.contains('case-meta'));
+  const history = children.slice(0, Math.max(0, metaIndex));
+  for (const node of children.slice(Math.max(0, metaIndex))) {
+    const isChart = node === chartBox || node === panelWrap || node.matches('.case-meta, .course-title, .chart-legend');
+    (isChart ? chartSide : noteSide).append(node);
+  }
+  area.replaceChildren(...history, el('div.study-desk', null, [chartSide, noteSide]));
+  area.classList.add('study-workspace');
 }

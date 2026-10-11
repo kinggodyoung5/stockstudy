@@ -20,7 +20,7 @@ export async function renderRealStudy(app) {
   clear(app).append(el('h1.page-title', { text: '실제 차트 비교 연습' }),
     el('p.page-sub', { text: '같은 신호, 다른 결과. 확인일까지의 차트로 먼저 근거를 적고, 두 사례를 모두 기록한 뒤 이후 결과를 비교합니다. 방향 맞히기 시험이 아닙니다.' }),
     el('a.btn', { href: '#/practice', text: '기초 개념 문제로 돌아가기' }),
-    el('p.rulebox', { text: '비교 교재의 선택 편향: 저장 예시 중 20봉 뒤 종가가 신호 방향과 같았던 사례와 반대였던 사례를 하나씩 고릅니다. 보합·미완료는 제외합니다. 이 구성으로 승률을 계산하거나 시장의 실제 비율을 추정하면 안 됩니다. 종목·시점이 달라 결과 차이의 원인을 증명하는 비교도 아닙니다. A/B 순서는 성공·실패를 뜻하지 않습니다.' }),
+    el('details.rulebox', null, [el('summary', { text: '비교 사례는 어떻게 골랐나요?' }), el('p', { text: '신호가 나온 뒤 20개 봉이 지났을 때, 종가가 신호 방향으로 움직인 사례와 반대로 움직인 사례를 하나씩 골랐습니다. 가격이 그대로이거나 20개 봉이 채워지지 않은 사례는 제외합니다. 결과가 다른 사례를 의도적으로 짝지었으므로 승률이나 시장의 발생 비율을 계산하는 자료로 쓸 수 없습니다. 종목과 시점도 달라 결과 차이의 원인을 증명하지는 못합니다. A와 B의 순서는 성공·실패와 관계없습니다.' })]),
     el('div.row', null, [el('label', { for: 'real-pattern', text: '연습할 신호' }), select, next]), status, area, saveNote);
 
   function save(key, record) {
@@ -36,7 +36,7 @@ export async function renderRealStudy(app) {
       const [meta, index] = await Promise.all([loadPattern(patternId), loadPatternIndex()]);
       if (token !== generation || !app.isConnected) return;
       const pairs = comparisonPairs(meta, index.eligibleTickers);
-      if (!pairs.length) { clear(area).append(el('p', { text: '비교할 완전 관측 사례가 부족합니다. 다른 신호를 선택하세요.' })); status.textContent = ''; return; }
+      if (!pairs.length) { clear(area).append(el('p', { text: '이후 20개 봉을 모두 확인할 수 있는 사례가 부족합니다. 다른 신호를 선택하세요.' })); status.textContent = ''; return; }
       cursor %= pairs.length;
       const pair = pairs[cursor], key = studyKey(meta, pair);
       const stocks = await Promise.all(pair.map((h) => loadStock(h.ticker)));
@@ -59,6 +59,11 @@ export async function renderRealStudy(app) {
             ? el('p.small', { text: '20일선: 초록 · 60일선: 보라 · 거래량 표시. 확인일은 교차 후 5개 거래 봉 유지가 확인된 날입니다.' })
             : el('p.small', { text: '캔들과 거래량을 표시합니다. 앞선 추세와 장악하는 두 봉을 함께 살펴보세요.' }),
           box, ...PROMPTS.flatMap(([field, label]) => [el('label.practice-label', { for: inputs[field].id, text: label }), inputs[field]]), info]);
+        const parts = [...c.children], chartEnd = parts.indexOf(box);
+        c.replaceChildren(el('div.study-desk', null, [
+          el('section.study-chart-side', { 'aria-label': `사례 ${i ? 'B' : 'A'} 관찰` }, parts.slice(0, chartEnd + 1)),
+          el('section.study-note-side', { 'aria-label': `사례 ${i ? 'B' : 'A'} 근거` }, [el('div.note-heading', { text: '관찰 노트' }), ...parts.slice(chartEnd + 1)]),
+        ]));
         for (const [field, input] of Object.entries(inputs)) { input.value = record?.drafts?.[i]?.[field] || ''; input.readOnly = revealed; }
         return { box, inputs, info, c };
       });

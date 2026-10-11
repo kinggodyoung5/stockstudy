@@ -254,7 +254,7 @@ export async function renderViewer(app) {
     endInput.max = stock.candles.at(-1).date;
     if (!state.end) endInput.value = all[lastIdx].date;
 
-    // 차트는 매번 새로 만든다 — 오실레이터 패널 구성이 바뀌면 시간축 동기화도 다시 걸어야 한다
+    // 차트는 매번 새로 만든다 — 보조지표 (RSI·MACD 등) 구성이 바뀌면 시간축 동기화도 다시 걸어야 한다
     clearViewerCharts();
     chart = createStockChart(box, { width: box.clientWidth, height: box.clientHeight, logScale: state.logScale });
     chart.setParams(state.params);
@@ -297,7 +297,7 @@ export async function renderViewer(app) {
     chart.setMarkers([]);
     chart.fit();
 
-    // 오실레이터 패널
+    // 보조지표 (RSI·MACD 등)
     clear(panelWrap);
     const charts = [chart.chart];
     if (bench) {
@@ -367,7 +367,7 @@ export async function renderViewer(app) {
 
   function renderLevels(levels, currency) {
     clear(levelList).append(
-      el('h4', { style: { margin: '0 0 8px', fontSize: '13px', color: COLORS.support }, text: '자동으로 찾은 지지·저항 가격대' }),
+      el('h4', { style: { margin: '0 0 8px', fontSize: '15px', color: 'var(--accent)' }, text: '자동으로 찾은 지지·저항 가격대' }),
       (() => {
         const dl = el('dl.kv');
         for (const l of levels) {
@@ -420,7 +420,7 @@ export async function renderViewer(app) {
           '(<a href="#/learn/indicator-settings">지표 설정값 읽는 법</a>)' }),
         el('h4.param-head', { text: '가격 차트' }),
         paramRow,
-        el('h4.param-head', { text: '오실레이터 패널' }),
+        el('h4.param-head', { text: '보조지표 (RSI·MACD 등)' }),
         oscParamRow,
         el('div.row', { style: { marginTop: '12px' } }, [resetBtn]),
       ]),
