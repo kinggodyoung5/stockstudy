@@ -162,6 +162,14 @@ export function weakReads(store, readsByType = {}) {
       for (const [readId, label] of Object.entries(names)) add(label, r.auto.wrong.includes(readId));
     }
   }
+  // 종합 관찰지의 관찰 문항도 같은 방식으로 센다.
+  for (const r of Object.values(store['plan:v1']?.items || {})) {
+    for (const [type, p] of Object.entries(r?.parts || {})) {
+      const names = readsByType[type];
+      if (!names || !Array.isArray(p?.wrong)) continue;
+      for (const [readId, label] of Object.entries(names)) add(label, p.wrong.includes(readId));
+    }
+  }
   for (const entry of Object.values(store[ASSESSMENT_STORAGE]?.items || {})) {
     for (const x of Array.isArray(entry?.first?.reads) ? entry.first.reads : []) if (typeof x?.label === 'string') add(x.label, x.ok === false);
   }

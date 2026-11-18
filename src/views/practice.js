@@ -6,6 +6,7 @@ import { renderRealStudy, destroyRealStudy } from './real-study.js';
 import { renderChartCourse, destroyChartCourse } from './chart-course.js';
 import { renderAssessment, destroyAssessment } from './assessment.js';
 import { renderReview, destroyReview } from './review.js';
+import { renderPlan, destroyPlan } from './plan.js';
 import { renderRecords } from './records.js';
 
 let chart = null;
@@ -13,6 +14,7 @@ export function destroyPractice() {
   destroyChartCourse();
   destroyAssessment();
   destroyReview();
+  destroyPlan();
   destroyRealStudy();
   if (chart) { chart.destroy(); chart = null; }
 }
@@ -23,6 +25,7 @@ export function renderPractice(app, params = []) {
   if (params[0] === 'chart') return renderChartCourse(app, params[1]);
   if (params[0] === 'check') return renderAssessment(app);
   if (params[0] === 'review') return renderReview(app);
+  if (params[0] === 'plan') return renderPlan(app);
   if (params[0] === 'records') return renderRecords(app);
   const bank = buildPractice(Math.floor(Math.random() * 20));
   const loaded = storage.load('practice:v1', {});

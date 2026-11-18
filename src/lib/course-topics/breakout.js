@@ -35,8 +35,8 @@ export function buildBreakoutVolume(ctx, i, q, h) {
   q.facts = [h.price('직전 20봉 최고가', level), h.price('오늘 고가', today.high), h.price('오늘 저가', today.low), h.price('오늘 종가', today.close),
     h.num('오늘 거래량', today.volume, '주'), h.num('직전 20봉 평균 거래량', v.avg, '주')];
   q.margin = Math.min(Math.abs(v.ratio - BREAKOUT.volumeRatio), Math.abs(pos - BREAKOUT.topShare));
-  q.explanation = `거래량은 평균의 ${h.n(v.ratio)}배, 종가는 그날 범위의 아래에서 ${h.n(pos * 100)}% 지점에서 끝났습니다. ${
-    top ? '고가 근처에서 끝났다는 것은 마감까지 그 가격대에서 거래가 이어졌다는 사실입니다.' : '넘기는 했지만 고가에서 꽤 내려와 끝났습니다.'} 거래량이 많았던 돌파가 꼭 유지되는 것은 아닙니다. 다음 며칠 종가가 돌파한 가격 위에 머무는지는 별도로 봅니다.`;
+  q.explanation = `거래량은 평균의 ${h.n(v.ratio)}배, 종가는 그날 저가에서 고가까지의 ${h.n(pos * 100)}% 높이에서 끝났습니다. ${
+    top ? '그날 마지막 체결 가격이 높은 쪽이었다는 사실입니다. 장중 경로는 일봉으로 알 수 없습니다.' : '넘기는 했지만 고가에서 꽤 내려와 끝났습니다.'} 거래량이 많았던 돌파가 꼭 유지되는 것은 아닙니다. 다음 며칠 종가가 돌파한 가격 위에 머무는지는 별도로 봅니다.`;
   return q;
 }
 

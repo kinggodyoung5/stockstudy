@@ -17,6 +17,7 @@ import { detectStock, ALL_PATTERNS, PATTERN_GROUPS } from '../lib/engine.js';
 import { summarize, baseline } from '../lib/stats.js';
 import { loadPatternIndex } from '../lib/data.js';
 import { el, clear, overlayBar, signed, dirClass } from '../lib/ui.js';
+import { expectancyPanel } from './expectancy.js';
 
 let chart = null;
 let panels = [];
@@ -259,6 +260,8 @@ export async function renderSandbox(app) {
       el('div.row', null, [expCount, runBtn]),
       el('div', { style: { marginTop: '16px' } }, [expResult]),
     ]),
+
+    expectancyPanel(),
 
     el('div.panel', { style: { marginTop: '18px' } }, [
       el('h3', { style: { margin: '0 0 8px', fontSize: '15px' }, text: '이렇게 써보세요' }),

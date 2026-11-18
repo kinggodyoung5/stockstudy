@@ -652,3 +652,29 @@ select optgroup option { color: var(--text); font-weight: 400; }
 .review-weak:not(:empty) { margin-bottom: 20px; padding: 14px; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; }
 .weak-links { gap: 6px; margin-top: 6px; }
 .weak-links .small-btn { margin-left: 0; white-space: normal; text-align: left; }
+/* 종합 읽기와 계획 */
+.cap-part { padding: 12px 0 16px; border-bottom: 1px solid var(--line); }
+.cap-part .practice-options { margin: 8px 0; }
+.cap-part .practice-options legend { font-weight: 600; }
+.cap-title { margin: 4px 0 2px; font-size: 16px; }
+.cap-prompt { margin: 6px 0 0; font-weight: 600; }
+.cap-part-feedback:empty { display: none; }
+.cap-plan-fields input { display: block; box-sizing: border-box; width: 100%; max-width: 240px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.cap-plan-fields[hidden] { display: none; }
+.cap-calc { margin-top: 10px; }
+.capstone .study-note-side h3 { margin: 22px 0 6px; font-size: 17px; }
+/* 기대값 실험 */
+.exp-fields { gap: 10px; align-items: flex-end; }
+.exp-field { display: flex; flex-direction: column; gap: 4px; }
+.exp-field input { width: 120px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.exp-graph svg { display: block; width: 100%; height: auto; margin-top: 10px; }
+/* 봉 넘기기·학습 일지 */
+.step-row { margin-top: 10px; gap: 8px; align-items: center; }
+.step-row .small.muted { flex-basis: 100%; }
+.chart-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.journal-box textarea { display: block; box-sizing: border-box; width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.journal-box .btn { margin-top: 10px; }
+.journal-item { padding: 10px 12px; margin-block: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.journal-item summary { cursor: pointer; }
+.journal-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.journal-add input { flex: 1 1 200px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }

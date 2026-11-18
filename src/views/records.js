@@ -13,6 +13,10 @@ import { MAX_BYTES, CONFLICT_KEY, buildBackup, countRecords, parseBackup, planIm
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
 import { readStore } from './review.js';
+import { JOURNAL_KEY, normalizeJournal, addAddendum, journalHref } from '../lib/journal.js';
+import { NOTE_FIELDS } from '../lib/capstone.js';
+import { OVERLAY_LABELS } from '../lib/chart.js';
+import { OSCILLATORS } from '../lib/oscillators.js';
 
 export async function renderRecords(app) {
   const index = await loadPatternIndex();
@@ -21,6 +25,7 @@ export async function renderRecords(app) {
   const currentCourse = `chart-course:${COURSE_VERSION}:${index.provenance.sourceDigest}`;
   const summary = el('section.panel');
   const list = el('section.panel');
+  const journalArea = el('section.panel');
   const backupArea = el('section.panel');
 
   function renderSummary() {
@@ -38,6 +43,8 @@ export async function renderRecords(app) {
         el('dt', { text: '실제 비교 연습' }), el('dd', { text: `${c.realStudy}쌍` }),
         el('dt', { text: '복습' }), el('dd', { text: `대상 ${entries.length}개 · 시도 ${c.review}회` }),
         el('dt', { text: '구성 예제 연습' }), el('dd', { text: `${c.practice}개 개념` }),
+        el('dt', { text: '종합 관찰지' }), el('dd', { text: `${c.capstone}개` }),
+        el('dt', { text: '학습 일지' }), el('dd', { text: `${c.journal}개` }),
         c.conflicts ? el('dt', { text: '가져오기 충돌 보관' }) : null, c.conflicts ? el('dd', { text: `${c.conflicts}건` }) : null,
         el('dt', { text: '저장 용량(대략)' }), el('dd', { text: `${Math.ceil(size * 2 / 1024)}KB` }),
       ].filter(Boolean)),
@@ -50,6 +57,36 @@ export async function renderRecords(app) {
   }
 
   /** 처음 답과 사후 기록, 복습 시도를 함께 보여준다. 최근 것부터. */
+  /** 학습 일지. 처음 쓴 내용은 고치지 않고 덧붙임만 받는다. 글은 글자로만 넣는다. */
+  function renderJournal() {
+    const journal = normalizeJournal(storage.load(JOURNAL_KEY, null));
+    const entries = [...journal.entries].reverse();
+    clear(journalArea).append(...[
+      el('h2', { text: '학습 일지' }),
+      el('p.small.muted', { text: '데이터 뷰어의 “이 화면을 학습 일지에 남기기”로 남긴 기록입니다. 열면 그 종목과 기준일로 뷰어가 열립니다. 처음 쓴 내용은 고치지 않고, 생각이 바뀌면 덧붙입니다.' }),
+      entries.length ? null : el('p.small.muted', { text: '아직 남긴 일지가 없습니다.' }),
+      ...entries.map((e) => {
+        const input = el('input', { type: 'text', maxlength: 1000, placeholder: '나중에 바뀐 생각이나 확인한 사실', 'aria-label': '덧붙일 내용' });
+        const status = el('span.small.muted', { 'aria-live': 'polite' });
+        const add = el('button.btn', { type: 'button', text: '덧붙이기', onclick: () => {
+          try {
+            const next = addAddendum(normalizeJournal(storage.load(JOURNAL_KEY, null)), e.id, input.value);
+            if (!storage.save(JOURNAL_KEY, next)) throw new Error('저장하지 못했습니다.');
+            renderJournal();
+          } catch (error) { status.textContent = error.message; }
+        } });
+        return el('details.journal-item', null, [
+          el('summary', { text: `${e.name || e.ticker} · 기준일 ${e.end} · ${new Date(e.createdAt).toLocaleDateString('ko-KR')}${e.addenda.length ? ` · 덧붙임 ${e.addenda.length}` : ''}` }),
+          el('p.small', null, [el('a.btn', { href: journalHref(e), text: '이 화면을 뷰어에서 다시 열기' })]),
+          el('p.small.muted', { text: `봉 단위 ${{ day: '일봉', week: '주봉', month: '월봉' }[e.unit]} · 켠 지표 ${[...e.overlays.map((k) => OVERLAY_LABELS[k] || k), ...e.oscillators.map((k) => OSCILLATORS[k]?.name || k)].join(', ') || '없음'}` }),
+          ...NOTE_FIELDS.filter(([k]) => e.notes[k]).flatMap(([k, label]) => [el('p.small', { text: label }), el('blockquote.fb-quote', { text: e.notes[k] })]),
+          ...e.addenda.map((a) => el('p.small', { text: `덧붙임 ${new Date(a.at).toLocaleDateString('ko-KR')}: ${a.text}` })),
+          el('div.journal-add', null, [input, add, status]),
+        ]);
+      }),
+    ].filter(Boolean));
+  }
+
   function renderList() {
     const store = readStore();
     const reviewState = normalizeReview(store[REVIEW_KEY]);
@@ -129,7 +166,7 @@ export async function renderRecords(app) {
           ? el('p', { text: `가져왔습니다. 새로 더한 기록 ${fresh.report.added}개, 합친 사후 기록 ${fresh.report.merged}개, 이미 같던 기록 ${fresh.report.same}개.` })
           : el('p.warn', { text: result.quota ? '저장 공간이 부족해 가져오지 못했습니다. 바뀐 것은 모두 되돌렸고 기존 기록은 그대로입니다.' : '브라우저가 저장을 막아 가져오지 못했습니다. 바뀐 것은 모두 되돌렸고 기존 기록은 그대로입니다.' }));
         fileInput.value = '';
-        renderSummary(); renderList();
+        renderSummary(); renderJournal(); renderList();
       });
       status.append(...[
         el('h3', { text: '가져오기 미리 보기' }),
@@ -161,6 +198,6 @@ export async function renderRecords(app) {
     el('h1.page-title', { text: '기록과 백업' }),
     el('p.page-sub', { text: '처음 답, 해설 뒤의 생각, 재시도와 복습을 따로 보관합니다. 로그인이나 서버 저장은 없습니다.' }),
     el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '실제 차트 8단계' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' }), el('a.btn', { href: '#/practice/review', text: '복습' })]),
-    summary, backupArea, list);
-  renderSummary(); renderBackup(); renderList();
+    summary, backupArea, journalArea, list);
+  renderSummary(); renderBackup(); renderJournal(); renderList();
 }

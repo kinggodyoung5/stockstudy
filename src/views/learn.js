@@ -383,9 +383,17 @@ function revealActive(nav) {
 }
 
 /** 이 레슨에 연결된 실제 차트 연습 주제와, 현재 교재에서 기록한 사례 수 */
+/** 교재 주제가 아닌 연습 화면으로 이어지는 레슨 */
+const EXTRA_PRACTICE = {
+  'plan-risk': [['종합 읽기와 계획', '#/practice/plan']],
+  'analysis-process': [['종합 읽기와 계획', '#/practice/plan']],
+  expectancy: [['기대값 실험 (가상 차트)', '#/sandbox']],
+};
+
 function practiceLinks(lessonId) {
   const types = Object.entries(TASKS).filter(([, [, lesson]]) => lesson === lessonId).map(([type]) => type);
-  if (!types.length) return null;
+  const extra = (EXTRA_PRACTICE[lessonId] || []).map(([text, href]) => el('a.btn', { href, text }));
+  if (!types.length) return extra.length ? el('div.lesson-practice', null, [el('p.small', { text: '이 레슨과 이어지는 연습' }), el('div.row', null, extra)]) : null;
   const tried = Object.fromEntries(types.map((t) => [t, 0]));
   for (const key of storage.keys().filter((k) => k.startsWith(`chart-course:${COURSE_VERSION}:`))) {
     const records = storage.load(key, {});
@@ -397,9 +405,9 @@ function practiceLinks(lessonId) {
   }
   return el('div.lesson-practice', null, [
     el('p.small', { text: '이 레슨과 이어지는 실제 차트 연습' }),
-    el('div.row', null, types.map((t) => el('a.btn', { href: `#/practice/chart/${t}` }, [
+    el('div.row', null, [...extra, ...types.map((t) => el('a.btn', { href: `#/practice/chart/${t}` }, [
       TASKS[t][0], el('span.small.muted', { text: tried[t] ? ` · ${tried[t]}개 기록` : ' · 아직 없음' }),
-    ]))),
+    ]))]),
   ]);
 }
 

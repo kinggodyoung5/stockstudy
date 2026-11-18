@@ -14,6 +14,19 @@ import {
 import { el, clear, overlayBar, fmt, signed, dirClass } from '../lib/ui.js';
 import { closeDrawdown, invalidCandles } from '../lib/chart-data.js';
 import { inspectStock } from '../lib/data-quality.js';
+import * as storage from '../lib/storage.js';
+import { JOURNAL_KEY, normalizeJournal, journalEntry, addEntry } from '../lib/journal.js';
+import { NOTE_FIELDS } from '../lib/capstone.js';
+
+/** 기준일을 일봉 n개만큼 옮긴다. 자료 범위 밖이면 끝에 멈춘다. 마지막 날이면 null(기준일 없음 = 최신). */
+export function stepDate(candles, end, n) {
+  const last = candles.length - 1;
+  let k = end ? candles.findIndex((c) => c.date >= end) : last;
+  if (k < 0) k = last;
+  if (end && candles[k].date > end) k = Math.max(0, k - 1);
+  const next = Math.max(0, Math.min(last, k + n));
+  return candles[next].date;
+}
 
 let chart = null;
 let panels = [];
@@ -46,7 +59,7 @@ const UNITS = [
   { id: 'month', label: '월봉' },
 ];
 
-export async function renderViewer(app) {
+export async function renderViewer(app, params = []) {
   destroyViewer();
   const version = viewerVersion;
   clear(app).append(el('p.loading', { text: '종목 목록을 불러오는 중…' }));
@@ -108,6 +121,10 @@ export async function renderViewer(app) {
   }
   // 정렬 후 첫 항목을 기본값으로 (select 표시와 state 가 어긋나지 않게)
   state.ticker = tickerSel.querySelector('option').value;
+  // #/viewer/{종목}/{기준일} 로 열면 그 화면을 연다(학습 일지에서 다시 열기).
+  const wanted = params[0] ? decodeURIComponent(params[0]) : null;
+  if (wanted && list.some((r) => r.ticker === wanted)) state.ticker = wanted;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(params[1] || '')) state.end = params[1];
   tickerSel.value = state.ticker;
   tickerSel.addEventListener('change', () => { state.ticker = tickerSel.value; state.end = null; rebuild(); });
 
@@ -129,6 +146,59 @@ export async function renderViewer(app) {
 
   const endInput = el('input', { type: 'date' });
   endInput.addEventListener('change', () => { state.end = endInput.value || null; rebuild(); });
+
+  // ── 봉 넘기기: 기준일을 하루씩 옮기며, 오른쪽을 가린 채 읽는다 ──
+  let currentStock = null;
+  const stepNote = el('span.small.muted', { 'aria-live': 'polite' });
+  const step = (n) => {
+    if (!currentStock) return;
+    state.end = stepDate(currentStock.candles, state.end, n);
+    endInput.value = state.end;
+    rebuild();
+  };
+  const prevBtn = el('button.btn', { type: 'button', text: '이전 봉', onclick: () => step(-1) });
+  const nextBtn = el('button.btn', { type: 'button', text: '다음 봉', onclick: () => step(1) });
+  const next5Btn = el('button.btn', { type: 'button', text: '5봉 넘기기', onclick: () => step(5) });
+  const randomBtn = el('button.btn', { type: 'button', text: '임의의 날짜로', onclick: () => {
+    if (!currentStock) return;
+    const cs = currentStock.candles, lo = Math.min(260, cs.length - 1), hi = Math.max(lo, cs.length - 41);
+    state.end = cs[lo + Math.floor(Math.random() * (hi - lo + 1))].date;   // 저장하지 않는다
+    endInput.value = state.end;
+    rebuild();
+  } });
+  const stepRow = el('div.row.step-row', null, [
+    el('span.small', { text: '봉 넘기기' }), prevBtn, nextBtn, next5Btn, randomBtn, stepNote,
+  ]);
+  box.tabIndex = 0;
+  box.setAttribute('aria-label', '가격 차트. 초점이 있을 때 왼쪽·오른쪽 화살표로 기준일을 한 봉씩 옮깁니다.');
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+  });
+
+  // ── 학습 일지 ──
+  const journalNotes = Object.fromEntries(NOTE_FIELDS.map(([k, , hint]) => [k, el('textarea', { id: 'journal-' + k, rows: 2, maxlength: 1000, placeholder: hint })]));
+  const journalStatus = el('p.small.muted', { 'aria-live': 'polite' });
+  const journalSave = el('button.btn.primary', { type: 'button', text: '일지에 남기기' });
+  journalSave.addEventListener('click', () => {
+    if (!currentStock) return;
+    try {
+      const entry = journalEntry({ ticker: currentStock.ticker, name: currentStock.name, end: state.end || endInput.value, unit: state.unit,
+        overlays: Object.entries(overlays).filter(([, on]) => on).map(([k]) => k),
+        oscillators: Object.entries(state.oscillators).filter(([, on]) => on).map(([k]) => k),
+        notes: Object.fromEntries(Object.entries(journalNotes).map(([k, t]) => [k, t.value])) });
+      const next = addEntry(normalizeJournal(storage.load(JOURNAL_KEY, null)), entry);
+      if (!storage.save(JOURNAL_KEY, next)) throw new Error('저장하지 못했습니다. 브라우저 저장이 막혀 있거나 공간이 부족할 수 있습니다.');
+      Object.values(journalNotes).forEach((t) => { t.value = ''; });
+      journalStatus.textContent = `${entry.name} ${entry.end} 화면을 일지에 남겼습니다. ‘내 기록’에서 다시 열 수 있습니다. 남긴 내용은 고치지 않고 덧붙임만 할 수 있습니다.`;
+    } catch (error) { journalStatus.textContent = error.message; }
+  });
+  const journalBox = el('details.param-details.journal-box', null, [
+    el('summary', { text: '이 화면을 학습 일지에 남기기' }),
+    el('p.small.muted', { text: '지금 종목, 기준일, 봉 단위, 켠 지표를 함께 저장합니다. 관찰한 사실은 8자 이상, 나머지는 비워도 됩니다. 자동 채점하지 않습니다.' }),
+    ...NOTE_FIELDS.flatMap(([k, label]) => [el('label.practice-label', { for: 'journal-' + k, text: label }), journalNotes[k]]),
+    journalSave, journalStatus,
+  ]);
 
   const logToggle = (() => {
     const input = el('input', { type: 'checkbox' });
@@ -227,6 +297,7 @@ export async function renderViewer(app) {
     const current = () => version === viewerVersion && build === rebuildVersion && app.isConnected;
     const stock = await loadStock(state.ticker);
     if (!current()) return;
+    currentStock = stock;
     const bench = state.tools.rs ? await loadStock(defaultBenchmark(stock.market, stock.ticker)) : null;
     if (!current()) return;
     // 기준일 이후의 일봉이 주봉·월봉 집계에 섞이지 않게 먼저 자른다.
@@ -252,7 +323,11 @@ export async function renderViewer(app) {
     for (const [id, b] of Object.entries(unitBtns)) b.classList.toggle('primary', id === state.unit);
     endInput.min = stock.candles[0].date;
     endInput.max = stock.candles.at(-1).date;
-    if (!state.end) endInput.value = all[lastIdx].date;
+    endInput.value = state.end || all[lastIdx].date;
+    const atLast = !state.end || state.end >= stock.candles.at(-1).date;
+    nextBtn.disabled = atLast; next5Btn.disabled = atLast;
+    prevBtn.disabled = !!state.end && state.end <= stock.candles[0].date;
+    stepNote.textContent = `기준일 ${endInput.value} · 그 뒤의 봉은 차트와 지표 계산에서 빠집니다. 다음 봉을 누르기 전에 무엇을 확인할지 먼저 정해 보세요.`;
 
     // 차트는 매번 새로 만든다 — 보조지표 (RSI·MACD 등) 구성이 바뀌면 시간축 동기화도 다시 걸어야 한다
     clearViewerCharts();
@@ -406,6 +481,7 @@ export async function renderViewer(app) {
 
     el('div.panel', null, [
       el('div.row', null, [tickerSel, rangeRow, unitRow, el('span.spacer'), el('label.small.muted', null, ['기준일 ', endInput])]),
+      stepRow,
       el('div.row', { style: { marginTop: '12px' } }, [
         overlayBar(overlays, (next) => { Object.assign(overlays, next); if (chart) chart.setOverlays(overlays); }),
         logToggle,
@@ -428,6 +504,7 @@ export async function renderViewer(app) {
       el('div.chart-with-profile', null, [el('div', { style: { minWidth: '0' } }, [box, panelWrap]), profileBox]),
       stats,
       levelList,
+      journalBox,
     ])
   );
 
