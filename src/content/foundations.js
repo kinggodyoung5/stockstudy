@@ -35,12 +35,27 @@ export const FOUNDATIONS = [
   },
 ];
 
+/**
+ * 처음 한 바퀴의 공부 순서. lessons.js 의 묶음(LESSON_GROUPS) 1~9와 같은 순서다.
+ * lessons 는 그 단계에서 읽을 레슨(처음 것부터), practice 는 이어서 풀 실제 차트 연습 주제다.
+ */
 export const CURRICULUM = [
-  { title: '1. 가격과 시간', lesson: 'chart-basics', goal: '시가·고가·저가·종가와 봉의 시간 단위를 읽는다. 봉의 색과 전일 대비 등락을 구분한다.' },
-  { title: '2. 추세와 가격대', lesson: 'structure-basics', goal: '고점·저점으로 구조를 읽고 지지·저항 후보를 설명한다.' },
-  { title: '3. 평균과 설정', lesson: 'moving-average', goal: '평균선의 위치와 교차가 무엇을 뜻하는지 설명한다. 기간 설정에 따라 달라지는 점도 확인한다.' },
-  { title: '4. 거래량과 변동 폭', lesson: 'volume', goal: '거래량의 비교 기준을 밝힌다. ATR·볼린저밴드와 역할을 구분한다.' },
-  { title: '5. 모멘텀과 한계', lesson: 'rsi', goal: 'RSI·MACD의 과열, 교차, 다이버전스를 확정 예측과 구분한다.' },
-  { title: '6. 패턴과 맥락', lesson: 'candlestick-reversal', goal: '모양뿐 아니라 선행 추세·위치·확인 시점을 함께 검사한다.' },
-  { title: '7. 종합 설명과 복기', lesson: 'analysis-process', goal: '관찰 → 해석 → 반대 증거 → 무효 조건을 스스로 쓴다.' },
+  { title: '1. 가격과 봉', lessons: ['chart-basics', 'kr-market'], practice: ['candle', 'wick', 'timeframe'],
+    goal: '시가·고가·저가·종가와 봉의 시간 단위를 읽는다. 봉의 색과 전일 대비 등락을 구분한다.' },
+  { title: '2. 추세와 가격대', lessons: ['structure-basics', 'support-resistance', 'trendline', 'timeframes'], practice: ['trend', 'level', 'trendline', 'sr-level', 'retest', 'mtf'],
+    goal: '고점·저점으로 구조를 읽고, 근거를 댈 수 있는 지지·저항 후보와 추세선을 정한다. 주봉과 일봉을 나눠 말한다.' },
+  { title: '3. 이동평균', lessons: ['moving-average', 'cross', 'indicator-settings'], practice: ['ma-position', 'ma-slope', 'ma-settings', 'cross-status'],
+    goal: '평균선의 위치, 기울기, 교차를 구분한다. 기간 설정에 따라 달라지는 점도 확인한다.' },
+  { title: '4. 거래량', lessons: ['volume', 'price-volume'], practice: ['volume', 'volume-rule', 'breakout-volume'],
+    goal: '거래량을 무엇과 비교했는지 밝히고, 가격의 움직임과 함께 읽는다.' },
+  { title: '5. 변동 폭', lessons: ['atr', 'bollinger-bands'], practice: ['atr', 'bands'],
+    goal: 'ATR과 볼린저밴드가 크기를 재는 도구이지 방향을 재는 도구가 아님을 설명한다.' },
+  { title: '6. 모멘텀', lessons: ['rsi', 'macd', 'divergence'], practice: ['rsi', 'macd', 'divergence'],
+    goal: 'RSI·MACD의 상태, 교차, 다이버전스를 확정 예측과 구분한다.' },
+  { title: '7. 캔들', lessons: ['candlestick-reversal', 'candlestick-engulfing'], practice: ['engulf', 'candle-context'],
+    goal: '모양뿐 아니라 앞선 흐름과 위치, 확인 시점을 함께 검사한다.' },
+  { title: '8. 차트 패턴', lessons: ['double-patterns', 'head-and-shoulders'], practice: [],
+    goal: '넥라인이 종가로 깨졌는지와 모양이 비슷한 것을 구분한다.' },
+  { title: '9. 종합과 계획', lessons: ['analysis-process', 'market-context', 'plan-risk', 'expectancy', 'biases'], practice: ['integrated', 'limits'],
+    goal: '관찰 → 해석 → 반대 근거 → 무효 조건을 스스로 쓰고, 계획을 숫자로 적는다.' },
 ];

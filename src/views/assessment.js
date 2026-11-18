@@ -8,7 +8,7 @@
 import { loadAssessment, loadStock } from '../lib/data.js';
 import { TASKS, openCourseCase } from '../lib/chart-course.js';
 import { reviewSelf, CONFIDENCE } from '../lib/course-feedback.js';
-import { DOMAINS, DOMAIN_OF, HELP, itemId, assessmentRecord, normalizeAssessment, addAttempt, pickSession, scorecard, weakTopics, usedHelp } from '../lib/assessment.js';
+import { DOMAINS, DOMAIN_OF, HELP, itemId, assessmentRecord, normalizeAssessment, addAttempt, addSession, pickSession, scorecard, weakTopics, usedHelp, sessionCompare, confidenceTable } from '../lib/assessment.js';
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
 import { autoCheck, selfCheck } from './course-feedback.js';
@@ -42,9 +42,19 @@ export async function renderAssessment(app) {
   const report = el('section.assess-report');
   const startButton = el('button.btn.primary', { text: '새 점검 시작 (영역마다 한 문항)', onclick: () => startSession() });
 
+  /** 입문 과정 기록이 하나도 없으면 '공부 전 점검'이다. */
+  function hasCourseRecords() {
+    return storage.keys().filter((k) => k.startsWith('chart-course:')).some((k) => {
+      const r = storage.load(k, {});
+      return r && typeof r === 'object' && Object.values(r).some((x) => x?.submittedAt);
+    });
+  }
+
   function startSession() {
     const { ids, missing } = pickSession(items, state, String(Date.now()));
-    state = { ...state, session: ids.length ? { startedAt: Date.now(), ids, missing, help: {}, retry: null } : null };
+    const startedAt = Date.now();
+    state = { ...state, session: ids.length ? { startedAt, ids, missing, help: {}, retry: null } : null };
+    if (ids.length) state = addSession(state, { startedAt, ids, label: hasCourseRecords() ? 'post' : 'pre' });
     persist();
     if (!ids.length) {
       clear(area).append(el('h2', { text: '새로 풀 구간이 없습니다' }),
@@ -65,7 +75,14 @@ export async function renderAssessment(app) {
     const drawToken = ++serial;
     clearCharts();
     const s = state.session, id = currentId();
-    if (!s) { clear(area).append(el('h2', { text: '점검을 시작하세요' }), el('p', { text: '여섯 영역에서 한 문항씩, 연습 화면에 나오지 않은 구간을 보여줍니다. 답을 고른 뒤에 해설이 열립니다.' }), startButton); return; }
+    if (!s) {
+      const fresh = !Object.keys(state.items).length && !hasCourseRecords();
+      clear(area).append(...[el('h2', { text: '점검을 시작하세요' }),
+        el('p', { text: '여덟 영역에서 한 문항씩, 연습 화면에 나오지 않은 구간을 보여줍니다. 답을 고른 뒤에 해설이 열립니다.' }),
+        fresh ? el('p.assess-pre', { text: '아직 공부한 기록이 없습니다. 공부를 시작하기 전에 지금 수준을 한 번 확인해 두면, 나중에 같은 방식으로 다시 점검해 견줄 수 있습니다. 건너뛰고 바로 공부해도 됩니다.' }) : null,
+        startButton, fresh ? el('a.btn', { href: '#/practice/chart', text: '건너뛰고 공부부터' }) : null].filter(Boolean));
+      return;
+    }
     if (!id) { sessionSummary(); return; }
     const ref = byId.get(id), retry = s.retry === id;
     if (!ref) { clear(area).append(el('p.error', { text: '이 문항은 현재 평가 자료에 없습니다. 새 점검을 시작하세요.' }), startButton); return; }
@@ -118,6 +135,7 @@ export async function renderAssessment(app) {
           const record = assessmentRecord(q, { choice: pickedChoice(options), reflection: reflection.value, confidence: level?.value,
             numeric: numericInput?.value, help, kind: retry ? 'retry' : 'first', session: s.startedAt });
           submitted = true;
+          cleanup?.reveal?.();
           state = addAttempt(state, id, record);
           if (retry) {
             const { [helpKey]: _, ...rest } = state.session.help || {};
@@ -209,6 +227,8 @@ export async function renderAssessment(app) {
           el('ul.fb-list', null, Object.entries(r.reads).map(([label, c]) => el('li', { text: `${label}: ${count(c.right, c.n)}` })))]) : null,
         r.first && r.first < 5 ? el('p.small.muted', { text: `첫 시도가 ${r.first}개뿐이라 이 영역을 판단하기엔 이릅니다.` }) : null,
       ].filter(Boolean)))),
+      compareSection(),
+      confidenceSection(),
       weak.size ? el('section.assess-weak', null, [
         el('h3', { text: '복습으로 이어갈 주제' }),
         el('ul', null, [...weak].map(([type, why]) => el('li', null, [
@@ -220,11 +240,51 @@ export async function renderAssessment(app) {
     ].filter(Boolean));
   }
 
+  /** 처음 점검과 최근 점검. 횟수만 나란히 보여주고 차이를 색이나 화살표로 강조하지 않는다. */
+  function compareSection() {
+    const cmp = sessionCompare(state, items);
+    if (!cmp) return null;
+    const day = (t) => new Date(t).toLocaleDateString('ko-KR');
+    const labelOf = (m) => (m.label === 'pre' ? '공부 전 점검' : '점검') + (m.spaced ? ' · 간격을 두고 다시 본 점검' : '');
+    const cell = (c) => (c.n ? `도움 없이 ${c.noHelpCorrect}개 맞음 / 도움 없이 푼 ${c.noHelp}개 (전체 ${c.n}개)` : '문항 없음');
+    return el('section.assess-compare', null, [
+      el('h3', { text: '처음 점검과 최근 점검' }),
+      el('p.small', { text: `처음: ${day(cmp.first.startedAt)} ${labelOf(cmp.first)}` + (cmp.recent.length ? ` · 최근 ${cmp.recent.length}번: ${cmp.recent.map((m) => `${day(m.startedAt)} ${labelOf(m)}`).join(', ')}` : ' · 아직 다음 점검이 없습니다') }),
+      el('div.table-wrap', null, [el('table.lesson-table.assess-table', null, [
+        el('thead', null, [el('tr', null, [el('th', { text: '영역' }), el('th', { text: '처음 점검' }), el('th', { text: '최근 점검' })])]),
+        el('tbody', null, DOMAINS.map((d) => el('tr', null, [
+          el('td', { text: d.title }), el('td', { text: cell(cmp.firstCounts[d.id]) }),
+          el('td', { text: cmp.recentCounts ? cell(cmp.recentCounts[d.id]) : '—' }),
+        ]))),
+      ])]),
+      el('p.small.muted', { text: '한 번의 점검은 영역마다 한 문항이라 표본이 아주 작습니다. 처음과 최근의 차이를 실력의 변화로 단정하지 마세요. 문항마다 난이도도 다릅니다.' }),
+    ]);
+  }
+
+  /** 확신과 결과. 점수로 합치지 않는다. */
+  function confidenceSection() {
+    const t = confidenceTable(state);
+    if (!t.sure.n && !t.half.n && !t.unsure.n) return null;
+    const line = (label, c) => (c.n ? el('li', { text: `${label}: ${c.n}개 중 ${c.correct}개 맞음` }) : null);
+    return el('section.assess-compare', null, [
+      el('h3', { text: '확신과 결과' }),
+      el('ul', null, [line('“확실하다”고 한 첫 시도', t.sure), line('“반반이다”', t.half), line('“모르겠다”', t.unsure), line('확신을 고르지 않음', t.none)].filter(Boolean)),
+      t.sureWrong.length ? el('div', null, [
+        el('p.small', { text: '확실하다고 했는데 다시 볼 관찰이 있었던 문항입니다. 어떤 기준을 헷갈렸는지 특히 확인하세요.' }),
+        el('ul.fb-list', null, t.sureWrong.slice(0, 10).map((x) => el('li', null, [
+          el('b', { text: TASKS[x.type]?.[0] || x.type }), ` · ${new Date(x.at).toLocaleDateString('ko-KR')} `,
+          TASKS[x.type] ? el('a', { href: `#/practice/chart/${x.type}`, text: '같은 주제 연습' }) : null,
+        ]))),
+        el('a.btn', { href: '#/practice/review', text: '복습으로' }),
+      ]) : null,
+    ].filter(Boolean));
+  }
+
   const tried = Object.values(state.items).filter((e) => e?.first).length;
   clear(app).append(
     el('h1.page-title', { text: '새 구간에서 다시 읽기' }),
     el('p.page-sub', { text: '입문 과정의 차트나 정답 문장을 기억하는 것과, 다른 구간을 실제로 읽는 것은 다릅니다. 연습 화면에 나오지 않은 구간에서 배운 내용을 다시 확인해보세요. 시간 제한은 없습니다.' }),
-    el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '입문 6단계로' }), el('a.btn', { href: '#/practice/review', text: '복습' }), el('a.btn', { href: '#/practice/records', text: '기록과 백업' })]),
+    el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '실제 차트 8단계로' }), el('a.btn', { href: '#/practice/review', text: '복습' }), el('a.btn', { href: '#/practice/records', text: '기록과 백업' })]),
     el('details.rulebox', null, [el('summary', { text: '‘새 구간’은 무엇을 뜻하나요?' }),
       el('p.small', { text: `평가 문항 ${items.length}개(${data.summary.tickers}개 종목)는 입문 과정 ${data.exposure.courseCases}사례와 실제 비교 연습 ${data.exposure.studyCases / 2}쌍의 화면 구간과 한 봉도 겹치지 않는 날짜에서 골랐습니다. 지표 계산에 쓰는 앞쪽 이력은 화면에 나오지 않으므로 겹침으로 세지 않습니다.` }),
       el('p.small', { text: '레슨의 예시 차트, 데이터 뷰어, 방향 예측 실험에서 무엇을 봤는지는 기록이 없어 확인하지 못합니다. 그래서 ‘한 번도 본 적 없는 차트’가 아니라 ‘이 기능의 기록상 처음 보는 구간’이라고 부릅니다.' }),

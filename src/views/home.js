@@ -10,7 +10,7 @@
  * 신호별 성과는 각 레슨과 성과 통계 탭에서 다룬다.
  */
 
-import { LESSONS, LESSON_GROUPS } from '../content/lessons.js';
+import { LESSONS, LESSON_GROUPS, LESSON_BY_ID } from '../content/lessons.js';
 import { loadPatternIndex } from '../lib/data.js';
 import { el, clear, qualityNotice } from '../lib/ui.js';
 import { CURRICULUM } from '../content/foundations.js';
@@ -37,7 +37,7 @@ const STEPS = [
     title: '실제 차트를 읽는다',
     href: '#/practice/chart',
     body: '실제 차트에서 봉·추세·평균·거래량·RSI와 MACD를 순서대로 읽습니다. 충족·불충족·확인 대기와 엇갈리는 근거도 구별합니다. 익숙해지면 데이터 뷰어에서 자유롭게 연습하세요.',
-    cta: '실제 차트 입문 6단계',
+    cta: '실제 차트 8단계',
   },
   {
     n: 4,
@@ -112,7 +112,9 @@ export async function renderHome(app) {
       el('h2.section-title', { text: '기초 개념 학습 순서' }),
       el('p.small.muted', { text: '입문자는 이 순서로 시작하세요. 단계를 읽었다고 완료 처리하지 않습니다. 새 차트에서 직접 설명할 수 있는지가 기준입니다.' }),
       el('ol.curriculum', null, CURRICULUM.map((step) => el('li', null, [
-        el('a', { href: `#/learn/${step.lesson}`, text: step.title.replace(/^\d+\. /, '') }), el('p.small.muted', { text: step.goal }),
+        el('a', { href: `#/learn/${step.lessons[0]}`, text: step.title.replace(/^\d+\. /, '') }), el('p.small.muted', { text: step.goal }),
+        step.lessons.length > 1 ? el('p.small', null, ['읽을 레슨: ', ...step.lessons.flatMap((id, k) => [k ? ' · ' : '',
+          el('a', { href: `#/learn/${id}`, text: LESSON_BY_ID[id].title })])]) : null,
       ]))),
       el('a.btn.primary', { href: '#/learn/chart-basics', text: '1단계부터 공부하기' }),
     ]),

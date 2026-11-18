@@ -23,14 +23,14 @@ const stockOf = (ticker) => {
   return cache.get(ticker);
 };
 
-test('입문 6단계·18주제·480사례: 85종목, 60상태, 레슨·자료 버전 연결', () => {
+test('실제 차트 8단계·25주제·784사례: 85종목, 98상태, 레슨·자료 버전 연결', () => {
   assert.equal(course.version, COURSE_VERSION);
   assert.equal(course.provenance.rulesVersion, RULES_VERSION);
   assert.equal(course.provenance.sourceDigest, index.provenance.sourceDigest);
-  assert.equal(COURSE_STEPS.length, 6); assert.equal(Object.keys(TASKS).length, 18);
-  assert.equal(course.cases.length, 480);
+  assert.equal(COURSE_STEPS.length, 8); assert.equal(Object.keys(TASKS).length, 25);
+  assert.equal(course.cases.length, 784);
   assert.equal(new Set(course.cases.map((r) => r.ticker)).size, 85);
-  assert.equal(new Set(course.cases.map((r) => `${r.type}|${r.bucket}`)).size, 60);
+  assert.equal(new Set(course.cases.map((r) => `${r.type}|${r.bucket}`)).size, 98);
   assert.deepEqual(new Set(COURSE_STEPS.flatMap((s) => s.ids)), new Set(Object.keys(TASKS)));
   const dates = course.cases.map((r) => r.date);
   assert.ok(Math.min(...dates.map((d) => +d.slice(0, 4))) <= 2016);
@@ -49,6 +49,12 @@ test('모든 실전 문제: 원자료·정답·근거·표시 이력이 일치�
     assert.ok(q.options[q.answer]); assert.ok(q.explanation.length > 40); assert.ok(q.hint.length > 20);
     assert.ok(q.facts.length > 0); assert.equal(new Set(q.options).size, q.options.length);
     assert.ok(q.markers.every((m) => view.some((c) => c.date === m.date)));
+    // 제출 뒤에만 보일 표시와 선의 점도 화면 구간 안에 있고, 관찰 마감일을 넘지 않는다.
+    assert.ok((q.revealMarkers || []).every((m) => view.some((c) => c.date === m.date)), ref.type);
+    for (const line of q.lines) for (const p of line.points || [{ date: line.from }]) {
+      assert.ok(p.date <= ref.date, ref.type);
+      assert.ok(history.some((c) => c.date === p.date), ref.type);
+    }
     assert.ok(!/NaN|Infinity|undefined/.test(JSON.stringify(q)));
     if (q.weekly) {
       assert.equal(q.weekly.at(-1).date, q.focusDate); assert.ok(q.focusDate < ref.date);
@@ -73,9 +79,40 @@ test('충족·불충족·대기와 경계·맥락 반례를 실제 자료에서 
   const buckets = (type) => new Set(course.cases.filter((r) => r.type === type).map((r) => r.bucket));
   assert.deepEqual(buckets('cross-status'), new Set(['1:pass', '1:fail', '1:pending', '-1:pass', '-1:fail', '-1:pending']));
   assert.deepEqual(buckets('volume-rule'), new Set(['pass', 'near', 'price-fail', 'repeat']));
-  assert.deepEqual(buckets('engulf'), new Set(['pass', 'size-fail', 'trend-fail']));
+  assert.deepEqual(buckets('engulf'), new Set(['pass', 'size-fail', 'trend-fail', 'both-fail']));
+  assert.deepEqual(buckets('limits'), new Set(['fact', 'interp', 'invalidation', 'claim']));
+  assert.deepEqual(buckets('wick'), new Set(['0', '1', '2', '3']));
+  assert.deepEqual(buckets('atr'), new Set(['0', '1', '2', '3']));
   assert.deepEqual(buckets('integrated'), new Set(['aligned', 'mixed']));
+  for (const type of ['trendline', 'divergence']) {
+    assert.deepEqual(buckets(type), new Set(['pass', 'fail', 'pending'].flatMap((s) => (type === 'trendline' ? ['up', 'down'] : ['bull', 'bear']).map((d) => `${d}:${s}`))), type);
+  }
+  assert.deepEqual(buckets('retest'), new Set(['hold', 'retest', 'fail']));
+  assert.deepEqual(buckets('mtf'), new Set(['uu', 'ud', 'du', 'dd', 'mixed']));
+  assert.deepEqual(buckets('candle-context'), new Set(['down', 'up', 'none']));
   for (const type of Object.keys(TASKS)) assert.ok(buckets(type).size >= 2, type);
+});
+
+test('모든 주제에서 모든 선택지가 교재의 어느 사례에서는 정답이다 (찍어서 맞힐 수 있는 2지선다 금지)', () => {
+  for (const type of Object.keys(TASKS)) {
+    const qs = course.cases.filter((r) => r.type === type).map((r) => openCourseCase(stockOf(r.ticker), r).question);
+    // 선택지 문장이 사례마다 바뀌는 주제(종합 읽기)는 정답 문장이 사례마다 달라야 한다. 화면에서는 위치도 섞는다.
+    if (new Set(qs.map((q) => JSON.stringify(q.options))).size > 1) {
+      assert.ok(new Set(qs.map((q) => q.options[q.answer])).size > 1, type);
+      continue;
+    }
+    const answers = new Set(qs.map((q) => q.answer));
+    for (let k = 0; k < qs[0].options.length; k++) assert.ok(answers.has(k), `${type} 선택지 ${k}`);
+  }
+});
+
+test('문장 종류 문제는 같은 날이면 같은 문장이고, 네 종류의 정답이 모두 나온다', () => {
+  const refs = course.cases.filter((r) => r.type === 'limits');
+  assert.deepEqual(new Set(refs.map((r) => openCourseCase(stockOf(r.ticker), r).question.answer)), new Set([0, 1, 2, 3]));
+  for (const r of refs.slice(0, 4)) {
+    const a = openCourseCase(stockOf(r.ticker), r).question, b = openCourseCase(stockOf(r.ticker), r).question;
+    assert.equal(a.prompt, b.prompt); assert.match(a.prompt, /^“.+”는 어떤 종류의 문장인가요\?$/);
+  }
 });
 
 test('실제 식별 교재의 정답은 레슨 엔진과 일치한다 (미래를 잘라 검사)', () => {
@@ -141,7 +178,7 @@ test('수치 근거 전부 명시 단위, 미등록 단위를 가격으로 추�
   assert.equal(formatEvidence({ label: '새 지표', value: 1 }, 'USD'), '1 (단위 미확인)');
 });
 
-test('33레슨과 설정의 도해 참조가 살아 있고 이전 단정 문구는 제거됐다', () => {
+test('모든 레슨과 설정의 도해 참조가 살아 있고 이전 단정 문구는 제거됐다', () => {
   for (const lesson of LESSONS) for (const section of lesson.body) if (section.fig) assert.ok(FIGURES[section.fig], section.fig);
   for (const settings of Object.values(LESSON_SETTINGS)) if (settings?.fig) assert.ok(FIGURES[settings.fig]);
   for (const fig of Object.values(FIGURES)) assert.ok(fig.svg().includes('<svg'));

@@ -17,7 +17,7 @@
  */
 import { TASKS, courseRecord } from './chart-course.js';
 import { recordAttempt } from '../content/practice.js';
-import { uniform } from './assessment.js';
+import { uniform } from './hash.js';
 
 export const REVIEW_KEY = 'review:v1';
 export const DAY = 86400000;
@@ -136,3 +136,40 @@ export function addReviewAttempt(review, sourceId, attempt) {
 }
 
 export const attemptKey = (a) => `${a.submittedAt}|${a.ref?.type}|${a.ref?.ticker}|${a.ref?.date}|${a.choice}`;
+
+/**
+ * 자주 틀리는 관찰. 주제가 달라도 같은 관찰(예: "20일선의 5거래일 변화")을 반복해서 틀리는지 모은다.
+ * readsByType: 교재의 { 주제: { 관찰 id: 관찰 이름 } }.
+ *   입문 기록: 자동 확인의 틀린 관찰 id(auto.wrong)를 이름으로 바꿔 센다. 그 주제의 관찰마다 문항 수를 하나씩 더한다.
+ *   평가 기록: 첫 시도에 저장된 관찰별 정오(reads)를 그대로 센다.
+ * 저장된 기록만 읽고 다시 채점하지 않는다. 지금 교재에 없는 관찰 id(예전 교재의 문제)는 건너뛴다.
+ * 반환: [{ label, n, wrong, types }] 중 두 번 이상, 그리고 40% 이상 틀린 것. 많이 틀린 순서.
+ * 교재의 관찰 목록에 없는 이름은 뺀다.
+ */
+export const WEAK_READ = { minWrong: 2, minShare: 0.4 };
+export function weakReads(store, readsByType = {}) {
+  const tally = new Map();
+  const add = (label, wrong) => {
+    const t = tally.get(label) || { label, n: 0, wrong: 0 };
+    t.n++; if (wrong) t.wrong++;
+    tally.set(label, t);
+  };
+  for (const [key, records] of Object.entries(store)) {
+    if (!key.startsWith(COURSE_PREFIX) || !records || typeof records !== 'object') continue;
+    for (const [id, r] of Object.entries(records)) {
+      const names = readsByType[id.split('|')[0]];
+      if (!r?.submittedAt || !Array.isArray(r.auto?.wrong) || !names) continue;
+      for (const [readId, label] of Object.entries(names)) add(label, r.auto.wrong.includes(readId));
+    }
+  }
+  for (const entry of Object.values(store[ASSESSMENT_STORAGE]?.items || {})) {
+    for (const x of Array.isArray(entry?.first?.reads) ? entry.first.reads : []) if (typeof x?.label === 'string') add(x.label, x.ok === false);
+  }
+  const typesOf = (label) => Object.entries(readsByType).filter(([, m]) => Object.values(m).includes(label)).map(([t]) => t).sort();
+  return [...tally.values()]
+    .filter((t) => t.wrong >= WEAK_READ.minWrong && t.wrong / t.n >= WEAK_READ.minShare)
+    .map((t) => ({ ...t, types: typesOf(t.label) }))
+    // 교재의 관찰 목록에 없는 이름(조건형 문제의 종합 판정 등)은 이어 줄 주제가 없어 뺀다.
+    .filter((t) => t.types.length)
+    .sort((a, b) => b.wrong - a.wrong || b.wrong / b.n - a.wrong / a.n || a.label.localeCompare(b.label));
+}

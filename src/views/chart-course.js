@@ -93,6 +93,7 @@ export async function renderChartCourse(app, initialType = '') {
       const submit = el('button.btn.primary', { text: '선택하고 해설 확인' });
       let submitted = !!existing;
       function reveal(record) {
+        cleanup?.reveal?.();
         options.disabled = true; confidence.disabled = true; reflection.readOnly = true; submit.disabled = true;
         if (numericInput) numericInput.readOnly = true;
         const flat = COURSE_STEPS.flatMap((s) => s.ids), nextType = flat[flat.indexOf(selectedType) + 1];
@@ -143,7 +144,7 @@ export async function renderChartCourse(app, initialType = '') {
       if (token === generation && drawToken === serial) nextCase.disabled = false;
     }
   }
-  clear(app).append(el('h1.page-title', { text: '실제 차트 · 입문 6단계' }),
+  clear(app).append(el('h1.page-title', { text: '실제 차트 8단계' }),
     el('p.page-sub', { text: '실제 차트에서 가격과 추세를 읽고, 판단 근거를 설명하는 연습입니다.' }),
     el('div.course-context', null, [
       el('details.course-selector', null, [topicSummary, steps, introduction,

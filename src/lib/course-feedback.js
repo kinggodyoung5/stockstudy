@@ -10,6 +10,7 @@
  * 문제(chart-course.js)는 두 형태 중 하나로 근거를 들고 온다.
  *   reads + claims: 학생이 읽을 관찰(truth)과 선택지마다 그 관찰을 어떻게 주장하는지.
  *   conditions + verdicts: 조건별 충족·불충족·대기와, 선택지마다 주장하는 종합 판정.
+ * reads 형 문제도 화면에 조건표(conditions)를 함께 둘 수 있다. 어느 형인지는 verdicts 가 있는지로 가른다.
  */
 
 export const STATUS_LABEL = { pass: '충족', fail: '불충족', pending: '확인 대기' };
@@ -47,10 +48,10 @@ const VERDICT_TEXT = {
  */
 export function diagnose(q, choice) {
   const correct = choice === q.answer;
-  if (q.conditions) {
+  if (q.verdicts) {
     const truth = overallStatus(q.conditions), claimed = q.verdicts[choice];
     const decisive = truth === 'pass' ? q.conditions : q.conditions.filter((c) => c.status === truth);
-    const message = correct ? null : q.trap?.[choice] || VERDICT_TEXT[`${claimed}>${truth}`] || null;
+    const message = correct ? null : q.verdictText?.[`${claimed}>${truth}`] || VERDICT_TEXT[`${claimed}>${truth}`] || null;
     return { correct, kind: 'conditions', claimed, truth, decisive, conditions: q.conditions, message };
   }
   const claim = q.claims[choice] || {};

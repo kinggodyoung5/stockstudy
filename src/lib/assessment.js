@@ -18,8 +18,9 @@
 import { COURSE_STEPS, TASKS, makeCourseQuestion, courseRecord, openCourseCase } from './chart-course.js';
 import { STUDY_PATTERNS, comparisonPairs } from './real-study.js';
 import { diagnose, CONFIDENCE } from './course-feedback.js';
+import { uniform } from './hash.js';
 
-export const ASSESSMENT_VERSION = '2026-10-01.1';
+export const ASSESSMENT_VERSION = '2026-11-17.2';
 /** 영역 = 입문 과정의 여섯 단계. 같은 주제 분류를 쓴다. */
 export const DOMAINS = COURSE_STEPS.map((s, i) => ({ id: 'd' + (i + 1), title: s.title, types: s.ids }));
 export const DOMAIN_OF = Object.fromEntries(DOMAINS.flatMap((d) => d.types.map((t) => [t, d.id])));
@@ -34,6 +35,9 @@ export const EDGE_LIMIT = {
   candle: 0.15, wick: 0.15, timeframe: 0.15, trend: 0.25, level: 0.5,
   'ma-position': 0.4, 'ma-slope': 0.2, 'ma-settings': 0.3,
   volume: 0.05, atr: 0.07, bands: 0.5, rsi: 3, macd: 0.06, integrated: 0.06,
+  // 2026-11 새 주제. 단위: 추세선·가격대·되돌림은 가격 대비 %, 주봉과 일봉은 %, 돌파일은 배수·비율,
+  // 다이버전스는 %와 RSI 점수 중 작은 쪽, 캔들 자리는 앞선 흐름 %p.
+  trendline: 0.5, 'sr-level': 0.5, retest: 0.5, mtf: 0.3, 'breakout-volume': 0.1, divergence: 1, 'candle-context': 1,
 };
 export const edgeOf = (q) => (EDGE_LIMIT[q.type] != null && q.margin != null && q.margin < EDGE_LIMIT[q.type] ? 1 : 0);
 
@@ -44,38 +48,41 @@ export const edgeOf = (q) => (EDGE_LIMIT[q.type] != null && q.margin != null && 
  * 이 값을 바꾸면 ASSESSMENT_VERSION 을 올리고 data/assessment.json 을 다시 만든다.
  */
 export const RATES = {
-  'atr|0|0': 0.00014, 'atr|0|1': 0.00063, 'atr|1|0': 0.00013, 'atr|1|1': 0.00064,
+  // ATR 은 하루 변동 폭 비교를 더하면서 노출 겹침에 걸리는 비율이 높아져 1.5배로 둔다.
+  'atr|0|0': 0.00024, 'atr|0|1': 0.0008, 'atr|1|0': 0.00021, 'atr|1|1': 0.00062, 'atr|2|0': 0.00032, 'atr|2|1': 0.00075, 'atr|3|0': 0.00015, 'atr|3|1': 0.00057,
   'bands|0|0': 0.00088, 'bands|0|1': 0.001, 'bands|1|0': 0.00005, 'bands|1|1': 0.00039, 'bands|2|0': 0.0011, 'bands|2|1': 0.0012,
   'candle|0|0': 0.000083, 'candle|0|1': 0.00061, 'candle|1|0': 0.00067, 'candle|1|1': 0.00099, 'candle|2|0': 0.00056, 'candle|2|1': 0.00084, 'candle|3|0': 0.000079, 'candle|3|1': 0.00066,
   // 교차는 입문 과정·실제 비교 연습이 교차 날짜를 많이 써서 노출 범위에 걸리는 비율이 높다. 다른 주제의 3배로 둔다.
   'cross-status|-1:fail|0': 0.0087, 'cross-status|-1:pass|0': 0.014, 'cross-status|-1:pending|0': 0.0025, 'cross-status|1:fail|0': 0.0072, 'cross-status|1:pass|0': 0.014, 'cross-status|1:pending|0': 0.0026,
-  'engulf|pass|0': 0.011, 'engulf|size-fail|0': 0.0058, 'engulf|trend-fail|0': 0.0052,
+  'engulf|pass|0': 0.0083, 'engulf|size-fail|0': 0.015, 'engulf|trend-fail|0': 0.0039, 'engulf|both-fail|0': 0.0061,
   'integrated|aligned|0': 0.00011, 'integrated|aligned|1': 0.00077, 'integrated|mixed|0': 0.00019, 'integrated|mixed|1': 0.0005,
-  'level|0|0': 0.00093, 'level|0|1': 0.0013, 'level|1|0': 0.0019, 'level|1|1': 0.00056, 'level|2|0': 0.000048, 'level|2|1': 0.00043,
-  'limits|above|0': 0.00027, 'limits|below|0': 0.00029,
+  'level|0|0': 0.0014, 'level|0|1': 0.0019, 'level|1|0': 0.0029, 'level|1|1': 0.00084, 'level|2|0': 0.000072, 'level|2|1': 0.00064,
+  // 문장 종류 문제는 정답이 넷이라 다른 주제처럼 상태마다 10개 안팎을 노리고, 노출 겹침을 감안해 1.5배로 둔다.
+  'limits|fact|0': 0.00028, 'limits|interp|0': 0.00028, 'limits|invalidation|0': 0.00028, 'limits|claim|0': 0.00028,
   'ma-position|0|0': 0.00008, 'ma-position|0|1': 0.0006, 'ma-position|1|0': 0.00032, 'ma-position|1|1': 0.00071, 'ma-position|2|0': 0.00033, 'ma-position|2|1': 0.00065, 'ma-position|3|0': 0.000091, 'ma-position|3|1': 0.00064,
   'ma-settings|0|0': 0.0001, 'ma-settings|0|1': 0.0006, 'ma-settings|1|0': 0.00019, 'ma-settings|1|1': 0.00064, 'ma-settings|2|0': 0.00018, 'ma-settings|2|1': 0.00065, 'ma-settings|3|0': 0.00011, 'ma-settings|3|1': 0.00064,
   'ma-slope|0|0': 0.000083, 'ma-slope|0|1': 0.00054, 'ma-slope|1|0': 0.00031, 'ma-slope|1|1': 0.00061, 'ma-slope|2|0': 0.00032, 'ma-slope|2|1': 0.00062, 'ma-slope|3|0': 0.000091, 'ma-slope|3|1': 0.00061,
-  'macd|0|0': 0.00011, 'macd|0|1': 0.00063, 'macd|1|0': 0.00017, 'macd|1|1': 0.00066, 'macd|2|0': 0.00017, 'macd|2|1': 0.00071, 'macd|3|0': 0.00011, 'macd|3|1': 0.00071,
-  'rsi|0|0': 0.0012, 'rsi|0|1': 0.0008, 'rsi|1|0': 0.000048, 'rsi|1|1': 0.00032, 'rsi|2|0': 0.002, 'rsi|2|1': 0.0011,
+  'macd|0|0': 0.00016, 'macd|0|1': 0.00095, 'macd|1|0': 0.00026, 'macd|1|1': 0.00099, 'macd|2|0': 0.00026, 'macd|2|1': 0.0011, 'macd|3|0': 0.00016, 'macd|3|1': 0.0011,
+  'rsi|0|0': 0.0018, 'rsi|0|1': 0.0012, 'rsi|1|0': 0.000072, 'rsi|1|1': 0.00048, 'rsi|2|0': 0.003, 'rsi|2|1': 0.0016,
   'timeframe|0|0': 0.00011, 'timeframe|0|1': 0.00089, 'timeframe|1|0': 0.0002, 'timeframe|1|1': 0.0011, 'timeframe|2|0': 0.00018, 'timeframe|2|1': 0.00093, 'timeframe|3|0': 0.00011, 'timeframe|3|1': 0.001,
-  'trend|0|0': 0.00014, 'trend|0|1': 0.001, 'trend|1|0': 0.00015, 'trend|1|1': 0.0012, 'trend|2|0': 0.00012, 'trend|2|1': 0.00035,
-  'volume-rule|near|0': 0.0014, 'volume-rule|pass|0': 0.002, 'volume-rule|price-fail|0': 0.0036, 'volume-rule|repeat|0': 0.0023,
+  // 교재가 784사례로 늘어 연습 구간과 겹치는 후보가 많아져, 추세·가격대와 RSI·MACD 주제는 1.5배로 둔다.
+  'trend|0|0': 0.00021, 'trend|0|1': 0.0015, 'trend|1|0': 0.00022, 'trend|1|1': 0.0018, 'trend|2|0': 0.00018, 'trend|2|1': 0.00052,
+  'volume-rule|near|0': 0.0038, 'volume-rule|pass|0': 0.002, 'volume-rule|price-fail|0': 0.0069, 'volume-rule|repeat|0': 0.0023,
   'volume|0|0': 0.00007, 'volume|0|1': 0.00045, 'volume|1|0': 0.00015, 'volume|1|1': 0.00046, 'volume|2|0': 0.00075, 'volume|2|1': 0.0052,
-  'wick|0|0': 0.00014, 'wick|0|1': 0.00063, 'wick|1|0': 0.00015, 'wick|1|1': 0.0006,
+  'wick|0|0': 0.00027, 'wick|0|1': 0.00037, 'wick|1|0': 0.00011, 'wick|1|1': 0.00033, 'wick|2|0': 0.00013, 'wick|2|1': 0.00032, 'wick|3|0': 0.00025, 'wick|3|1': 0.00036,
+  // 2026-11 새 주제. 같은 방식(주제마다 40개 안팎, 경계 3분의 1)으로 정했고, 화면 구간이 긴 가격대·주봉과 일봉·다이버전스는 2배,
+  // 추세선은 1.5배로 둔다. 연습 노출과 겹쳐 빠지는 후보가 많기 때문이다.
+  'breakout-volume|0|0': 0.002, 'breakout-volume|0|1': 0.0028, 'breakout-volume|1|0': 0.0066, 'breakout-volume|1|1': 0.0055, 'breakout-volume|2|0': 0.0018, 'breakout-volume|2|1': 0.0029, 'breakout-volume|3|0': 0.0067, 'breakout-volume|3|1': 0.0043,
+  'candle-context|down|0': 0.006, 'candle-context|down|1': 0.013, 'candle-context|none|0': 0.0053, 'candle-context|none|1': 0.0066, 'candle-context|up|0': 0.0049, 'candle-context|up|1': 0.012,
+  'divergence|bear:fail|0': 0.00013, 'divergence|bear:fail|1': 0.00017, 'divergence|bear:pass|0': 0.0085, 'divergence|bear:pass|1': 0.012, 'divergence|bear:pending|0': 0.008, 'divergence|bear:pending|1': 0.0063, 'divergence|bull:fail|0': 0.00013, 'divergence|bull:fail|1': 0.00016, 'divergence|bull:pass|0': 0.017, 'divergence|bull:pass|1': 0.015, 'divergence|bull:pending|0': 0.013, 'divergence|bull:pending|1': 0.011,
+  'mtf|dd|0': 0.00029, 'mtf|dd|1': 0.00091, 'mtf|du|0': 0.00082, 'mtf|du|1': 0.0015, 'mtf|mixed|0': 0.00017, 'mtf|mixed|1': 0.0002, 'mtf|ud|0': 0.00078, 'mtf|ud|1': 0.0013, 'mtf|uu|0': 0.00024, 'mtf|uu|1': 0.00096,
+  'retest|fail|0': 0.00035, 'retest|fail|1': 0.0029, 'retest|hold|0': 0.004, 'retest|hold|1': 0.0067, 'retest|retest|0': 0.0032, 'retest|retest|1': 0.0016,
+  'sr-level|0|0': 0.00019, 'sr-level|0|1': 0.0037, 'sr-level|1|0': 0.00022, 'sr-level|1|1': 0.0042, 'sr-level|2|0': 0.00035, 'sr-level|2|1': 0.0053, 'sr-level|3|0': 0.00039, 'sr-level|3|1': 0.005,
+  'trendline|down:fail|0': 0.00025, 'trendline|down:fail|1': 0.0015, 'trendline|down:pass|0': 0.00088, 'trendline|down:pass|1': 0.005, 'trendline|down:pending|0': 0.00049, 'trendline|down:pending|1': 0.016, 'trendline|up:fail|0': 0.00026, 'trendline|up:fail|1': 0.0013, 'trendline|up:pass|0': 0.00076, 'trendline|up:pass|1': 0.0032, 'trendline|up:pending|0': 0.00041, 'trendline|up:pending|1': 0.013,
 };
 
-/** 결정적 균등값 [0,1). 날짜·종목·주제만 넣으므로 다른 날의 봉과 무관하다. */
-export function uniform(text) {
-  let h1 = 0xdeadbeef ^ 0x51ed27, h2 = 0x41c6ce57 ^ 0x51ed27;
-  for (let k = 0; k < text.length; k++) {
-    const ch = text.charCodeAt(k);
-    h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)) / 2 ** 53;
-}
+/** 결정적 균등값. 계산은 hash.js 에 있고, 기존 가져오기를 위해 다시 내보낸다. */
+export { uniform };
 const SALT = 'stockstudy-assessment';
 export const drawOf = (type, ticker, date) => uniform(`${SALT}|${type}|${ticker}|${date}`);
 const maxRate = (rates, type) => Math.max(0, ...Object.entries(rates).filter(([k]) => k.startsWith(type + '|')).map(([, v]) => v));
@@ -210,7 +217,60 @@ export function emptyAssessment() { return { v: 1, items: {}, shown: {}, session
 export function normalizeAssessment(raw) {
   if (!raw || typeof raw !== 'object' || raw.v !== 1) return emptyAssessment();
   return { v: 1, items: raw.items && typeof raw.items === 'object' ? raw.items : {},
-    shown: raw.shown && typeof raw.shown === 'object' ? raw.shown : {}, session: raw.session || null };
+    shown: raw.shown && typeof raw.shown === 'object' ? raw.shown : {}, session: raw.session || null,
+    sessions: Array.isArray(raw.sessions) ? raw.sessions : [] };
+}
+
+/**
+ * 세션 목록에 하나를 더한다. label: 'pre' (입문 기록이 하나도 없을 때 시작한 점검) | 'post'.
+ * 형식 버전은 1 그대로다. sessions 칸이 없는 예전 기록은 빈 목록으로 읽는다.
+ */
+export function addSession(state, { startedAt, ids, label }) {
+  const sessions = (state.sessions || []).filter((s) => s.startedAt !== startedAt);
+  return { ...state, sessions: [...sessions, { startedAt, ids: [...ids], label: label === 'pre' ? 'pre' : 'post' }].sort((a, b) => a.startedAt - b.startedAt) };
+}
+
+export const SPACED_DAYS = 7;
+
+/**
+ * 처음 점검과 최근 점검(최대 세 번)을 영역마다 견준다. 첫 시도만 세고, 도움 없이 맞힌 수와 문항 수를 센다.
+ * 세션은 기록마다 저장된 session(시작 시각)으로 묶는다. 퍼센트나 판정은 만들지 않는다.
+ */
+export function sessionCompare(state, items) {
+  const typeOf = Object.fromEntries(items.map((r) => [itemId(r), r.type]));
+  const bySession = new Map();
+  for (const [id, entry] of Object.entries(state.items || {})) {
+    const f = entry?.first;
+    if (!f?.session) continue;
+    if (!bySession.has(f.session)) bySession.set(f.session, []);
+    bySession.get(f.session).push({ type: typeOf[id] || id.split('|')[0], record: f });
+  }
+  const starts = [...bySession.keys()].sort((a, b) => a - b);
+  if (!starts.length) return null;
+  const labelOf = (t) => (state.sessions || []).find((s) => s.startedAt === t)?.label || null;
+  const meta = starts.map((t, k) => ({ startedAt: t, label: labelOf(t), spaced: k > 0 && t - starts[k - 1] >= SPACED_DAYS * 86400000, n: bySession.get(t).length }));
+  const count = (list) => Object.fromEntries(DOMAINS.map((d) => {
+    const rs = list.filter((x) => DOMAIN_OF[x.type] === d.id);
+    return [d.id, { n: rs.length, noHelp: rs.filter((x) => !usedHelp(x.record)).length,
+      noHelpCorrect: rs.filter((x) => !usedHelp(x.record) && x.record.correct).length }];
+  }));
+  const recentStarts = starts.length > 1 ? starts.slice(1).slice(-3) : [];
+  return { first: meta[0], recent: meta.filter((m) => recentStarts.includes(m.startedAt)), sessions: meta,
+    firstCounts: count(bySession.get(starts[0])), recentCounts: recentStarts.length ? count(recentStarts.flatMap((t) => bySession.get(t))) : null };
+}
+
+/** 확신과 결과. 첫 시도만 센다. 확실하다고 했는데 틀린 문항 목록도 돌려준다. 점수로 합치지 않는다. */
+export function confidenceTable(state) {
+  const out = { sure: { n: 0, correct: 0 }, half: { n: 0, correct: 0 }, unsure: { n: 0, correct: 0 }, none: { n: 0, correct: 0 }, sureWrong: [] };
+  for (const [id, entry] of Object.entries(state.items || {})) {
+    const f = entry?.first;
+    if (!f?.submittedAt) continue;
+    const key = f.confidence && out[f.confidence] ? f.confidence : 'none';
+    out[key].n++; if (f.correct) out[key].correct++;
+    if (key === 'sure' && !f.correct) out.sureWrong.push({ id, type: id.split('|')[0], at: f.submittedAt });
+  }
+  out.sureWrong.sort((a, b) => b.at - a.at);
+  return out;
 }
 export function addAttempt(state, id, record) {
   const prev = state.items[id];

@@ -9,7 +9,7 @@
 import { pivots, closes, pct, bollinger, disparity } from './indicators.js';
 import { rsi, macd, obv, stochastic, adx } from './oscillators.js';
 import { outcomeAt, confirmedOutcome, windowRange, round } from './outcome.js';
-import { divergenceMagnitude } from './pattern-context.js';
+import { divergenceCondition } from './signal-conditions.js';
 
 // ── 다이버전스 (범용) ────────────────────────────────────────
 
@@ -33,28 +33,16 @@ export function divergence(stock, series, bullish, label, kind) {
   const { candles } = stock;
   const { highs, lows } = pivots(candles, PIVOT_W);
   const points = bullish ? lows : highs;
-  const priceAt = (i) => (bullish ? candles[i].low : candles[i].high);
   const hits = [];
   let last = -999;
 
   for (let a = 0; a + 1 < points.length; a++) {
     const i1 = points[a];
     const i2 = points[a + 1];
-    const gap = i2 - i1;
-    if (gap < 10 || gap > 60) continue;
-    if (series[i1] == null || series[i2] == null) continue;
-
-    const p1 = priceAt(i1);
-    const p2 = priceAt(i2);
-    const priceMove = pct(p1, p2);
-
-    // 가격은 방향을 이어가는데(저점 더 낮게 / 고점 더 높게) 지표는 반대로 꺾여야 한다
-    const priceOk = bullish ? priceMove <= -2 : priceMove >= 2;
-    const indOk = bullish ? series[i2] > series[i1] : series[i2] < series[i1];
-    if (!priceOk || !indOk) continue;
-
-    const magnitude = divergenceMagnitude(kind, candles, series, i1, i2);
-    if (!magnitude.passes) continue;
+    // 간격·가격·지표 방향·크기 조건은 입문 연습과 같은 함수로 판정한다.
+    const cond = divergenceCondition(kind, candles, series, i1, i2, bullish);
+    if (!cond.pass) continue;
+    const { gap, p1, p2, priceMove, magnitude } = cond;
 
     const tooSoon = i2 - last < 30;
     last = i2;

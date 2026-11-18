@@ -6,7 +6,7 @@
 import { loadChartCourse, loadStock } from '../lib/data.js';
 import { COURSE_VERSION, TASKS, openCourseCase } from '../lib/chart-course.js';
 import { CONFIDENCE } from '../lib/course-feedback.js';
-import { REVIEW_KEY, REVIEW_RULE, REASONS, DAY, reviewSources, normalizeReview, reviewEntries, pickReviewCase, reviewAttempt, addReviewAttempt, schedule } from '../lib/review.js';
+import { REVIEW_KEY, REVIEW_RULE, REASONS, DAY, reviewSources, normalizeReview, reviewEntries, pickReviewCase, reviewAttempt, addReviewAttempt, schedule, weakReads, WEAK_READ } from '../lib/review.js';
 import { el, clear } from '../lib/ui.js';
 import * as storage from '../lib/storage.js';
 import { autoCheck } from './course-feedback.js';
@@ -58,6 +58,7 @@ export async function renderReview(app) {
   let review = normalizeReview(storage.load(REVIEW_KEY, null));
   let serial = 0;
   const listArea = el('section.review-list');
+  const weakArea = el('section.review-list.review-weak');
   const area = el('section.panel.practice-card');
   const saveNote = el('p.small.muted', { 'aria-live': 'polite' });
 
@@ -65,6 +66,20 @@ export async function renderReview(app) {
     const store = readStore();
     const tried = new Set(Object.keys(store[currentKey] || {}));
     return { store, tried, entries: reviewEntries(reviewSources(store), review, Date.now()) };
+  }
+
+  /** 자주 틀리는 관찰. 그 관찰이 들어 있는 다른 주제로 이어 준다. */
+  function renderWeak() {
+    const weak = weakReads(readStore(), course.readsByType || {}).slice(0, 6);
+    if (!weak.length) { clear(weakArea); return; }
+    clear(weakArea).append(
+      el('h2', { text: '자주 틀리는 관찰' }),
+      el('p.small.muted', { text: `주제가 달라도 같은 관찰을 ${WEAK_READ.minWrong}번 이상, 그리고 그 관찰이 나온 문항의 40% 이상에서 다시 봐야 했던 것입니다. 같은 관찰이 들어 있는 다른 주제로 연습해 보세요. 입문 기록은 그 주제의 관찰마다 문항 하나로 세므로 대략의 숫자입니다.` }),
+      el('ul.review-items', null, weak.map((w) => el('li', null, [
+        el('b', { text: w.label }), ` · ${w.n}번 중 ${w.wrong}번 다시 볼 부분`,
+        w.types.length ? el('div.row.weak-links', null, w.types.map((t) => el('a.btn.small-btn', { href: `#/practice/chart/${t}`, text: TASKS[t]?.[0] || t }))) : null,
+      ].filter(Boolean)))),
+    );
   }
 
   function renderList() {
@@ -115,6 +130,7 @@ export async function renderReview(app) {
           const level = confidence.querySelector('input:checked');
           const attempt = reviewAttempt(q, pick.ref, pick.mode, { choice: pickedChoice(options), confidence: level?.value, numeric: numericInput?.value, reflection: reflection.value });
           submitted = true;
+          cleanup?.reveal?.();
           review = addReviewAttempt(review, sourceId, attempt);
           if (!storage.save(REVIEW_KEY, review)) { saveNote.textContent = '복습 기록을 저장하지 못했습니다. 브라우저 저장이 막혀 있거나 공간이 부족할 수 있습니다. ‘기록과 백업’에서 내보내기를 먼저 해두세요.'; saveNote.className = 'small warn'; }
           options.disabled = true; confidence.disabled = true; reflection.readOnly = true; submit.disabled = true;
@@ -154,10 +170,11 @@ export async function renderReview(app) {
   clear(app).append(
     el('h1.page-title', { text: '실제 사례 복습' }),
     el('p.page-sub', { text: '틀렸거나 확신이 낮았던 개념을 같은 개념의 다른 실제 차트로 다시 읽습니다. 처음 기록은 그대로 두고, 복습 시도는 따로 남깁니다.' }),
-    el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '입문 6단계' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' }), el('a.btn', { href: '#/practice/records', text: '기록과 백업' })]),
+    el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '실제 차트 8단계' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' }), el('a.btn', { href: '#/practice/records', text: '기록과 백업' })]),
     el('details.rulebox', null, [el('summary', { text: '복습 일정은 어떻게 정하나요?' }), el('p.small', { text: REVIEW_RULE }),
       el('p.small', { text: '복습 사례는 입문 과정의 사례 중 같은 주제에서 고릅니다. 새 구간 평가 문항은 복습에 쓰지 않습니다. 평가와 연습을 섞지 않기 위해서입니다.' })]),
-    listArea, area, saveNote);
+    weakArea, listArea, area, saveNote);
   clear(area).append(el('p.small.muted', { text: '위 목록에서 ‘복습하기’나 ‘미리 하기’를 누르면 여기에 실제 사례가 나옵니다.' }));
   renderList();
+  renderWeak();
 }

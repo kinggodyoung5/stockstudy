@@ -42,7 +42,7 @@ function renderNav(activeId, params = []) {
   for (const [id, text, href] of primary) nav.append(el('a', { href, text, class: group === id ? 'on' : '', 'aria-current': group === id ? 'true' : null }));
   const items = group === 'explore'
     ? [['데이터 뷰어', '#/viewer'], ['과거 통계', '#/stats'], ['가상 차트', '#/sandbox'], ['방향 예측 실험', '#/quiz']]
-    : [['학습 안내', '#/home'], ['개념 학습', `#/learn/${LESSONS[0].id}`], ['입문 6단계', '#/practice/chart'],
+    : [['학습 안내', '#/home'], ['개념 학습', `#/learn/${LESSONS[0].id}`], ['실제 차트 8단계', '#/practice/chart'],
       ['기초 문제', '#/practice'], ['사례 비교', '#/practice/real'], ['새 구간 평가', '#/practice/check']];
   const secondary = document.getElementById('section-nav');
   clear(secondary);

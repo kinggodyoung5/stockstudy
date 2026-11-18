@@ -12,10 +12,10 @@ const stockOf = (t) => cache.get(t) || cache.set(t, expandStock(read(`data/stock
 const questionOf = (ref) => openCourseCase(stockOf(ref.ticker), ref).question;
 const firstOf = (type) => course.cases.find((r) => r.type === type);
 
-test('480사례: 정답은 틀린 관찰이 없고, 오답은 반드시 어느 관찰·조건이 틀렸는지 짚는다', () => {
+test('입문 전체 사례: 정답은 틀린 관찰이 없고, 오답은 반드시 어느 관찰·조건이 틀렸는지 짚는다', () => {
   for (const ref of course.cases) {
     const q = questionOf(ref), tag = `${ref.type} ${ref.ticker} ${ref.date}`;
-    if (q.conditions) {
+    if (q.verdicts) {
       assert.equal(overallStatus(q.conditions), q.verdicts[q.answer], tag);
       assert.equal(q.verdicts.length, q.options.length, tag);
       for (let k = 0; k < q.options.length; k++) {

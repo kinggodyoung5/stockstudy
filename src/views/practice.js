@@ -109,7 +109,7 @@ export function renderPractice(app, params = []) {
     el('div.row', { style: { marginBottom: '16px' } }, [
       el('button.btn', { text: '전체 개념 연습', onclick: () => resetQueue(false) }),
       el('button.btn', { text: '복습할 개념만', onclick: () => resetQueue(true) }),
-      el('a.btn.primary', { href: '#/practice/chart', text: '실제 차트 · 입문 6단계' }),
+      el('a.btn.primary', { href: '#/practice/chart', text: '실제 차트 8단계' }),
       el('a.btn', { href: '#/practice/real', text: '실제 차트 비교 연습' }),
       el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' }),
       el('a.btn', { href: '#/practice/review', text: '실제 사례 복습' }),

@@ -107,8 +107,15 @@ const VALIDATE = {
     for (const [k, r] of Object.entries(value)) checkAnswer(r, `${path}.${caseKey(k, path)}`);
   },
   'assessment:v1'(value, path) {
-    obj(value, path); only(value, path, ['v', 'items', 'shown']);
+    obj(value, path); only(value, path, ['v', 'items', 'shown', 'sessions']);
     int(value.v, path + '.v', 1, 1);
+    if (value.sessions != null) arr(value.sessions, path + '.sessions', 2000).forEach((s, i) => {
+      const p = `${path}.sessions[${i}]`;
+      obj(s, p); only(s, p, ['startedAt', 'ids', 'label']);
+      time(s.startedAt, p + '.startedAt');
+      if (!['pre', 'post'].includes(s.label)) fail(p + '.label', '알 수 없는 점검 종류');
+      arr(s.ids, p + '.ids', 20).forEach((id, k) => caseKey(str(id, `${p}.ids[${k}]`, 60), `${p}.ids[${k}]`));
+    });
     obj(value.items, path + '.items');
     for (const [k, e] of Object.entries(value.items)) {
       const p = `${path}.items.${caseKey(k, path + '.items')}`;
@@ -185,7 +192,7 @@ export function buildBackup(store, versions, now = new Date()) {
   const data = {}, unverified = {};
   for (const [key, value] of Object.entries(store).sort(([a], [b]) => a.localeCompare(b))) {
     if (!isBackupKey(key) || value == null) continue;
-    const clean = key === 'assessment:v1' ? { v: value.v, items: value.items || {}, shown: value.shown || {} } : value;
+    const clean = key === 'assessment:v1' ? { v: value.v, items: value.items || {}, shown: value.shown || {}, ...(value.sessions?.length ? { sessions: value.sessions } : {}) } : value;
     // 지금 형식 검사를 통과하지 못한 저장값도 버리지 않는다. 파일에는 남기되 가져오기는 하지 않는다.
     try { validateValue(key, clean); data[key] = clean; } catch (_) { unverified[key] = value; }
   }
@@ -285,7 +292,11 @@ function mergeAssessment(local, incoming, report, log) {
     m.lost.forEach((l) => log.push({ key: 'assessment:v1', item: k, ...l }));
   }
   for (const [k, t] of Object.entries(incoming.shown)) shown[k] = shown[k] == null ? t : Math.min(shown[k], t);
-  return { v: 1, items, shown, session: base.session || null };
+  // 세션 목록은 시작 시각으로 합친다. 같은 시각이면 지금 것을 둔다.
+  const sessions = [...(base.sessions || [])];
+  for (const s of incoming.sessions || []) if (!sessions.some((x) => x.startedAt === s.startedAt)) sessions.push(s);
+  sessions.sort((a, b) => a.startedAt - b.startedAt);
+  return { v: 1, items, shown, session: base.session || null, ...(sessions.length ? { sessions } : {}) };
 }
 
 function mergeRealStudy(local = {}, incoming, report, log) {

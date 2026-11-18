@@ -21,7 +21,8 @@ for (const ticker of index.eligibleTickers) {
   stocks.set(ticker, stock);
   const ctx = courseContext(stock.candles);
   for (let i = 120; i < stock.candles.length; i++) {
-    const types = i % 17 === 0 ? Object.keys(TASKS) : ['cross-status', 'volume-rule', 'engulf'];
+    // 드문 상태가 있는 주제는 매일 훑고, 나머지는 17거래일마다 훑는다.
+    const types = i % 17 === 0 ? Object.keys(TASKS) : ['cross-status', 'volume-rule', 'engulf', 'divergence', 'retest', 'breakout-volume', 'candle-context'];
     for (const type of types) {
       const q = makeCourseQuestion(ctx, i, type);
       if (!q) continue;
@@ -38,21 +39,27 @@ for (const ticker of index.eligibleTickers) {
   }
   if (stocks.size % 10 === 0) console.log(`입문 교재 후보 ${stocks.size}종목 확인`);
 }
-const cases = [];
+const cases = [], readsByType = {};
 for (const [, pool] of [...buckets].sort(([a], [b]) => a.localeCompare(b))) {
   const used = new Set(), selected = [];
   for (const ref of pool) if (!used.has(ref.ticker)) { used.add(ref.ticker); selected.push(ref); if (selected.length === 8) break; }
   for (const ref of selected) {
     const { rank, ...clean } = ref;
     // 전체 이력으로 만든 후보와 cutoff만 전달한 실제 문제의 판정이 일치해야 한다.
-    openCourseCase(stocks.get(ref.ticker), clean);
+    const { question } = openCourseCase(stocks.get(ref.ticker), clean);
     cases.push(clean);
+    // 주제마다 학생이 읽는 관찰의 이름. 복습에서 자주 틀리는 관찰을 다른 주제와 이어 줄 때 쓴다.
+    for (const r of question.reads || []) {
+      const known = (readsByType[ref.type] ||= {})[r.id];
+      if (known && known !== r.label) throw new Error('같은 관찰에 다른 이름: ' + ref.type + ' ' + r.id);
+      readsByType[ref.type][r.id] = r.label;
+    }
   }
 }
 for (const type of Object.keys(TASKS)) if (!cases.some((c) => c.type === type)) throw new Error('자료가 없는 주제: ' + type);
 const payload = { version: COURSE_VERSION, provenance: index.provenance,
   policy: '관찰 상태별·종목 분산 교육 표본. 이후 등락·수익률은 선별에 사용하지 않음. 모집단 비율 추정용이 아님.',
-  cases };
+  readsByType: Object.fromEntries(Object.keys(readsByType).sort().map((t) => [t, readsByType[t]])), cases };
 const target = new URL('data/chart-course.json', root), body = JSON.stringify(payload) + '\n';
 if (process.argv.includes('--check')) {
   if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== body) throw new Error('입문 교재 재현 불일치');

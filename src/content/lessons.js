@@ -13,20 +13,38 @@
  */
 
 import { FOUNDATIONS } from './foundations.js';
+import { MORE_LESSONS, SUPPORT_RESISTANCE_MORE } from './lessons-more.js';
 
+/**
+ * 공부 순서. 묶음 순서가 곧 학습 순서이고, 묶음 안의 순서도 그대로 따른다.
+ * 왼쪽 목록, 이전·다음 이동, 첫 화면의 순서 안내가 모두 이 표를 쓴다.
+ * 레슨 정의의 group 값은 여기서 덮어쓴다.
+ */
 export const LESSON_GROUPS = [
-  { id: 'basics', name: '먼저 읽기' },
-  { id: 'trend', name: '추세' },
-  { id: 'volatility', name: '변동성' },
-  { id: 'momentum', name: '모멘텀' },
-  { id: 'volume', name: '거래량' },
-  { id: 'structure', name: '가격 구조' },
-  { id: 'chart-pattern', name: '차트 패턴' },
-  { id: 'candlestick', name: '캔들스틱' },
+  { id: 'price', name: '1. 가격과 봉', ids: ['chart-basics', 'kr-market'] },
+  { id: 'trend', name: '2. 추세와 가격대', ids: ['structure-basics', 'support-resistance', 'trendline', 'range', 'extremes', 'timeframes'] },
+  { id: 'average', name: '3. 이동평균', ids: ['moving-average', 'cross', 'indicator-settings'] },
+  { id: 'volume', name: '4. 거래량', ids: ['volume', 'price-volume', 'obv', 'volume-profile'] },
+  { id: 'volatility', name: '5. 변동 폭', ids: ['atr', 'bollinger-bands', 'squeeze'] },
+  { id: 'momentum', name: '6. 모멘텀', ids: ['rsi', 'macd', 'stochastic', 'disparity', 'divergence'] },
+  { id: 'candlestick', name: '7. 캔들', ids: ['candlestick-reversal', 'candlestick-engulfing', 'candlestick-star', 'candlestick-continuation', 'gap'] },
+  { id: 'chart-pattern', name: '8. 차트 패턴', ids: ['double-patterns', 'head-and-shoulders', 'triangle', 'flag'] },
+  { id: 'synthesis', name: '9. 종합과 계획', ids: ['analysis-process', 'market-context', 'plan-risk', 'expectancy', 'biases', 'market-regime'] },
+  { id: 'more', name: '더 보기', ids: ['adx', 'ichimoku', 'fibonacci'] },
 ];
 
-export const LESSONS = [
+/**
+ * 읽을 차례. 1 처음 한 바퀴에 읽을 것, 2 두 번째 바퀴, 3 필요할 때 찾아볼 것.
+ * 여기 없는 레슨은 2 다.
+ */
+const FIRST_ROUND = ['chart-basics', 'structure-basics', 'support-resistance', 'trendline', 'moving-average', 'cross', 'volume',
+  'atr', 'bollinger-bands', 'rsi', 'macd', 'candlestick-reversal', 'candlestick-engulfing', 'analysis-process'];
+const LOOK_UP = ['adx', 'ichimoku', 'fibonacci', 'market-regime', 'volume-profile', 'obv'];
+export const LEVEL_LABEL = { 1: '', 2: '두 번째 바퀴', 3: '찾아볼 때' };
+
+const RAW_LESSONS = [
   ...FOUNDATIONS,
+  ...MORE_LESSONS,
   // ── 먼저 읽기 ────────────────────────────────────────────
   {
     id: 'indicator-settings',
@@ -151,7 +169,7 @@ export const LESSONS = [
       },
       {
         h: '언제 믿기 어려운가',
-        p: '이동평균선은 **이미 지나간 가격**으로 만들기 때문에 항상 늦게 반응합니다. 또 가격이 방향 없이 오르내리기만 하는 구간에서는 선들이 서로 엉키면서 의미 없는 교차가 반복됩니다. 아래 ADX 탭에서 "지금이 방향이 있는 구간인지" 먼저 확인하는 방법을 다룹니다.',
+        p: '이동평균선은 **이미 지나간 가격**으로 만들기 때문에 항상 늦게 반응합니다. 또 가격이 방향 없이 오르내리기만 하는 구간에서는 선들이 서로 엉키면서 의미 없는 교차가 반복됩니다. "더 보기" 묶음의 ADX 레슨에서 "지금이 방향이 있는 구간인지" 먼저 확인하는 방법을 다룹니다.',
       },
     ],
   },
@@ -224,7 +242,7 @@ export const LESSONS = [
       },
       {
         h: '세 개의 선',
-        p: '+DI는 오른 폭의 평균, −DI는 내린 폭의 평균입니다. 둘 중 위에 있는 쪽이 방향을 알려줍니다. ADX는 두 값이 얼마나 벌어져 있는지를 나타낸 것으로, **방향과 상관없이** 흐름의 뚜렷함만 나타냅니다.',
+        p: '+DI는 **오늘 고가가 전일 고가보다 얼마나 더 올라갔는지**를 며칠 모아, 같은 기간의 하루 변동 폭으로 나눈 값입니다. −DI는 오늘 저가가 전일 저가보다 얼마나 더 내려갔는지로 같은 계산을 합니다. 종가가 오르내린 폭이 아니라 **고가와 저가가 넓어진 쪽**을 봅니다. 둘 중 위에 있는 쪽이 방향을 알려줍니다. ADX는 두 값이 얼마나 벌어져 있는지를 나타낸 것으로, **방향과 상관없이** 흐름의 뚜렷함만 나타냅니다.',
       },
       {
         h: '어떻게 읽나',
@@ -395,7 +413,7 @@ export const LESSONS = [
       },
       {
         h: '더 쓸모 있는 사용법',
-        p: 'RSI의 절대 수준(70이냐 30이냐)보다, **가격과 RSI가 서로 다른 말을 하는 상황**이 실전에서 더 자주 언급됩니다. 다이버전스 탭에서 이어집니다.',
+        p: 'RSI의 절대 수준(70이냐 30이냐)보다, **가격과 RSI가 서로 다른 말을 하는 상황**이 실전에서 더 자주 언급됩니다. 같은 묶음의 다이버전스 레슨에서 이어집니다.',
       },
     ],
   },
@@ -650,7 +668,7 @@ export const LESSONS = [
       },
       {
         h: '왜 생기나',
-        p: '그 가격에서 샀다가 물린 사람은 본전이 오면 팔고 싶어 합니다. 그 가격에서 팔았다가 오르는 걸 본 사람은 다시 내려오면 사고 싶어 합니다. **과거의 거래가 미래의 주문을 만드는 것**입니다.',
+        p: '흔히 이렇게 설명합니다. 그 가격에서 샀다가 손실을 본 사람은 본전이 오면 팔고 싶어 하고, 그 가격에서 팔았다가 오르는 걸 본 사람은 다시 내려오면 사고 싶어 한다는 것입니다. 다만 **차트로 확인되는 것은 그 가격대에서 방향이 여러 번 바뀌었다는 사실까지**입니다. 누가 어떤 가격에 샀는지, 지금 팔려는 주문이 있는지는 일봉으로 알 수 없습니다.',
       },
       {
         h: '뚫리면 역할이 바뀐다',
@@ -796,7 +814,7 @@ export const LESSONS = [
       },
       {
         h: '무엇을 뜻하나',
-        p: '같은 가격대에서 반복해서 막혔다는 것은 그 자리에 파는 물량이 두껍다는 사실입니다. 두 번, 세 번 시도하고도 못 뚫은 뒤 되돌림 저점마저 깨지면 **시도할 힘이 소진됐다**고 봅니다.',
+        p: '차트로 확인되는 사실은 **같은 가격대에서 두세 번 되밀렸다**는 것입니다. 그 자리에 파는 주문이 많았다고 설명하는 경우가 많지만, 실제 주문량은 호가 자료가 있어야 알 수 있습니다. 두세 번 오르고도 넘지 못한 뒤 사이의 저점마저 종가로 깨지면, 오르던 흐름이 약해졌다고 **해석**합니다.',
       },
       {
         h: '헤드앤숄더와 거의 같다',
@@ -854,7 +872,7 @@ export const LESSONS = [
       },
       {
         h: '지속형 패턴이란',
-        p: '헤드앤숄더나 이중천장이 **방향을 바꾸는** 반전형이라면, 깃발형은 **가던 방향으로 계속 가는** 지속형입니다. 급등 뒤 조정이 얕고 짧았다는 것은 팔려는 사람이 적었다는 뜻으로 읽습니다.',
+        p: '헤드앤숄더나 이중천장이 **방향을 바꾸는** 반전형이라면, 깃발형은 **가던 방향으로 계속 가는** 지속형입니다. 확인되는 사실은 **되돌림 폭이 깃대에 견줘 작고 짧았다**는 것입니다. 이를 팔려는 사람이 적었다는 뜻으로 읽는 경우가 많지만, 그것은 해석입니다.',
       },
       {
         h: '조건이 까다로운 이유',
@@ -999,12 +1017,16 @@ export const LESSONS = [
         fig: 'gap',
       },
       {
+        h: '갭이라는 말은 두 가지로 쓰인다',
+        p: '이 앱은 위처럼 **두 봉 사이에 빈 공간이 끝까지 남은 경우**만 갭으로 세고, 그 폭이 1% 이상일 때만 사례로 고릅니다. 뉴스나 증권사 화면에서는 **시가가 전일 종가와 벌어져 출발한 것**도 갭이라고 부릅니다. 이 경우 장중에 빈 공간이 메워져 봉 사이에 틈이 남지 않을 수 있습니다. 같은 말이라도 어느 쪽을 가리키는지 먼저 확인하세요.',
+      },
+      {
         h: '왜 생기나',
         p: '장이 끝난 뒤에 나온 소식(실적 발표, 공시, 해외 시장 급변)이 **다음 날 시작가에 한꺼번에 반영되면서** 생깁니다.',
       },
       {
         h: '두 가지 해석',
-        p: '갭 구간에는 거래가 없었으므로 그 가격대에 물린 사람도, 이익을 본 사람도 없습니다. 그래서 **저항이 약하다**고 보는 관점이 있습니다. 반대로 그 빈 공간을 언젠가 다시 메우러 온다("갭 메우기")고 보는 관점도 함께 있습니다.',
+        p: '사실로 확인되는 것은 **갭 구간에서 그날 거래가 없었다**는 것까지입니다. 그래서 그 가격대에서 거래한 사람이 없으니 저항이 약하다고 보는 관점이 있습니다. 반대로 그 빈 공간을 언젠가 다시 메우러 온다("갭 메우기")고 보는 관점도 함께 있습니다. 두 관점 모두 해석이며 어느 쪽이 맞을지는 정해져 있지 않습니다.',
       },
       {
         h: '거래량과 같이 보세요',
@@ -1019,4 +1041,19 @@ export const LESSONS = [
   },
 ];
 
+const RAW_BY_ID = Object.fromEntries(RAW_LESSONS.map((l) => [l.id, l]));
+RAW_BY_ID['support-resistance'].body.push(...SUPPORT_RESISTANCE_MORE);
+
+export const LESSONS = LESSON_GROUPS.flatMap((g) => g.ids.map((id) => {
+  if (!RAW_BY_ID[id]) throw new Error('순서 표에 있는 레슨이 없습니다: ' + id);
+  return { ...RAW_BY_ID[id], group: g.id, level: FIRST_ROUND.includes(id) ? 1 : LOOK_UP.includes(id) ? 3 : 2 };
+}));
+for (const id of Object.keys(RAW_BY_ID)) if (!LESSONS.some((l) => l.id === id)) throw new Error('순서 표에 없는 레슨: ' + id);
+
 export const LESSON_BY_ID = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
+
+/** 공부 순서에서 바로 앞과 뒤의 레슨 */
+export function neighbors(id) {
+  const k = LESSONS.findIndex((l) => l.id === id);
+  return { prev: k > 0 ? LESSONS[k - 1] : null, next: k >= 0 && k < LESSONS.length - 1 ? LESSONS[k + 1] : null };
+}

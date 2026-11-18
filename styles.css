@@ -630,3 +630,25 @@ select optgroup option { color: var(--text); font-weight: 400; }
 .record-item { padding: 10px 12px; margin-block: 8px; border: 1px solid var(--line); border-radius: 8px; }
 .record-item summary { cursor: pointer; }
 #backup-file { display: block; max-width: 100%; margin-bottom: 8px; }
+/* 레슨 순서·용어 사전 */
+.lesson-level { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 11px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; vertical-align: 1px; }
+.lesson-practice { margin-top: 10px; }
+.lesson-practice .btn { white-space: normal; text-align: left; }
+.lesson-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 32px; }
+.lesson-pager .btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; white-space: normal; text-align: left; }
+.lesson-pager .btn[rel="next"] { align-items: flex-end; text-align: right; grid-column: 2; }
+#glossary-search { display: block; box-sizing: border-box; width: 100%; max-width: 360px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.glossary { margin: 12px 0 0; }
+.glossary > div { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.glossary dt { font-weight: 700; }
+.glossary dd { margin: 4px 0 0; }
+.glossary dd a { white-space: nowrap; }
+@media (max-width: 600px) { .lesson-pager { grid-template-columns: 1fr; } .lesson-pager .btn[rel="next"] { grid-column: 1; } }
+/* 평가 비교·확신 */
+.assess-compare { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+.assess-compare h3 { margin: 0 0 8px; font-size: 15px; }
+.assess-table td, .assess-table th { text-align: left; vertical-align: top; }
+.assess-pre { padding: 10px 12px; border-left: 3px solid var(--accent); border-radius: 6px; background: rgba(77,208,167,.07); }
+.review-weak:not(:empty) { margin-bottom: 20px; padding: 14px; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; }
+.weak-links { gap: 6px; margin-top: 6px; }
+.weak-links .small-btn { margin-left: 0; white-space: normal; text-align: left; }

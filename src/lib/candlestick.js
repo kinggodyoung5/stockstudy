@@ -34,7 +34,7 @@ const round = (v, d = 2) => {
 };
 
 /** 최근 20봉 평균 몸통 — "장대", "작은 몸통"의 기준 */
-function avgBody(candles, i, look = 20) {
+export function avgBody(candles, i, look = 20) {
   const from = Math.max(0, i - look);
   if (i - from < 5) return null;
   let s = 0;
@@ -48,7 +48,7 @@ const UPTREND = 3;    // +3% 이상이면 상승 뒤
 // ── 개별 판정기 ────────────────────────────────────────────────
 // 각 판정기는 조건을 만족하면 evidence 배열을, 아니면 null을 돌려준다.
 
-function hammerLike(c, avg) {
+export function hammerLike(c, avg) {
   // 아랫꼬리가 길고 윗꼬리가 짧은 형태
   const b = body(c);
   const r = range(c);

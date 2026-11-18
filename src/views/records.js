@@ -160,7 +160,7 @@ export async function renderRecords(app) {
   clear(app).append(
     el('h1.page-title', { text: '기록과 백업' }),
     el('p.page-sub', { text: '처음 답, 해설 뒤의 생각, 재시도와 복습을 따로 보관합니다. 로그인이나 서버 저장은 없습니다.' }),
-    el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '입문 6단계' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' }), el('a.btn', { href: '#/practice/review', text: '복습' })]),
+    el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '실제 차트 8단계' }), el('a.btn', { href: '#/practice/check', text: '새 구간에서 다시 읽기' }), el('a.btn', { href: '#/practice/review', text: '복습' })]),
     summary, backupArea, list);
   renderSummary(); renderBackup(); renderList();
 }

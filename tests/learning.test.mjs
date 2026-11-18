@@ -6,7 +6,9 @@ import { sma, closes, ichimoku } from '../src/lib/indicators.js';
 import { rsi, OSCILLATORS } from '../src/lib/oscillators.js';
 import { createStockChart, createOscillatorPanel } from '../src/lib/chart.js';
 import { buildPractice, makeCandles, recordAttempt } from '../src/content/practice.js';
-import { LESSON_BY_ID, LESSONS } from '../src/content/lessons.js';
+import { LESSON_BY_ID, LESSONS, LESSON_GROUPS, neighbors } from '../src/content/lessons.js';
+import { GLOSSARY } from '../src/content/glossary.js';
+import { TASKS } from '../src/lib/chart-course.js';
 import { CURRICULUM } from '../src/content/foundations.js';
 import { defaultBenchmark } from '../src/lib/data.js';
 
@@ -109,7 +111,7 @@ test('원자료 오류 검출은 가격을 임의 보정하지 않는다', () =>
 
 test('기초 레슨·과정·문제 참조와 모든 수치 변형이 유효하다', () => {
   assert.equal(new Set(LESSONS.map((l) => l.id)).size, LESSONS.length);
-  CURRICULUM.forEach((s) => assert.ok(LESSON_BY_ID[s.lesson]));
+  CURRICULUM.forEach((s) => { s.lessons.forEach((id) => assert.ok(LESSON_BY_ID[id], id)); s.practice.forEach((t) => assert.ok(TASKS[t], t)); });
   for (let v = 0; v < 20; v++) {
     const bank = buildPractice(v);
     assert.equal(bank.length, 12);
@@ -140,4 +142,42 @@ test('한국 시장 기본 비교 지수를 거래소에 맞춰 고른다', () =
   assert.equal(defaultBenchmark('KR', '328130.KQ'), '^KQ11');
   assert.equal(defaultBenchmark('KR', '005930.KS'), '^KS11');
   assert.equal(defaultBenchmark('US', 'AAPL'), '^GSPC');
+});
+
+test('레슨 순서: 모든 레슨이 묶음 하나에 한 번씩, 학습 순서 9단계가 묶음 1~9와 같다', () => {
+  const ids = LESSON_GROUPS.flatMap((g) => g.ids);
+  assert.equal(ids.length, LESSONS.length);
+  assert.deepEqual(LESSONS.map((l) => l.id), ids);
+  for (const l of LESSONS) assert.ok([1, 2, 3].includes(l.level), l.id);
+  assert.equal(CURRICULUM.length, 9);
+  CURRICULUM.forEach((step, k) => {
+    const group = LESSON_GROUPS[k];
+    assert.equal(step.title, group.name);
+    for (const id of step.lessons) assert.equal(LESSON_BY_ID[id].group, group.id, id);
+  });
+  assert.equal(neighbors(LESSONS[0].id).prev, null);
+  assert.equal(neighbors(LESSONS.at(-1).id).next, null);
+  assert.equal(neighbors('trendline').prev.id, 'support-resistance');
+  // 입문 연습 주제가 가리키는 레슨이 모두 있다
+  for (const [, lesson] of Object.values(TASKS)) assert.ok(LESSON_BY_ID[lesson], lesson);
+});
+
+test('용어 사전: 용어가 겹치지 않고, 뜻은 두 문장 이하, 연결 레슨이 있다', () => {
+  assert.ok(GLOSSARY.length >= 60);
+  assert.equal(new Set(GLOSSARY.map((g) => g.term)).size, GLOSSARY.length);
+  for (const g of GLOSSARY) {
+    assert.ok(LESSON_BY_ID[g.lesson], g.term);
+    assert.ok((g.short.match(/[.?!]/g) || []).length <= 3, g.term);
+    assert.doesNotMatch(g.short, /<|>/);
+  }
+});
+
+test('새 레슨: 처음 한 줄 요약이 있고, 책·다른 집계의 수치는 이 앱에서 확인한 값이 아니라고 밝힌다', () => {
+  for (const id of ['trendline', 'timeframes', 'price-volume', 'market-context', 'kr-market', 'plan-risk', 'expectancy', 'biases']) {
+    const l = LESSON_BY_ID[id];
+    assert.equal(l.body[0].h, '한 줄 요약', id);
+    for (const sec of l.body) if (/불코우스키/.test(sec.p)) assert.match(sec.p, /이 앱의 자료로 확인한 값은 아닙니다|이 앱에서 확인한 값은 아닙니다/, id);
+  }
+  assert.ok(LESSON_BY_ID['support-resistance'].body.some((s) => s.h === '돌파 뒤 되돌림은 흔하다'));
+  assert.equal(LESSON_BY_ID['support-resistance'].body.filter((s) => s.h === '돌파 뒤 되돌림은 흔하다').length, 1);
 });

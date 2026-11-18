@@ -7,7 +7,7 @@
  * 학생이 쓴 글은 textContent 로만 넣는다(HTML 로 해석하지 않는다).
  */
 import { el } from '../lib/ui.js';
-import { diagnose, STATUS_LABEL, SELF_CHECKS, CONFIDENCE } from '../lib/course-feedback.js';
+import { diagnose, overallStatus, STATUS_LABEL, SELF_CHECKS, CONFIDENCE } from '../lib/course-feedback.js';
 
 const STATUS_MARK = { pass: '✓', fail: '✕', pending: '…' };
 const fmt = (v) => Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 4 });
@@ -74,6 +74,8 @@ export function autoCheck(q, record) {
     if (d.wrong.length) box.append(el('p.fb-head', { text: '다시 확인할 부분' }), el('ul.fb-list.fb-wrong', null, d.wrong.map((r) => readItem(r, 'wrong'))));
     if (d.right.length) box.append(el('p.fb-head', { text: '정확히 읽은 부분' }), el('ul.fb-list.fb-right', null, d.right.map((r) => readItem(r, 'right'))));
     if (d.context.length && !record.correct) box.append(el('p.fb-head', { text: '함께 볼 값' }), el('ul.fb-list', null, d.context.map((r) => readItem(r, 'right'))));
+    // 관찰형이어도 조건표가 있는 문제는 조건별 상태를 함께 보여준다.
+    if (q.conditions) box.append(conditionTable({ conditions: q.conditions, truth: overallStatus(q.conditions) }));
   }
   if (record.confidence) box.append(el('p.small.muted', { text: `답을 제출할 때의 확신: ${CONFIDENCE[record.confidence]}` }));
   if (legacy) box.append(el('p.small.muted', { text: '이 기록은 이전 형식이라 관찰별 설명을 지금 다시 계산해 보여줍니다. 저장된 정답 여부는 바꾸지 않았습니다.' }));

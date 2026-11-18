@@ -3,7 +3,10 @@
  * 개념 설명 → 판정 기준 공개 → 실제 성과 통계 → 탐지 엔진이 찾아낸 사례 차트 → 근거 수치 → 이후 실제 결과
  */
 
-import { LESSONS, LESSON_BY_ID, LESSON_GROUPS } from '../content/lessons.js';
+import { LESSONS, LESSON_BY_ID, LESSON_GROUPS, LEVEL_LABEL, neighbors } from '../content/lessons.js';
+import { GLOSSARY } from '../content/glossary.js';
+import { COURSE_VERSION, TASKS } from '../lib/chart-course.js';
+import * as storage from '../lib/storage.js';
 import { FIGURES, emphasize } from '../content/figures.js';
 import { LESSON_SETTINGS, SRC_LABEL, SRC_NOTE } from '../content/settings.js';
 import { loadPattern, loadStock, sliceByDate } from '../lib/data.js';
@@ -353,28 +356,109 @@ function lessonTable(t) {
   return el('div', null, [table, t.note ? el('p.small.muted', { text: t.note }) : null]);
 }
 
-export async function renderLearn(app, params) {
-  destroyCharts();
-  const lessonId = params[0] && LESSON_BY_ID[params[0]] ? params[0] : LESSONS[0].id;
-  const lesson = LESSON_BY_ID[lessonId];
-
-  const nav = el('nav.lesson-nav');
+/** 왼쪽 목록. 묶음 순서가 공부 순서다. 두 번째 바퀴·찾아볼 때 레슨에는 작은 꼬리표를 붙인다. */
+function lessonNav(activeId) {
+  const nav = el('nav.lesson-nav', { 'aria-label': '레슨 목록' });
+  nav.append(el('a', { href: '#/learn/glossary', class: activeId === 'glossary' ? 'on' : '', text: '용어 사전' }));
   for (const g of LESSON_GROUPS) {
     const items = LESSONS.filter((l) => l.group === g.id);
     if (!items.length) continue;
     nav.append(el('span.nav-group', { text: g.name }));
     for (const l of items) {
-      nav.append(el('a', { href: `#/learn/${l.id}`, class: l.id === lessonId ? 'on' : '', text: l.title }));
+      nav.append(el('a', { href: `#/learn/${l.id}`, class: l.id === activeId ? 'on' : '', 'aria-current': l.id === activeId ? 'page' : null }, [
+        l.title, LEVEL_LABEL[l.level] ? el('span.lesson-level', { text: LEVEL_LABEL[l.level] }) : null,
+      ]));
     }
   }
+  return nav;
+}
+
+/** 목록 안에서 지금 레슨이 보이게 목록만 스크롤한다(휴대폰에서는 가로, 넓은 화면에서는 세로). 페이지는 움직이지 않는다. */
+function revealActive(nav) {
+  const on = nav.querySelector('a.on');
+  if (!on) return;
+  const n = nav.getBoundingClientRect(), r = on.getBoundingClientRect();
+  nav.scrollLeft += (r.left - n.left) - (n.width - r.width) / 2;
+  nav.scrollTop += (r.top - n.top) - (n.height - r.height) / 2;
+}
+
+/** 이 레슨에 연결된 실제 차트 연습 주제와, 현재 교재에서 기록한 사례 수 */
+function practiceLinks(lessonId) {
+  const types = Object.entries(TASKS).filter(([, [, lesson]]) => lesson === lessonId).map(([type]) => type);
+  if (!types.length) return null;
+  const tried = Object.fromEntries(types.map((t) => [t, 0]));
+  for (const key of storage.keys().filter((k) => k.startsWith(`chart-course:${COURSE_VERSION}:`))) {
+    const records = storage.load(key, {});
+    if (!records || typeof records !== 'object') continue;
+    for (const [id, r] of Object.entries(records)) {
+      const type = id.split('|')[0];
+      if (type in tried && r?.submittedAt) tried[type]++;
+    }
+  }
+  return el('div.lesson-practice', null, [
+    el('p.small', { text: '이 레슨과 이어지는 실제 차트 연습' }),
+    el('div.row', null, types.map((t) => el('a.btn', { href: `#/practice/chart/${t}` }, [
+      TASKS[t][0], el('span.small.muted', { text: tried[t] ? ` · ${tried[t]}개 기록` : ' · 아직 없음' }),
+    ]))),
+  ]);
+}
+
+/** 공부 순서에서 앞뒤 레슨 */
+function lessonPager(lessonId) {
+  const { prev, next } = neighbors(lessonId);
+  return el('nav.lesson-pager', { 'aria-label': '이전·다음 레슨' }, [
+    prev ? el('a.btn', { href: `#/learn/${prev.id}`, rel: 'prev' }, [el('span.small.muted', { text: '이전 레슨' }), el('b', { text: prev.title })]) : el('span'),
+    next ? el('a.btn', { href: `#/learn/${next.id}`, rel: 'next' }, [el('span.small.muted', { text: '다음 레슨' }), el('b', { text: next.title })]) : el('span'),
+  ]);
+}
+
+/** 용어 사전. 가나다 순 목록과 검색. 뜻은 글자로만 넣는다. */
+function renderGlossary(app) {
+  const content = el('article.lesson');
+  const input = el('input', { type: 'search', id: 'glossary-search', placeholder: '용어 찾기 (예: 거래량, 무효)', autocomplete: 'off' });
+  const list = el('dl.glossary');
+  const status = el('p.small.muted', { 'aria-live': 'polite' });
+  const terms = [...GLOSSARY].sort((a, b) => a.term.localeCompare(b.term, 'ko'));
+  function draw() {
+    const q = input.value.trim();
+    const shown = terms.filter((g) => !q || g.term.includes(q) || g.short.includes(q));
+    clear(list);
+    for (const g of shown) {
+      list.append(el('div', null, [
+        el('dt', { text: g.term }),
+        el('dd', null, [g.short, ' ', el('a', { href: `#/learn/${g.lesson}`, text: `→ ${LESSON_BY_ID[g.lesson].title}` })]),
+      ]));
+    }
+    status.textContent = q ? `${shown.length}개 찾음` : `용어 ${terms.length}개`;
+  }
+  input.addEventListener('input', draw);
+  content.append(el('h2', { text: '용어 사전' }),
+    el('p.tagline', { text: '처음 보는 말을 짧게 풀었습니다. 더 자세한 설명은 연결된 레슨에서 읽으세요.' }),
+    el('label.practice-label', { for: 'glossary-search', text: '용어 찾기' }), input, status, list);
+  const nav = lessonNav('glossary');
+  clear(app).append(el('div.learn', null, [nav, content]));
+  revealActive(nav);
+  draw();
+}
+
+export async function renderLearn(app, params) {
+  destroyCharts();
+  if (params[0] === 'glossary') return renderGlossary(app);
+  const lessonId = params[0] && LESSON_BY_ID[params[0]] ? params[0] : LESSONS[0].id;
+  const lesson = LESSON_BY_ID[lessonId];
+  const nav = lessonNav(lessonId);
 
   const content = el('article.lesson');
-  content.append(el('h2', { text: lesson.title }), el('p.tagline', { text: lesson.tagline }));
+  const group = LESSON_GROUPS.find((g) => g.id === lesson.group);
+  content.append(el('p.small.muted', { text: [group.name, LEVEL_LABEL[lesson.level]].filter(Boolean).join(' · ') }),
+    el('h2', { text: lesson.title }), el('p.tagline', { text: lesson.tagline }));
   content.append(el('div.rulebox', null, [
     el('h3', { text: '읽고 나서 설명할 수 있나요?' }),
     el('p', { text: '① 무엇을 관찰했나? ② 어떤 설정과 조건으로 판단했나? ③ 무엇은 아직 알 수 없나? 결과가 오른 것과 판단 근거가 타당한 것은 따로 확인합니다.' }),
-    el('a.btn', { href: '#/practice', text: '구성 예제로 기초 확인' }),
-    el('a.btn', { href: '#/practice/chart', text: '실제 차트 · 입문 6단계' }),
+    practiceLinks(lessonId) || el('div.row', null, [
+      el('a.btn', { href: '#/practice', text: '구성 예제로 기초 확인' }),
+      el('a.btn', { href: '#/practice/chart', text: '실제 차트 8단계' }),
+    ]),
   ]));
   for (const sec of lesson.body) {
     const node = el('section', null, [
@@ -390,6 +474,7 @@ export async function renderLearn(app, params) {
   if (setBox) content.append(setBox);
 
   clear(app).append(el('div.learn', null, [nav, content]));
+  revealActive(nav);
 
   if (!lesson.patterns.length) {
     content.append(
@@ -399,6 +484,7 @@ export async function renderLearn(app, params) {
         el('a.btn', { href: '#/viewer', text: '데이터 뷰어에서 열어보기' }),
       ])
     );
+    content.append(lessonPager(lessonId));
     return;
   }
 
@@ -414,6 +500,7 @@ export async function renderLearn(app, params) {
       );
     }
   }
+  if (content.isConnected) content.append(lessonPager(lessonId));
 }
 
 export { destroyCharts };

@@ -7,14 +7,20 @@ import { OSCILLATORS } from '../lib/oscillators.js';
 import { CONFIDENCE } from '../lib/course-feedback.js';
 import { el } from '../lib/ui.js';
 
-/** 차트를 그리고 정리 함수를 돌려준다. */
+/**
+ * 차트를 그리고 정리 함수를 돌려준다. 돌려준 함수의 reveal() 은 답을 제출한 뒤에 부른다.
+ * 제출 뒤에만 보일 표시(q.revealMarkers)는 그때 더한다. 답이 드러나는 극점·이탈 날짜를 제출 전에 숨기기 위해서다.
+ * 선(q.lines)은 가로선 { value, from } 이거나, 점을 이은 선 { points: [{ date, value }, ...] } 이다.
+ */
 export function drawCaseCharts(chartBox, panelWrap, q, view, history, cutoff) {
   const made = [];
   let unsync = null;
   const chart = createStockChart(chartBox, { height: chartBox.clientHeight || 380 }); made.push(chart);
   chart.setOverlays(q.overlays); chart.setCandles(view, history);
-  chart.setMarkers(q.markers.length ? q.markers : [{ date: q.focusDate || cutoff, text: '관찰 대상', position: 'aboveBar' }]);
-  q.lines.forEach((line, j) => chart.drawSegment('course-line-' + j, [{ date: line.from, value: line.value }, { date: cutoff, value: line.value }]));
+  const baseMarkers = q.markers.length ? q.markers : [{ date: q.focusDate || cutoff, text: '관찰 대상', position: 'aboveBar' }];
+  chart.setMarkers(baseMarkers);
+  q.lines.forEach((line, j) => chart.drawSegment('course-line-' + j,
+    line.points || [{ date: line.from, value: line.value }, { date: cutoff, value: line.value }]));
   chart.fit();
   const synced = [chart.chart];
   for (const id of q.panels) {
@@ -27,9 +33,20 @@ export function drawCaseCharts(chartBox, panelWrap, q, view, history, cutoff) {
     const box = el('div.chart-box', { 'aria-label': '완료된 주까지만 표시한 주봉 차트' });
     panelWrap.append(el('p.small', { text: '주봉 비교 · 진행 중일 수 있는 마지막 주는 제외. 주봉 끝 날짜가 각 봉의 날짜입니다.' }), box);
     const weekly = createStockChart(box, { height: 240 }); made.push(weekly);
-    weekly.setCandles(q.weekly); weekly.setMarkers([{ date: q.focusDate, text: '비교할 주' }]); weekly.fit();
+    // 주봉 평균선은 완료된 주봉 이력 전체로 계산하고, 화면에는 q.weekly 만 보인다.
+    if (q.weeklyOverlays) weekly.setOverlays(q.weeklyOverlays);
+    weekly.setCandles(q.weekly, q.weeklyHistory || q.weekly);
+    weekly.setMarkers([{ date: q.focusDate, text: q.weeklyMarkerText || '비교할 주' }]); weekly.fit();
+    if (q.weeklyOverlays?.ma20) panelWrap.append(el('p.small.muted', { text: '주봉 차트의 초록선은 20주 이동평균입니다(약 100거래일).' }));
   }
-  return () => { if (unsync) unsync(); made.forEach((c) => c.destroy()); };
+  let revealed = false;
+  const cleanup = () => { if (unsync) unsync(); made.forEach((c) => c.destroy()); };
+  cleanup.reveal = () => {
+    if (revealed || !q.revealMarkers?.length) return;
+    revealed = true;
+    chart.setMarkers([...baseMarkers, ...q.revealMarkers]);
+  };
+  return cleanup;
 }
 
 /** ‘차트에서 비교할 값’ 목록 */
