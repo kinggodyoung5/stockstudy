@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "BABA",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/BABA?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:05.414Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 321507,
+  "sha256": "c64f5d9192eef791f2c095befdd40609e80ab5099a2ba340d995b4254371cf9a",
+  "rawFile": "yahoo-BABA-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

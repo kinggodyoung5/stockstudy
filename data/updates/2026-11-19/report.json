@@ -1,0 +1,1266 @@
+{
+ "summary": {
+  "run": "2026-11-19",
+  "until": "2026-11-18",
+  "appended": 115,
+  "unchanged": 1,
+  "stopped": 5,
+  "barsAdded": 6319,
+  "added": 38,
+  "addedQuarantined": 9
+ },
+ "run": "2026-11-19",
+ "until": "2026-11-18",
+ "appended": [
+  {
+   "ticker": "005930.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 29,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "000660.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "005380.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 22,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "000270.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 38,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "207940.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 0,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "068270.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 31,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "012330.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "028260.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "066570.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "009150.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "105560.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 30,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "055550.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "316140.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 27,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "017670.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "030200.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 27,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "010950.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 39,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "010130.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "034020.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "042700.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 19,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "035420.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "035720.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 29,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "051910.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 34,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "006400.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 18,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "373220.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "096770.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "015760.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 31,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "011200.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 36,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "003670.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "302440.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 24,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "251270.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 17,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "018260.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 28,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "247540.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "086520.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "263750.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 17,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "293490.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "041510.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "058470.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "240810.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "137310.KQ",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 55,
+   "corrections": 27,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "AAPL",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "MSFT",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "NVDA",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "GOOGL",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "AMZN",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "META",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "TSLA",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "AMD",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "MU",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "QCOM",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "NFLX",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "JNJ",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "KO",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "XOM",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "INTC",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "BA",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "DIS",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "PYPL",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "NKE",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "PFE",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "SBUX",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "T",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "F",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "ZM",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "SNAP",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "035900.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 31,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "122870.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 12,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "067160.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 19,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "095660.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "194480.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "078340.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "042000.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "214150.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 36,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "214450.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 19,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "145020.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "328130.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 19,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "141080.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 29,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "237690.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 35,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "086900.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 29,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "214370.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "039030.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "036930.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 14,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "084370.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "095610.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "104830.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "131970.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "178320.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "032500.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "046890.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "277810.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 13,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "348370.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "065350.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "200130.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 18,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "018290.KQ",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "042660.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "010140.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "009540.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 23,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "012450.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 39,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "079550.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 18,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "064350.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 7,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "272210.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "000720.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "047040.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "139480.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 26,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "069960.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 19,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "008770.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 36,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "021240.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "271560.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 21,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "097950.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "011170.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 8,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "034220.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 23,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "036570.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 23,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "161390.KS",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54,
+   "corrections": 26,
+   "nonTradingRemoved": 0
+  },
+  {
+   "ticker": "^KS11",
+   "from": "2026-08-31",
+   "to": "2026-11-18",
+   "added": 54
+  },
+  {
+   "ticker": "^GSPC",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  },
+  {
+   "ticker": "^IXIC",
+   "from": "2026-08-28",
+   "to": "2026-11-18",
+   "added": 58
+  }
+ ],
+ "unchanged": [
+  "073640.KQ"
+ ],
+ "stopped": [
+  {
+   "ticker": "112040.KQ",
+   "name": "위메이드",
+   "baseTo": "2026-08-28",
+   "reason": "새 구간 대조 실패: 2026-11-09 공급자 가격 불일치: 당일 일치 필드 부족"
+  },
+  {
+   "ticker": "063080.KQ",
+   "name": "컴투스홀딩스",
+   "baseTo": "2026-08-28",
+   "reason": "새 구간 대조 실패: 2026-11-16 공급자 가격 불일치: 당일 일치 필드 부족; 2026-11-17 공급자 가격 불일치: 당일 일치 필드 부족"
+  },
+  {
+   "ticker": "060250.KQ",
+   "name": "NHN KCP",
+   "baseTo": "2026-08-28",
+   "reason": "새 구간 대조 실패: 2026-11-16 공급자 가격 불일치: 당일 일치 필드 부족"
+  },
+  {
+   "ticker": "196170.KQ",
+   "name": "알테오젠",
+   "baseTo": "2026-08-28",
+   "reason": "겹치는 구간 뒤 분할 2026-08-05: 과거 가격 전체가 바뀌므로 사람이 판단"
+  },
+  {
+   "ticker": "^KQ11",
+   "name": "코스닥",
+   "baseTo": "2026-08-28",
+   "reason": "겹치는 기존 봉 2026-08-28 가격이 새 응답과 다름. 과거 조정이 바뀌었을 수 있음"
+  }
+ ],
+ "added": [
+  {
+   "ticker": "005490.KS",
+   "name": "POSCO홀딩스",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "086790.KS",
+   "name": "하나금융지주",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "003550.KS",
+   "name": "LG",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2897
+  },
+  {
+   "ticker": "034730.KS",
+   "name": "SK",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "000810.KS",
+   "name": "삼성화재",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "033780.KS",
+   "name": "KT&G",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "090430.KS",
+   "name": "아모레퍼시픽",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2905
+  },
+  {
+   "ticker": "051900.KS",
+   "name": "LG생활건강",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "004020.KS",
+   "name": "현대제철",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "011780.KS",
+   "name": "금호석유",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "004170.KS",
+   "name": "신세계",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "024110.KS",
+   "name": "기업은행",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "267250.KS",
+   "name": "HD현대",
+   "from": "2017-05-10",
+   "to": "2026-11-18",
+   "count": 2333
+  },
+  {
+   "ticker": "352820.KS",
+   "name": "하이브",
+   "from": "2020-10-15",
+   "to": "2026-11-18",
+   "count": 1494
+  },
+  {
+   "ticker": "259960.KS",
+   "name": "크래프톤",
+   "from": "2021-08-10",
+   "to": "2026-11-18",
+   "count": 1289
+  },
+  {
+   "ticker": "323410.KS",
+   "name": "카카오뱅크",
+   "from": "2021-08-06",
+   "to": "2026-11-18",
+   "count": 1291
+  },
+  {
+   "ticker": "377300.KS",
+   "name": "카카오페이",
+   "from": "2021-11-03",
+   "to": "2026-11-18",
+   "count": 1232
+  },
+  {
+   "ticker": "361610.KS",
+   "name": "SK아이이테크놀로지",
+   "from": "2021-05-11",
+   "to": "2026-11-18",
+   "count": 1353
+  },
+  {
+   "ticker": "253450.KQ",
+   "name": "스튜디오드래곤",
+   "from": "2017-11-24",
+   "to": "2026-11-18",
+   "count": 2202
+  },
+  {
+   "ticker": "357780.KQ",
+   "name": "솔브레인",
+   "from": "2020-08-06",
+   "to": "2026-11-18",
+   "count": 1539
+  },
+  {
+   "ticker": "035760.KQ",
+   "name": "CJ ENM",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "000250.KQ",
+   "name": "삼천당제약",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915
+  },
+  {
+   "ticker": "222800.KQ",
+   "name": "심텍",
+   "from": "2015-08-07",
+   "to": "2026-11-18",
+   "count": 2766
+  },
+  {
+   "ticker": "IBM",
+   "name": "IBM",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "WMT",
+   "name": "Walmart",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "JPM",
+   "name": "JPMorgan Chase",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "BAC",
+   "name": "Bank of America",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "C",
+   "name": "Citigroup",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "CSCO",
+   "name": "Cisco",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "ORCL",
+   "name": "Oracle",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "VZ",
+   "name": "Verizon",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "CVS",
+   "name": "CVS Health",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "UBER",
+   "name": "Uber",
+   "from": "2019-05-10",
+   "to": "2026-11-18",
+   "count": 1893
+  },
+  {
+   "ticker": "LYFT",
+   "name": "Lyft",
+   "from": "2019-03-29",
+   "to": "2026-11-18",
+   "count": 1922
+  },
+  {
+   "ticker": "PLTR",
+   "name": "Palantir",
+   "from": "2020-09-30",
+   "to": "2026-11-18",
+   "count": 1542
+  },
+  {
+   "ticker": "MRNA",
+   "name": "Moderna",
+   "from": "2018-12-07",
+   "to": "2026-11-18",
+   "count": 1998
+  },
+  {
+   "ticker": "BABA",
+   "name": "Alibaba",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2988
+  },
+  {
+   "ticker": "NIO",
+   "name": "NIO",
+   "from": "2018-09-12",
+   "to": "2026-11-18",
+   "count": 2058
+  }
+ ],
+ "addedQuarantined": [
+  {
+   "ticker": "032830.KS",
+   "name": "삼성생명",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915,
+   "issues": 0,
+   "sourceConcerns": 1
+  },
+  {
+   "ticker": "000100.KS",
+   "name": "유한양행",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2910,
+   "issues": 1,
+   "sourceConcerns": 4
+  },
+  {
+   "ticker": "128940.KS",
+   "name": "한미약품",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2913,
+   "issues": 0,
+   "sourceConcerns": 5
+  },
+  {
+   "ticker": "023530.KS",
+   "name": "롯데쇼핑",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2898,
+   "issues": 0,
+   "sourceConcerns": 2
+  },
+  {
+   "ticker": "006800.KS",
+   "name": "미래에셋증권",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915,
+   "issues": 1,
+   "sourceConcerns": 1
+  },
+  {
+   "ticker": "001040.KS",
+   "name": "CJ",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915,
+   "issues": 0,
+   "sourceConcerns": 1
+  },
+  {
+   "ticker": "028300.KQ",
+   "name": "HLB",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2913,
+   "issues": 4,
+   "sourceConcerns": 8
+  },
+  {
+   "ticker": "039200.KQ",
+   "name": "오스코텍",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2915,
+   "issues": 0,
+   "sourceConcerns": 1
+  },
+  {
+   "ticker": "067310.KQ",
+   "name": "하나마이크론",
+   "from": "2015-01-02",
+   "to": "2026-11-18",
+   "count": 2913,
+   "issues": 1,
+   "sourceConcerns": 4
+  }
+ ]
+}

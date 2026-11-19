@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "^IXIC",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/%5EIXIC?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:15.597Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 10836,
+  "sha256": "2efd21067158c4d1f59fd13de3649e7e0ba49188179fa7569c3490431c0fa34c",
+  "rawFile": "yahoo-_IXIC-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

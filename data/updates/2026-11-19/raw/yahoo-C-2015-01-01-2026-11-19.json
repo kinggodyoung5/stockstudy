@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "C",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/C?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:59.004Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 326425,
+  "sha256": "c2d7670b3266fabc899eebea5aef68b8011a7c2e27d33231303f4d23d5c46ea6",
+  "rawFile": "yahoo-C-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

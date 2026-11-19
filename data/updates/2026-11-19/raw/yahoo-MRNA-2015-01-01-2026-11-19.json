@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "MRNA",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/MRNA?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:04.632Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 214088,
+  "sha256": "c6fe06711aafbf62d4af290b14c0dd4fa0e53ad9939c738c145e3f8a86502ffe",
+  "rawFile": "yahoo-MRNA-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

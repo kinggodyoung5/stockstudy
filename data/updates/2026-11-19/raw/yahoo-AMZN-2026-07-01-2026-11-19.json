@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "AMZN",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/AMZN?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:17.568Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11933,
+  "sha256": "3abf58fc0493b1630d1b65e348a8237538874f394ab99ed9ddb1656fdf11ac63",
+  "rawFile": "yahoo-AMZN-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

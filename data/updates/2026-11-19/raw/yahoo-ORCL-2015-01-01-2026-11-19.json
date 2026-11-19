@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "ORCL",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/ORCL?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:00.519Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 326233,
+  "sha256": "b3fb412bd2bfed07afeb51d49037339c12f25b79940dc5e964c0843d2404dd88",
+  "rawFile": "yahoo-ORCL-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

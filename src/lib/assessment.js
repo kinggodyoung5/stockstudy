@@ -20,7 +20,7 @@ import { STUDY_PATTERNS, comparisonPairs } from './real-study.js';
 import { diagnose, CONFIDENCE } from './course-feedback.js';
 import { uniform } from './hash.js';
 
-export const ASSESSMENT_VERSION = '2026-11-19.1';
+export const ASSESSMENT_VERSION = '2026-11-19.2';
 /** 영역 = 입문 과정의 여섯 단계. 같은 주제 분류를 쓴다. */
 export const DOMAINS = COURSE_STEPS.map((s, i) => ({ id: 'd' + (i + 1), title: s.title, types: s.ids }));
 export const DOMAIN_OF = Object.fromEntries(DOMAINS.flatMap((d) => d.types.map((t) => [t, d.id])));

@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "T",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/T?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:26.827Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12141,
+  "sha256": "29277533358d0c886bbb1b155098d2c3d1a985f0e885bb8c9b091da542c7da5b",
+  "rawFile": "yahoo-T-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

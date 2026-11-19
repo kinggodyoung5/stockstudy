@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "MU",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/MU?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:19.678Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11300,
+  "sha256": "47de5722aae53672382d931a0344bf8c5f92ee0261778a0bd481dd1cd0f51c1f",
+  "rawFile": "yahoo-MU-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

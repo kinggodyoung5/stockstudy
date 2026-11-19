@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "META",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/META?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:18.094Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11499,
+  "sha256": "3bb0445ca4d38c7bd91a9184affb81fb13ebbcff033efa48bcbe34dbb56bc4aa",
+  "rawFile": "yahoo-META-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

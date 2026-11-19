@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "BAC",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/BAC?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:58.243Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 331740,
+  "sha256": "5adf6a3ca5d7c56587526f1adee24eb91ac458096d8839786c1b04772d754e5d",
+  "rawFile": "yahoo-BAC-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

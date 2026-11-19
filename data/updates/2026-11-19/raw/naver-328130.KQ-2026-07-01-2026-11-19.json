@@ -1,0 +1,12 @@
+{
+  "provider": "naver",
+  "ticker": "328130.KQ",
+  "url": "https://api.finance.naver.com/siseJson.naver?symbol=328130&requestType=1&startTime=20260701&endTime=20261119&timeframe=day",
+  "retrievedAt": "2026-11-19T13:09:40.497Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 5686,
+  "sha256": "a68646a705c17033ca2cecfb428caeba9c35ba3cf057a3a314c77cd502818f2f",
+  "rawFile": "naver-328130.KQ-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

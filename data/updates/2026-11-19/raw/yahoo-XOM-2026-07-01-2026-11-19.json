@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "XOM",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/XOM?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:22.477Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12165,
+  "sha256": "0189b9006aa2094094a167fc28cf9fab0c403b38a94572d0fe525dc6c551640d",
+  "rawFile": "yahoo-XOM-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

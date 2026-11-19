@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "QCOM",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/QCOM?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:20.241Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12123,
+  "sha256": "be427e7edd1042eba72df99d88769a5f4e07e9f00f412ee3475b33e740a130ee",
+  "rawFile": "yahoo-QCOM-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

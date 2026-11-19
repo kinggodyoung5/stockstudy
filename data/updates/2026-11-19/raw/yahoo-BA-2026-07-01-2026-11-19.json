@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "BA",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/BA?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:23.569Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11548,
+  "sha256": "637f8916f3f93bbf8901244cb9fd62d5c6ae90bc2daecb18f225d078f36d092a",
+  "rawFile": "yahoo-BA-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

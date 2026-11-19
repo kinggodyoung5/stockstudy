@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "NFLX",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/NFLX?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:20.756Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11754,
+  "sha256": "cb427f5452531d21ce497f0875b775a243eedce8b1c8de5cb2ef2d2f9d7fc851",
+  "rawFile": "yahoo-NFLX-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

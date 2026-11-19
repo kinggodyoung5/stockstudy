@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "JPM",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/JPM?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:57.431Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 327102,
+  "sha256": "0e57914125ae9f0c7b79a993dfd9caaba04d91596273dcf7de82d9ba5db37c6c",
+  "rawFile": "yahoo-JPM-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

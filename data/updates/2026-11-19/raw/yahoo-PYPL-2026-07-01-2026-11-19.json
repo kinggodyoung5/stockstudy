@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "PYPL",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/PYPL?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:24.716Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12072,
+  "sha256": "9c6fd8711cd6905ed7a909bf3baf5eed80792ca9c9fb8cdc28b4a42e0b06c1d1",
+  "rawFile": "yahoo-PYPL-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

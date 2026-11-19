@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "CSCO",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/CSCO?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:59.788Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 329732,
+  "sha256": "284e8ee3c07c8abafbd3574e205cb278fdbece25ffc8863e6871750ecc1e8d59",
+  "rawFile": "yahoo-CSCO-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

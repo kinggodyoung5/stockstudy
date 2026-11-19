@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "F",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/F?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:27.375Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12241,
+  "sha256": "aa513549b5a04d02959cdffbe143bd00f6f40d0cab9d4b04650b79df4b97d0f8",
+  "rawFile": "yahoo-F-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

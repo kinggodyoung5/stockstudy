@@ -1,0 +1,12 @@
+{
+  "provider": "naver",
+  "ticker": "067160.KQ",
+  "url": "https://api.finance.naver.com/siseJson.naver?symbol=067160&requestType=1&startTime=20260701&endTime=20261119&timeframe=day",
+  "retrievedAt": "2026-11-19T13:09:31.006Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 5761,
+  "sha256": "48de6651a6829eef0f59b6ce86d6d68b63771f6ed8d8bb36c80910348b59825e",
+  "rawFile": "naver-067160.KQ-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

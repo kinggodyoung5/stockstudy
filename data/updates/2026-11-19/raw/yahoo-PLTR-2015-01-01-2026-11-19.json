@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "PLTR",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/PLTR?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:03.940Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 168908,
+  "sha256": "01a25759e28f0c216483b2ffd3a986b110fd3c2a299453f30a273e5b8623ee17",
+  "rawFile": "yahoo-PLTR-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

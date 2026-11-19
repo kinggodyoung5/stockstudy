@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "VZ",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/VZ?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:01.250Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 328523,
+  "sha256": "6f499291407166c3fc2e72b1a85fae6d6acf1c77a36d79d5ec0f4b9d7fa2c39d",
+  "rawFile": "yahoo-VZ-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

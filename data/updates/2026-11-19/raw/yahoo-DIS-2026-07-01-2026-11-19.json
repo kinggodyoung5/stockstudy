@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "DIS",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/DIS?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:24.116Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12019,
+  "sha256": "75e8001eade6ebdc0a5d2626c562a5b5fbf8306f85b552e692ad452e081cf130",
+  "rawFile": "yahoo-DIS-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

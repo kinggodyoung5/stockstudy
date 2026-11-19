@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "KO",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/KO?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:21.901Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11795,
+  "sha256": "bedbaf028b07413b112ec5f6885cd17dc170bf21106e435290c08e3b13cf6922",
+  "rawFile": "yahoo-KO-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

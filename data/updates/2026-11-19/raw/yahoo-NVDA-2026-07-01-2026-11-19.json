@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "NVDA",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/NVDA?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:16.531Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12204,
+  "sha256": "32904285b7a38e5546bcf5cbdee29f215861cc3578f8448d28d14c422dc34efd",
+  "rawFile": "yahoo-NVDA-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

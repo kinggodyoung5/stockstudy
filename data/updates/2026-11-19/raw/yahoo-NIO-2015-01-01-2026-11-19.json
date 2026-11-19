@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "NIO",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/NIO?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:06.006Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 223142,
+  "sha256": "6400c9d197fae2a7f15e2511e5b18628c3ae8c65e1119a81a56a0c41902cfc3e",
+  "rawFile": "yahoo-NIO-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

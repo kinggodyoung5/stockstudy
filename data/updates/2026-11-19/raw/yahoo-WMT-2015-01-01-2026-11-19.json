@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "WMT",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/WMT?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:56.715Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 333900,
+  "sha256": "483f87872be827fec6d72c8808ea6ebd2c70ff2003c102fe733390a2e470b706",
+  "rawFile": "yahoo-WMT-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

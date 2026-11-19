@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "SNAP",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/SNAP?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:28.422Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11733,
+  "sha256": "92b8c0e73ebe78d6c0aaaf76c4cf1b4811628fc68dfe54d8bc0531501f7f5a5a",
+  "rawFile": "yahoo-SNAP-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

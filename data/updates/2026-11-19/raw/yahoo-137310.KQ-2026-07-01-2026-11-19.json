@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "137310.KQ",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/137310.KQ?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:14.541Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 6157,
+  "sha256": "3ae43474cbdb6c99e91c65736ecfff5ad7252e427b2240c10b69d70709f5e62f",
+  "rawFile": "yahoo-137310.KQ-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

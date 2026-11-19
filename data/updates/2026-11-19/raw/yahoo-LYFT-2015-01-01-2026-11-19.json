@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "LYFT",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/LYFT?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:03.348Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 210189,
+  "sha256": "1e672171baede68cf9d84021105996918182b1c1074b6eaa20bb13161f36e1b2",
+  "rawFile": "yahoo-LYFT-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

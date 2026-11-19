@@ -6,6 +6,9 @@ import { createHash } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { expandStock } from '../src/lib/data-quality.js';
 import { FIELDS, RECOVERY_POLICY, parseNaver, parseYahoo, recoverStock } from './lib/recovery.mjs';
+import { stripUpdates } from './lib/update.mjs';
+// 2026-11-19 부터 종목 파일 뒤에 새 봉이 덧붙어 있다(updates). 복구 검사는 덧붙이기 전 파일과 비교하고, 덧붙인 부분은 tools/update-data.mjs --check 가 확인한다.
+const baseText = (file) => JSON.stringify(stripUpdates(JSON.parse(fs.readFileSync(file, 'utf8')))) + '\n';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dir = path.join(root, 'data/recovery/2026-09-23');
@@ -28,7 +31,9 @@ function source(provider, ticker) {
   if (sha(bytes) !== meta.sha256) throw new Error('원문 해시 불일치: ' + stem);
   return { meta, text: bytes.toString('utf8') };
 }
-for (const entry of index.filter((s) => s.market === 'KR' && s.type === 'stock')) {
+// 2026-11-19 갱신에서 새로 넣은 종목(파일에 added 가 있음)은 이 복구의 대상이 아니다.
+const addedLater = (t) => !!JSON.parse(fs.readFileSync(path.join(root, 'data/stocks', t + '.json'), 'utf8')).added;
+for (const entry of index.filter((s) => s.market === 'KR' && s.type === 'stock' && !addedLater(s.ticker))) {
   const target = path.join(root, 'data/stocks', entry.ticker + '.json');
   const bytes = check || revise ? gunzipSync(fs.readFileSync(path.join(dir, 'originals', entry.ticker + '.json.gz'))) : fs.readFileSync(target);
   if (revise) {
@@ -70,12 +75,18 @@ if (!check) {
 }
 else {
   for (const output of outputs) {
-    if (fs.readFileSync(output.target, 'utf8') !== output.body) throw new Error('복구 재현 불일치: ' + output.ticker);
+    if (baseText(output.target) !== output.body) throw new Error('복구 재현 불일치: ' + output.ticker);
   }
   if (fs.readFileSync(path.join(dir, 'report.json'), 'utf8') !== reportBody) throw new Error('복구 보고서 재현 불일치');
   const originalIndex = JSON.parse(gunzipSync(fs.readFileSync(path.join(dir, 'originals', 'index.json.gz'))));
   for (const output of outputs) Object.assign(originalIndex.find((s) => s.ticker === output.ticker), { count: output.count, from: output.from, to: output.to });
-  if (JSON.stringify(originalIndex) !== JSON.stringify(index)) throw new Error('종목 인덱스 재현 불일치');
+  // 덧붙이기 전 목록: 이번 복구 대상이던 종목만, 덧붙인 종목은 덧붙이기 전 끝 날짜와 봉 수로 되돌린다.
+  const known = new Set(originalIndex.map((s) => s.ticker));
+  const baseIndex = index.filter((s) => known.has(s.ticker)).map((s) => {
+    const u = JSON.parse(fs.readFileSync(path.join(root, 'data/stocks', s.ticker.replace(/\^/g, '_') + '.json'), 'utf8')).updates?.[0];
+    return u ? { ...s, to: u.baseTo, count: u.baseCount } : s;
+  });
+  if (JSON.stringify(originalIndex) !== JSON.stringify(baseIndex)) throw new Error('종목 인덱스 재현 불일치');
   console.log('보존 원본 + 두 공급자 원문 → 92종목·인덱스·복구 보고서 재현 일치');
 }
 console.log(JSON.stringify(summary, null, 2));

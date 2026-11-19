@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "GOOGL",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/GOOGL?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:17.038Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11869,
+  "sha256": "a259d115ffcd5020d13fcd2d76a553de56b9c7e217657bfc82f07c3f44e01108",
+  "rawFile": "yahoo-GOOGL-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

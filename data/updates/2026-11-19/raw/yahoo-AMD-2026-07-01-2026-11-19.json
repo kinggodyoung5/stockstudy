@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "AMD",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/AMD?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:19.119Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11291,
+  "sha256": "cc396e73d4712ea50ab04b41a3b43d54ca1d5102b4995c87e968824b200e21f9",
+  "rawFile": "yahoo-AMD-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

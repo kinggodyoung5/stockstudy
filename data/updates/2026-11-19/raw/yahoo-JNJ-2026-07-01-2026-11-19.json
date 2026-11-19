@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "JNJ",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/JNJ?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:21.329Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11787,
+  "sha256": "9c03412d1cd68b2cacaaa1b1d2075848940c57f98acc6aa2d0eba198cefba038",
+  "rawFile": "yahoo-JNJ-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

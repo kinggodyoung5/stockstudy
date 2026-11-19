@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "UBER",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/UBER?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:02.647Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 202102,
+  "sha256": "b05969f1fb3a181ebfedebcbcbeb7ef068b593d49a737ef5ef7e1d444e29ad29",
+  "rawFile": "yahoo-UBER-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

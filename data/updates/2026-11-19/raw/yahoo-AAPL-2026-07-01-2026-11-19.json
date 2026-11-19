@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "AAPL",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:15.446Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11915,
+  "sha256": "220df9cc13d819b31974d9f62bb4904257c3de8ca25c70859d23ee6f3b69145d",
+  "rawFile": "yahoo-AAPL-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

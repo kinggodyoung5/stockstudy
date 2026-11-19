@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "TSLA",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/TSLA?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:18.601Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11717,
+  "sha256": "6d05965db4d5ccb5501b1c490f6c1463a3763e27a83ac0c3e5c23ffd19d2f297",
+  "rawFile": "yahoo-TSLA-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

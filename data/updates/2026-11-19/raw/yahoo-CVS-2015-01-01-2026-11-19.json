@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "CVS",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/CVS?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:11:01.960Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 320073,
+  "sha256": "965c597b4decaa78fe64d583a8df4186dcf20b782ca554a65c0498d11e884fb2",
+  "rawFile": "yahoo-CVS-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "MSFT",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/MSFT?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:16.005Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 11833,
+  "sha256": "3105e43b6334ce318b3c41290a7e8d32bcce0566bbb5d487ed9b008a64e04009",
+  "rawFile": "yahoo-MSFT-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

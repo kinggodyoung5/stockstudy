@@ -1,0 +1,12 @@
+{
+  "provider": "naver",
+  "ticker": "259960.KS",
+  "url": "https://api.finance.naver.com/siseJson.naver?symbol=259960&requestType=1&startTime=20150101&endTime=20261119&timeframe=day",
+  "retrievedAt": "2026-11-19T13:10:41.944Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 82057,
+  "sha256": "7a1d729d40ed889be9d9c97dbcba1bd4f7530b5ec7cc7e6a7582182bc571c5f8",
+  "rawFile": "naver-259960.KS-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

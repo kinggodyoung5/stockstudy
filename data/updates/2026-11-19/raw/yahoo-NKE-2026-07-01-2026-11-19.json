@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "NKE",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/NKE?period1=1782864000&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:09:25.259Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 12044,
+  "sha256": "bc6ef7f4f02cbac6281a5547c25d9c476e8e96a0d0c4778119d5bb3612f8a7ff",
+  "rawFile": "yahoo-NKE-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

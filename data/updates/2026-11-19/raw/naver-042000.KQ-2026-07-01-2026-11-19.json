@@ -1,0 +1,12 @@
+{
+  "provider": "naver",
+  "ticker": "042000.KQ",
+  "url": "https://api.finance.naver.com/siseJson.naver?symbol=042000&requestType=1&startTime=20260701&endTime=20261119&timeframe=day",
+  "retrievedAt": "2026-11-19T13:09:35.412Z",
+  "requestedFrom": "2026-07-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 5795,
+  "sha256": "2b6ca4dbe2324a400d6be0377a8e2f9478d456c7463077eb9f5a21f4523523f9",
+  "rawFile": "naver-042000.KQ-2026-07-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}

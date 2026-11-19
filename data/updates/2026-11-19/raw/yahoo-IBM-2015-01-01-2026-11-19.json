@@ -1,0 +1,12 @@
+{
+  "provider": "yahoo",
+  "ticker": "IBM",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/IBM?period1=1420070400&period2=1795132800&interval=1d&events=splits%2Cdiv&includeAdjustedClose=true",
+  "retrievedAt": "2026-11-19T13:10:55.889Z",
+  "requestedFrom": "2015-01-01",
+  "requestedTo": "2026-11-19",
+  "bytes": 331688,
+  "sha256": "67d5d46c63dafc2d000069bb823154837a325eafb10d1fa1ab316bc921f86aaa",
+  "rawFile": "yahoo-IBM-2015-01-01-2026-11-19.txt.gz",
+  "contentType": "application/json;charset=utf-8"
+}
