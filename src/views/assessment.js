@@ -168,7 +168,7 @@ export async function renderAssessment(app) {
       });
 
       clear(area).append(...[
-        ...caseHeader(q, `${retry ? '재시도' : `${position + 1}/${s.ids.length}`} · ${domain.title} · ${stock.name} (${stock.ticker}) · 일봉 · 관찰 마감 ${ref.date}`),
+        ...caseHeader(q, `${retry ? '재시도' : `${position + 1}/${s.ids.length}`} · ${domain.title} · ${stock.name} (${stock.ticker})${ref.holdout ? ' · 입문 과정에 나오지 않는 종목' : ''} · 일봉 · 관찰 마감 ${ref.date}`),
         el('p.small.assess-tag', { text: retry ? '이미 푼 차트입니다. 재시도로 따로 기록합니다.' : '이 기능의 기록상 처음 보는 구간 · 입문 과정과 비교 연습의 화면 구간과 겹치지 않습니다.' }),
         rulesBox(q), chartBox, panelWrap, ...legendNotes(q),
         el('div.assess-help', null, [el('p.small.muted', { text: '막히면 도움을 열 수 있습니다. 해설(정답)은 제출 뒤에만 보입니다.' }), el('div.row', null, helpButtons), helpStatus, helpBody]),
@@ -287,6 +287,7 @@ export async function renderAssessment(app) {
     el('div.row', { style: { marginBottom: '16px' } }, [el('a.btn', { href: '#/practice/chart', text: '실제 차트 8단계로' }), el('a.btn', { href: '#/practice/review', text: '복습' }), el('a.btn', { href: '#/practice/records', text: '기록과 백업' })]),
     el('details.rulebox', null, [el('summary', { text: '‘새 구간’은 무엇을 뜻하나요?' }),
       el('p.small', { text: `평가 문항 ${items.length}개(${data.summary.tickers}개 종목)는 입문 과정 ${data.exposure.courseCases}사례와 실제 비교 연습 ${data.exposure.studyCases / 2}쌍의 화면 구간과 한 봉도 겹치지 않는 날짜에서 골랐습니다. 지표 계산에 쓰는 앞쪽 이력은 화면에 나오지 않으므로 겹침으로 세지 않습니다.` }),
+      data.summary.holdoutTickers ? el('p.small', { text: `그중 ${data.summary.holdout}문항은 입문 과정에 한 번도 나오지 않는 평가 전용 종목 ${data.summary.holdoutTickers}개에서 냈습니다. 문항 머리말에 ‘입문 과정에 나오지 않는 종목’이라고 적혀 있습니다. 종목은 종목 코드로만 정했고 이후 등락과는 관계가 없습니다.` }) : null,
       el('p.small', { text: '레슨의 예시 차트, 데이터 뷰어, 방향 예측 실험에서 무엇을 봤는지는 기록이 없어 확인하지 못합니다. 그래서 ‘한 번도 본 적 없는 차트’가 아니라 ‘이 기능의 기록상 처음 보는 구간’이라고 부릅니다.' }),
       el('p.small', { text: `이후 등락으로 문항을 고르지 않았습니다. 상태별로 고르게 뽑고 경계에 가까운 사례(${data.summary.edge}개)도 넣었습니다. 문항 비율을 시장에서 일어나는 비율로 읽으면 안 됩니다.` }),
       el('p.small.muted', { text: `평가 자료 ${data.version} · 입문 교재 ${data.courseVersion} · 규칙 ${data.provenance.rulesVersion}` }),

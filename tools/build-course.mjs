@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { expandStock, inspectStock } from '../src/lib/data-quality.js';
 import { COURSE_VERSION, TASKS, courseContext, makeCourseQuestion, openCourseCase } from '../src/lib/chart-course.js';
 import { RULES_VERSION } from '../src/lib/rules-version.js';
+import { HOLDOUT, holdoutTickers } from './lib/holdout.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (file) => JSON.parse(fs.readFileSync(new URL(file, root)));
@@ -12,7 +13,9 @@ const index = read('data/patterns/_index.json');
 const manifest = read('data/patterns/_quality.json').sourceManifest;
 if (index.provenance.rulesVersion !== RULES_VERSION) throw new Error('탐지 자료를 먼저 재생성하세요.');
 const buckets = new Map(), stocks = new Map();
-for (const ticker of index.eligibleTickers) {
+// 평가 전용 종목은 입문 과정에서 뺀다. 목록과 고른 방법은 data/assessment-holdout.json 에 남긴다.
+const holdout = holdoutTickers(index.eligibleTickers);
+for (const ticker of index.eligibleTickers.filter((t) => !holdout.includes(t))) {
   const bytes = fs.readFileSync(new URL(`data/stocks/${ticker}.json`, root));
   const expected = manifest.find((r) => r.ticker === ticker);
   if (!expected || sha(bytes) !== expected.sha256) throw new Error('원자료 버전 불일치: ' + ticker);
@@ -22,7 +25,7 @@ for (const ticker of index.eligibleTickers) {
   const ctx = courseContext(stock.candles);
   for (let i = 120; i < stock.candles.length; i++) {
     // 드문 상태가 있는 주제는 매일 훑고, 나머지는 17거래일마다 훑는다.
-    const types = i % 17 === 0 ? Object.keys(TASKS) : ['cross-status', 'volume-rule', 'engulf', 'divergence', 'retest', 'breakout-volume', 'candle-context'];
+    const types = i % 17 === 0 ? Object.keys(TASKS) : ['cross-status', 'volume-rule', 'engulf', 'divergence', 'retest', 'breakout-volume', 'candle-context', 'double'];
     for (const type of types) {
       const q = makeCourseQuestion(ctx, i, type);
       if (!q) continue;
@@ -60,13 +63,18 @@ for (const type of Object.keys(TASKS)) if (!cases.some((c) => c.type === type)) 
 const payload = { version: COURSE_VERSION, provenance: index.provenance,
   policy: '관찰 상태별·종목 분산 교육 표본. 이후 등락·수익률은 선별에 사용하지 않음. 모집단 비율 추정용이 아님.',
   readsByType: Object.fromEntries(Object.keys(readsByType).sort().map((t) => [t, readsByType[t]])), cases };
-const target = new URL('data/chart-course.json', root), body = JSON.stringify(payload) + '\n';
-if (process.argv.includes('--check')) {
-  if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== body) throw new Error('입문 교재 재현 불일치');
-} else {
-  const temp = new URL('data/chart-course.json.tmp', root);
-  fs.writeFileSync(temp, body, { flag: 'wx' }); fs.renameSync(temp, target);
+const holdoutPayload = { courseVersion: COURSE_VERSION, rulesVersion: RULES_VERSION, method: HOLDOUT.method,
+  note: '이 종목들은 입문 과정에 나오지 않고 새 구간 평가에만 나온다. 데이터 뷰어와 과거 통계에서는 그대로 보인다.', tickers: holdout };
+const outputs = [['data/chart-course.json', JSON.stringify(payload) + '\n'], ['data/assessment-holdout.json', JSON.stringify(holdoutPayload, null, 2) + '\n']];
+for (const [file, body] of outputs) {
+  const target = new URL(file, root);
+  if (process.argv.includes('--check')) {
+    if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== body) throw new Error('입문 교재 재현 불일치: ' + file);
+  } else {
+    const temp = new URL(file + '.tmp', root);
+    fs.writeFileSync(temp, body, { flag: 'wx' }); fs.renameSync(temp, target);
+  }
 }
-console.log(JSON.stringify({ topics: Object.keys(TASKS).length, cases: cases.length,
+console.log(JSON.stringify({ topics: Object.keys(TASKS).length, cases: cases.length, holdout,
   tickers: new Set(cases.map((c) => c.ticker)).size,
   buckets: Object.fromEntries([...buckets].map(([k]) => [k, cases.filter((c) => `${c.type}|${c.bucket}` === k).length])) }, null, 2));

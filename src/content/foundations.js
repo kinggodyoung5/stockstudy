@@ -54,7 +54,7 @@ export const CURRICULUM = [
     goal: 'RSI·MACD의 상태, 교차, 다이버전스를 확정 예측과 구분한다.' },
   { title: '7. 캔들', lessons: ['candlestick-reversal', 'candlestick-engulfing'], practice: ['engulf', 'candle-context'],
     goal: '모양뿐 아니라 앞선 흐름과 위치, 확인 시점을 함께 검사한다.' },
-  { title: '8. 차트 패턴', lessons: ['double-patterns', 'head-and-shoulders'], practice: [],
+  { title: '8. 차트 패턴', lessons: ['double-patterns', 'head-and-shoulders'], practice: ['double'],
     goal: '넥라인이 종가로 깨졌는지와 모양이 비슷한 것을 구분한다.' },
   { title: '9. 종합과 계획', lessons: ['analysis-process', 'market-context', 'plan-risk', 'expectancy', 'biases'], practice: ['integrated', 'limits'],
     goal: '관찰 → 해석 → 반대 근거 → 무효 조건을 스스로 쓰고, 계획을 숫자로 적는다.' },

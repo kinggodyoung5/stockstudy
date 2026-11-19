@@ -20,7 +20,7 @@ const exposureOf = () => exposureCache ||= practiceExposure(allStocks(), course.
   Object.fromEntries(STUDY_PATTERNS.map((p) => [p.id, read(`data/patterns/${p.id}.json`)])), index.eligibleTickers);
 const questionOf = (ref) => openCourseCase(stockOf(ref.ticker), ref).question;
 
-test('평가 자료: 버전 연결, 18주제·6영역, 상태와 경계 사례가 섞여 있고 결과 수치는 없다', () => {
+test('평가 자료: 버전 연결, 26주제·8영역, 상태와 경계 사례가 섞여 있고 결과 수치는 없다', () => {
   assert.equal(data.version, ASSESSMENT_VERSION);
   assert.equal(data.courseVersion, COURSE_VERSION);
   assert.equal(data.provenance.rulesVersion, RULES_VERSION);
@@ -34,9 +34,24 @@ test('평가 자료: 버전 연결, 18주제·6영역, 상태와 경계 사례�
   assert.ok(data.items.some((r) => r.type === 'integrated' && r.bucket === 'mixed'));
   assert.ok(data.items.some((r) => r.type === 'cross-status' && r.bucket.endsWith(':pending')));
   for (const r of data.items) {
-    assert.deepEqual(Object.keys(r).sort(), ['bars', 'bucket', 'date', 'edge', 'lessonOverlap', 'shown', 'ticker', 'type']);
+    const keys = ['bars', 'bucket', 'date', 'edge', 'lessonOverlap', 'shown', 'ticker', 'type', ...(r.holdout ? ['holdout'] : [])].sort();
+    assert.deepEqual(Object.keys(r).sort(), keys);
+    if ('holdout' in r) assert.equal(r.holdout, true);
   }
   assert.equal(new Set(data.items.map(itemId)).size, data.items.length);
+});
+
+test('평가 전용 종목: 코드 해시로만 정하고, 입문 과정에 없고, 그 종목의 평가 문항에만 표시가 붙는다', async () => {
+  const { holdoutTickers, isHoldout } = await import('../tools/lib/holdout.mjs');
+  const holdout = read('data/assessment-holdout.json');
+  assert.deepEqual(holdout.tickers, holdoutTickers(index.eligibleTickers));
+  assert.equal(holdout.courseVersion, COURSE_VERSION);
+  assert.ok(holdout.tickers.length > 0 && holdout.tickers.length < index.eligibleTickers.length / 4);
+  // 소속은 종목 코드만으로 정해진다. 목록이 바뀌어도 같은 종목의 소속은 같다.
+  assert.deepEqual(holdoutTickers([...index.eligibleTickers].reverse().slice(0, 40)), holdout.tickers.filter((t) => [...index.eligibleTickers].reverse().slice(0, 40).includes(t)));
+  assert.ok(!course.cases.some((c) => holdout.tickers.includes(c.ticker)));
+  for (const r of data.items) assert.equal(!!r.holdout, isHoldout(r.ticker), r.ticker);
+  assert.ok(data.items.some((r) => r.holdout));
 });
 
 test('평가 구간은 입문 480사례·실제 비교 연습의 화면 구간과 한 봉도 겹치지 않고, 서로도 겹치지 않는다', () => {

@@ -21,8 +21,8 @@
 | `data/stocks/` | 15.6 MB | 파일 122개(종목 117, 지수 4, 목록 1). 종목 1개 약 0.13 MB, 캔들 1개 약 48바이트 |
 | `data/recovery/` | 18.7 MB | 국내 92종목의 원본 백업, Yahoo·Naver 원문, 보고서와 이전 정책 보고서 |
 | `data/patterns/` | 7.2 MB | 57개 규칙과 요약·품질 파일. 큰 파일은 삼각형·쐐기 규칙(각 약 0.18 MB) |
-| `data/chart-course.json` | 0.06 MB | 입문 사례 784개 |
-| `data/assessment.json` | 0.08 MB | 평가 문항 467개 |
+| `data/chart-course.json` | 0.06 MB | 입문 사례 832개 |
+| `data/assessment.json` | 0.08 MB | 평가 문항 476개 |
 | `src/` | 0.79 MB | |
 | `vendor/` | 0.79 MB | 차트 라이브러리 0.16 MB, 글꼴(SUIT) 0.62 MB |
 | `.git` 묶음 | 26 MB | |

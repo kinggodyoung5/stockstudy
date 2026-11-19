@@ -4,7 +4,8 @@
 //   node tools/build-assessment.mjs --check    다시 만들어 저장본과 바이트 단위로 비교
 //   node tools/build-assessment.mjs --census   주제·상태·경계별 후보 수(표집 비율을 정할 때 참고)
 //
-// 연습 노출 범위 = 입문 과정 480사례의 화면 구간 + 실제 비교 연습 285쌍의 공개 뒤 화면 구간.
+// 연습 노출 범위 = 입문 과정 사례의 화면 구간 + 실제 비교 연습 쌍의 공개 뒤 화면 구간.
+// 평가 전용 종목(data/assessment-holdout.json)은 입문 과정에 나오지 않는다. 그 종목의 문항에 holdout: true 를 붙인다.
 // 평가 사례는 이 범위와 한 봉도 겹치지 않는다. 레슨 예시 표본과의 겹침은 기록만 한다.
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -12,6 +13,7 @@ import { expandStock, inspectStock } from '../src/lib/data-quality.js';
 import { COURSE_VERSION, TASKS, courseContext, makeCourseQuestion, openCourseCase } from '../src/lib/chart-course.js';
 import { RULES_VERSION } from '../src/lib/rules-version.js';
 import { STUDY_PATTERNS } from '../src/lib/real-study.js';
+import { holdoutTickers } from './lib/holdout.mjs';
 import { ASSESSMENT_VERSION, DOMAINS, DOMAIN_OF, RATES, EDGE_LIMIT, edgeOf, drawOf, sampleItems, shownRange, overlapBars, practiceExposure } from '../src/lib/assessment.js';
 
 const root = new URL('../', import.meta.url);
@@ -23,6 +25,9 @@ const course = read('data/chart-course.json');
 if (index.provenance.rulesVersion !== RULES_VERSION) throw new Error('탐지 자료를 먼저 재생성하세요.');
 if (course.version !== COURSE_VERSION || course.provenance.sourceDigest !== index.provenance.sourceDigest)
   throw new Error('입문 교재를 먼저 재생성하세요.');
+const holdout = read('data/assessment-holdout.json');
+if (holdout.courseVersion !== COURSE_VERSION || JSON.stringify(holdout.tickers) !== JSON.stringify(holdoutTickers(index.eligibleTickers))
+  || course.cases.some((c) => holdout.tickers.includes(c.ticker))) throw new Error('평가 전용 종목 목록이 교재와 맞지 않습니다. 입문 교재를 먼저 재생성하세요.');
 
 const stocks = new Map();
 for (const ticker of index.eligibleTickers) {
@@ -73,7 +78,8 @@ for (const [ticker, stock] of stocks) {
     if (range[0] !== it.range[0] || range[1] !== it.range[1]) throw new Error('표시 구간 불일치: ' + it.ticker + ' ' + it.date);
     const lesson = Math.max(0, ...lessons.get(ticker).map((r) => overlapBars(r, range)));
     items.push({ type: it.type, ticker, date: it.date, bucket: it.bucket, edge: it.edge,
-      shown: [stock.candles[range[0]].date, stock.candles[range[1]].date], bars: range[1] - range[0] + 1, lessonOverlap: lesson });
+      shown: [stock.candles[range[0]].date, stock.candles[range[1]].date], bars: range[1] - range[0] + 1, lessonOverlap: lesson,
+      ...(holdout.tickers.includes(ticker) ? { holdout: true } : {}) });
   }
 }
 items.sort((a, b) => a.type.localeCompare(b.type) || a.ticker.localeCompare(b.ticker) || a.date.localeCompare(b.date));
@@ -86,7 +92,8 @@ const payload = {
     '문제와 정답은 입문 과정과 같은 계산(makeCourseQuestion)으로 만든다. 이후 등락·수익률은 선별에 쓰지 않는다.',
     '어떤 날의 출제 여부는 그날까지의 봉, 고정된 표집 비율·경계 기준, 연습 노출 범위로만 정해진다.',
     '주제·상태·경계 여부마다 표집 비율을 따로 둬 정상·경계·혼재 사례를 함께 넣는다. 시장의 발생 비율을 뜻하지 않는다.',
-    '입문 과정 480사례와 실제 비교 연습의 화면 구간과 한 봉도 겹치지 않는 구간만 쓴다. 지표 계산용 과거 이력은 겹침으로 세지 않는다.',
+    '입문 과정 사례와 실제 비교 연습의 화면 구간과 한 봉도 겹치지 않는 구간만 쓴다. 지표 계산용 과거 이력은 겹침으로 세지 않는다.',
+    '평가 전용 종목(holdout)은 입문 과정에 나오지 않는다. 종목 코드의 해시로 정해 이후 등락과 무관하다.',
     '같은 종목의 평가 사례끼리도 화면 구간이 겹치지 않는다(날짜 순서로 앞의 사례를 남긴다).',
     '레슨 예시 표본과의 겹침은 lessonOverlap 에 봉 수로 기록만 한다. 뷰어·예측 실험에서 본 구간은 기록이 없어 확인할 수 없다.',
   ],
@@ -95,6 +102,7 @@ const payload = {
     digest: sha(JSON.stringify([...exposure])) },
   skipped,
   summary: { items: items.length, tickers: new Set(items.map((r) => r.ticker)).size, edge: items.filter((r) => r.edge).length,
+    holdout: items.filter((r) => r.holdout).length, holdoutTickers: holdout.tickers.length,
     lessonOverlap: items.filter((r) => r.lessonOverlap > 0).length, byType,
     byDomain: Object.fromEntries(DOMAINS.map((d) => [d.id, items.filter((r) => DOMAIN_OF[r.type] === d.id).length])) },
   items,

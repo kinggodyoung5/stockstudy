@@ -23,14 +23,14 @@ const stockOf = (ticker) => {
   return cache.get(ticker);
 };
 
-test('실제 차트 8단계·25주제·784사례: 97종목, 98상태, 레슨·자료 버전 연결', () => {
+test('실제 차트 8단계·26주제·832사례: 86종목, 104상태, 레슨·자료 버전 연결', () => {
   assert.equal(course.version, COURSE_VERSION);
   assert.equal(course.provenance.rulesVersion, RULES_VERSION);
   assert.equal(course.provenance.sourceDigest, index.provenance.sourceDigest);
-  assert.equal(COURSE_STEPS.length, 8); assert.equal(Object.keys(TASKS).length, 25);
-  assert.equal(course.cases.length, 784);
-  assert.equal(new Set(course.cases.map((r) => r.ticker)).size, 97);
-  assert.equal(new Set(course.cases.map((r) => `${r.type}|${r.bucket}`)).size, 98);
+  assert.equal(COURSE_STEPS.length, 8); assert.equal(Object.keys(TASKS).length, 26);
+  assert.equal(course.cases.length, 832);
+  assert.equal(new Set(course.cases.map((r) => r.ticker)).size, 86);
+  assert.equal(new Set(course.cases.map((r) => `${r.type}|${r.bucket}`)).size, 104);
   assert.deepEqual(new Set(COURSE_STEPS.flatMap((s) => s.ids)), new Set(Object.keys(TASKS)));
   const dates = course.cases.map((r) => r.date);
   assert.ok(Math.min(...dates.map((d) => +d.slice(0, 4))) <= 2016);

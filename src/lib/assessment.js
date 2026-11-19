@@ -20,7 +20,7 @@ import { STUDY_PATTERNS, comparisonPairs } from './real-study.js';
 import { diagnose, CONFIDENCE } from './course-feedback.js';
 import { uniform } from './hash.js';
 
-export const ASSESSMENT_VERSION = '2026-11-18.1';
+export const ASSESSMENT_VERSION = '2026-11-19.1';
 /** 영역 = 입문 과정의 여섯 단계. 같은 주제 분류를 쓴다. */
 export const DOMAINS = COURSE_STEPS.map((s, i) => ({ id: 'd' + (i + 1), title: s.title, types: s.ids }));
 export const DOMAIN_OF = Object.fromEntries(DOMAINS.flatMap((d) => d.types.map((t) => [t, d.id])));
@@ -38,6 +38,8 @@ export const EDGE_LIMIT = {
   // 2026-11 새 주제. 단위: 추세선·가격대·되돌림은 가격 대비 %, 주봉과 일봉은 %, 돌파일은 배수·비율,
   // 다이버전스는 %와 RSI 점수 중 작은 쪽, 캔들 자리는 앞선 흐름 %p.
   trendline: 0.5, 'sr-level': 0.5, retest: 0.5, mtf: 0.3, 'breakout-volume': 0.1, divergence: 1, 'candle-context': 1,
+  // 2026-11-19 이중 천장·바닥: 높이 차·깊이·앞선 흐름(%p)과 넥라인까지 거리(가격 대비 %) 중 가장 작은 값.
+  double: 0.25,
 };
 export const edgeOf = (q) => (EDGE_LIMIT[q.type] != null && q.margin != null && q.margin < EDGE_LIMIT[q.type] ? 1 : 0);
 
@@ -74,6 +76,11 @@ export const RATES = {
   // 추세선은 1.5배로 둔다. 연습 노출과 겹쳐 빠지는 후보가 많기 때문이다.
   'breakout-volume|0|0': 0.002, 'breakout-volume|0|1': 0.0028, 'breakout-volume|1|0': 0.0066, 'breakout-volume|1|1': 0.0055, 'breakout-volume|2|0': 0.0018, 'breakout-volume|2|1': 0.0029, 'breakout-volume|3|0': 0.0067, 'breakout-volume|3|1': 0.0043,
   'candle-context|down|0': 0.006, 'candle-context|down|1': 0.013, 'candle-context|none|0': 0.0053, 'candle-context|none|1': 0.0066, 'candle-context|up|0': 0.0049, 'candle-context|up|1': 0.012,
+  // 2026-11-19 이중 천장·바닥. 확인 대기는 같은 후보가 여러 날 이어져 서로 겹쳐 빠지는 비율이 높아 1.5배로 둔다.
+  // 충족은 드물고(전체 약 280건) 입문 과정이 같은 사건을 써서 겹쳐 빠지는 비율이 높아 2배 남짓으로 둔다.
+  'double|top:fail|0': 0.0002, 'double|top:fail|1': 0.00082, 'double|bottom:fail|0': 0.0002, 'double|bottom:fail|1': 0.001,
+  'double|top:pending|0': 0.002, 'double|top:pending|1': 0.0096, 'double|bottom:pending|0': 0.0023, 'double|bottom:pending|1': 0.015,
+  'double|top:pass|0': 0.1, 'double|top:pass|1': 0.3, 'double|bottom:pass|0': 0.12, 'double|bottom:pass|1': 0.35,
   'divergence|bear:fail|0': 0.00013, 'divergence|bear:fail|1': 0.00017, 'divergence|bear:pass|0': 0.0085, 'divergence|bear:pass|1': 0.012, 'divergence|bear:pending|0': 0.008, 'divergence|bear:pending|1': 0.0063, 'divergence|bull:fail|0': 0.00013, 'divergence|bull:fail|1': 0.00016, 'divergence|bull:pass|0': 0.017, 'divergence|bull:pass|1': 0.015, 'divergence|bull:pending|0': 0.013, 'divergence|bull:pending|1': 0.011,
   'mtf|dd|0': 0.00029, 'mtf|dd|1': 0.00091, 'mtf|du|0': 0.00082, 'mtf|du|1': 0.0015, 'mtf|mixed|0': 0.00017, 'mtf|mixed|1': 0.0002, 'mtf|ud|0': 0.00078, 'mtf|ud|1': 0.0013, 'mtf|uu|0': 0.00024, 'mtf|uu|1': 0.00096,
   'retest|fail|0': 0.00035, 'retest|fail|1': 0.0029, 'retest|hold|0': 0.004, 'retest|hold|1': 0.0067, 'retest|retest|0': 0.0032, 'retest|retest|1': 0.0016,
