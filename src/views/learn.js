@@ -388,6 +388,8 @@ const EXTRA_PRACTICE = {
   'plan-risk': [['종합 읽기와 계획', '#/practice/plan']],
   'analysis-process': [['종합 읽기와 계획', '#/practice/plan']],
   expectancy: [['기대값 실험 (가상 차트)', '#/sandbox']],
+  'structure-basics': [['직접 짚기: 저점·고점', '#/practice/pick']],
+  'support-resistance': [['직접 짚기: 가격대', '#/practice/pick']],
 };
 
 function practiceLinks(lessonId) {

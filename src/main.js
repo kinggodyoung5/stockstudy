@@ -43,7 +43,7 @@ function renderNav(activeId, params = []) {
   const items = group === 'explore'
     ? [['데이터 뷰어', '#/viewer'], ['과거 통계', '#/stats'], ['가상 차트', '#/sandbox'], ['방향 예측 실험', '#/quiz']]
     : [['학습 안내', '#/home'], ['개념 학습', `#/learn/${LESSONS[0].id}`], ['실제 차트 8단계', '#/practice/chart'],
-      ['기초 문제', '#/practice'], ['사례 비교', '#/practice/real'], ['종합 읽기', '#/practice/plan'], ['새 구간 평가', '#/practice/check']];
+      ['기초 문제', '#/practice'], ['사례 비교', '#/practice/real'], ['직접 짚기', '#/practice/pick'], ['종합 읽기', '#/practice/plan'], ['새 구간 평가', '#/practice/check']];
   const secondary = document.getElementById('section-nav');
   clear(secondary);
   secondary.hidden = ['review', 'records'].includes(group);

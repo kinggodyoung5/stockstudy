@@ -30,7 +30,7 @@ export const MAX_BYTES = 5 * 1024 * 1024;
 export const CONFLICT_KEY = 'backup-conflicts:v1';
 
 const COURSE_KEY = /^chart-course:[0-9A-Za-z._-]{1,40}:[0-9a-f]{8,128}$/;
-const FIXED_KEYS = ['assessment:v1', 'real-study:v1', 'review:v1', 'practice:v1', 'plan:v1', 'journal:v1', CONFLICT_KEY];
+const FIXED_KEYS = ['assessment:v1', 'real-study:v1', 'review:v1', 'practice:v1', 'plan:v1', 'journal:v1', 'pick:v1', CONFLICT_KEY];
 export const isBackupKey = (key) => COURSE_KEY.test(key) || FIXED_KEYS.includes(key);
 
 /* ───────────── 검사 도구 ───────────── */
@@ -173,6 +173,23 @@ const VALIDATE = {
       if (r.review != null) { obj(r.review, p + '.review'); only(r.review, p + '.review', ['at', 'note']); time(r.review.at, p + '.review.at'); str(r.review.note, p + '.review.note', 1000); }
     }
   },
+  'pick:v1'(value, path) {
+    obj(value, path); only(value, path, ['v', 'items']); int(value.v, path + '.v', 1, 1);
+    obj(value.items, path + '.items', 5000);
+    for (const [k, r] of Object.entries(value.items)) {
+      const p = `${path}.items.${k}`;
+      if (!/^(low|high|zone)\|[0-9A-Za-z.^_-]{1,20}\|\d{4}-\d{2}-\d{2}$/.test(k)) fail(p, '짚기 식별자 형식이 아닙니다');
+      obj(r, p); only(r, p, ['v', 'first', 'last', 'tries']); int(r.v, p + '.v', 1, 1); int(r.tries, p + '.tries', 1, 1e6);
+      obj(r.first, p + '.first'); only(r.first, p + '.first', ['at', 'picks', 'correct']);
+      time(r.first.at, p + '.first.at'); bool(r.first.correct, p + '.first.correct');
+      arr(r.first.picks, p + '.first.picks', 4).forEach((x, i) => {
+        const q = `${p}.first.picks[${i}]`;
+        obj(x, q); only(x, q, ['date', 'price']); num(x.price, q + '.price');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(str(x.date, q + '.date', 10))) fail(q + '.date', '날짜 형식이 아닙니다');
+      });
+      obj(r.last, p + '.last'); only(r.last, p + '.last', ['at', 'correct']); time(r.last.at, p + '.last.at'); bool(r.last.correct, p + '.last.correct');
+    }
+  },
   'journal:v1'(value, path) {
     obj(value, path); only(value, path, ['v', 'entries']); int(value.v, path + '.v', 1, 1);
     arr(value.entries, path + '.entries', 5000).forEach((e, i) => {
@@ -252,7 +269,7 @@ export function buildBackup(store, versions, now = new Date()) {
 }
 
 export function countRecords(data) {
-  const c = { course: 0, courseVersions: 0, assessment: 0, assessmentRetries: 0, realStudy: 0, review: 0, practice: 0, capstone: 0, journal: 0, conflicts: 0 };
+  const c = { course: 0, courseVersions: 0, assessment: 0, assessmentRetries: 0, realStudy: 0, review: 0, practice: 0, capstone: 0, journal: 0, pick: 0, conflicts: 0 };
   for (const [key, value] of Object.entries(data)) {
     if (COURSE_KEY.test(key)) { c.course += Object.keys(value || {}).length; c.courseVersions++; }
     else if (key === 'assessment:v1') for (const e of Object.values(value?.items || {})) { c.assessment++; c.assessmentRetries += e.retries?.length || 0; }
@@ -261,6 +278,7 @@ export function countRecords(data) {
     else if (key === 'practice:v1') c.practice += Object.keys(value || {}).length;
     else if (key === 'plan:v1') c.capstone += Object.values(value?.items || {}).filter((r) => r?.submittedAt).length;
     else if (key === 'journal:v1') c.journal += (value?.entries || []).length;
+    else if (key === 'pick:v1') c.pick += Object.values(value?.items || {}).filter((r) => r?.first).length;
     else if (key === CONFLICT_KEY) c.conflicts += value?.length || 0;
   }
   return c;
@@ -433,6 +451,24 @@ function mergeJournal(local, incoming, report, log) {
   return { v: 1, entries: entries.sort((a, b) => a.createdAt - b.createdAt) };
 }
 
+/** 직접 짚기: 처음 제출이 다르면 먼저 낸 쪽을 둔다. 다시 해본 횟수는 큰 쪽, 마지막 결과는 늦은 쪽을 쓴다. */
+function mergePick(local, incoming, report, log) {
+  const items = { ...(local?.v === 1 && isObj(local.items) ? local.items : {}) };
+  for (const [k, r] of Object.entries(incoming.items)) {
+    const mine = items[k];
+    if (!mine) { items[k] = r; report.added++; continue; }
+    if (same(mine, r)) { report.same++; continue; }
+    let first = mine.first;
+    if (!same(mine.first, r.first)) {
+      const keepLocal = mine.first.at <= r.first.at;
+      first = keepLocal ? mine.first : r.first; report.conflict++;
+      log.push({ key: 'pick:v1', item: k, field: 'first', kept: keepLocal ? 'local' : 'incoming', other: keepLocal ? r.first : mine.first });
+    } else report.merged++;
+    items[k] = { v: 1, first, last: r.last.at > mine.last.at ? r.last : mine.last, tries: Math.max(mine.tries, r.tries) };
+  }
+  return { v: 1, items };
+}
+
 function mergePractice(local = {}, incoming, report, log) {
   // 기초 연습은 누적 횟수만 남는 형식이라 더하면 두 번 셀 수 있다. 마지막 시도가 늦은 쪽을 쓴다.
   const out = { ...local };
@@ -464,6 +500,7 @@ export function planImport(local, backup, now = Date.now()) {
     else if (key === 'practice:v1') next = mergePractice(local[key], value, report, log);
     else if (key === 'plan:v1') next = mergeCapstone(local[key], value, report, log);
     else if (key === 'journal:v1') next = mergeJournal(local[key], value, report, log);
+    else if (key === 'pick:v1') next = mergePick(local[key], value, report, log);
     if (next !== undefined && !same(next, local[key])) writes.push([key, next]);
   }
   // 충돌 보관함: 지금 것 + 백업에 있던 것 + 이번에 밀려난 것. 같은 내용은 한 번만 둔다.
