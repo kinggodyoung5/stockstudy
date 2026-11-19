@@ -1,6 +1,12 @@
 import { candleProblems, inspectStock } from '../../src/lib/data-quality.js';
 
-export const RECOVERY_POLICY = 'dual-source-local-scale-v2';
+/**
+ * v3 (2026-11-18): v2 가 단위 검증에 실패한 날에만 두 가지를 더 본다. v2 로 정해지는 날의 결과는 바뀌지 않는다.
+ *   1. 거래량 배율을 Yahoo 분할 기록이 아니라 주변 일치 봉의 거래량 비율로 확인한다(비율이 0.1% 안에서 안정적일 때만).
+ *      Naver 가 유상증자·주식배당 등으로 가격과 거래량을 함께 조정했지만 Yahoo 분할 기록에는 없는 경우다.
+ *   2. 두 공급자가 모두 거래량 0이고 Naver 의 네 가격이 같은 봉은 거래정지로 보고 계산용 이력에서 뺀다.
+ */
+export const RECOVERY_POLICY = 'dual-source-local-scale-v3';
 // 금융위원회 공지로 확인한 임시 휴장일. Naver 행 부재만으로 휴장일을 추정하지 않는다.
 const CLOSED_SESSIONS = new Map([['2015-08-14', 'https://www.korea.kr/news/policyNewsView.do?newsId=148799089']]);
 const PRICE = ['open', 'high', 'low', 'close'];
@@ -50,13 +56,32 @@ function uniqueMap(cs) {
   return map;
 }
 
-function control(y, n, splits) {
+function priceControl(y, n) {
   if (!y || !n || candleProblems(y).length || candleProblems(n).length || !positive(n.volume)) return null;
-  const volumeFactor = splitVolumeFactor(splits, n.date);
-  if (!volumeNear(y.volume, n.volume * volumeFactor)) return null;
   const scale = median(PRICE.map((k) => y[k] / n[k]));
   if (!positive(scale) || !PRICE.every((k) => priceNear(y[k], n[k] * scale))) return null;
-  return { date: n.date, priceFactor: scale, volumeFactor };
+  return { date: n.date, priceFactor: scale, yVolume: y.volume, nVolume: n.volume };
+}
+
+/** v2 기준 봉: 가격 일치 + Yahoo 분할 기록으로 맞춘 거래량 일치 */
+function control(y, n, splits) {
+  const p = priceControl(y, n);
+  if (!p) return null;
+  const volumeFactor = splitVolumeFactor(splits, n.date);
+  if (!volumeNear(y.volume, n.volume * volumeFactor)) return null;
+  return { date: p.date, priceFactor: p.priceFactor, volumeFactor };
+}
+
+/** 주변 기준 봉 선택. 일반 구간은 앞뒤 각 5개, 양끝 8개 날짜 안에서는 한쪽 10개. */
+function selectControls(anchors, i, d, total) {
+  const candidates = anchors.filter((a) => a.date !== d && Math.abs(a.i - i) <= 60);
+  const before = candidates.filter((a) => a.i < i).slice(-5);
+  const after = candidates.filter((a) => a.i > i).slice(0, 5);
+  const controls = [...before, ...after];
+  const enough = controls.length >= 8 && before.length >= 3 && after.length >= 3;
+  const edgeControls = i < 8 ? candidates.filter((a) => a.i > i).slice(0, 10)
+    : i >= total - 8 ? candidates.filter((a) => a.i < i).slice(-10) : [];
+  return enough ? controls : edgeControls;
 }
 
 /** 수익률/신호를 보지 않고 공급자끼리 일치하는 주변 OHLCV만으로 단위 변환을 확인한다. */
@@ -65,6 +90,9 @@ export function recoverStock(original, yahoo, naver) {
   const first = original.candles[0].date, last = original.candles.at(-1).date;
   const dates = [...new Set([...om.keys(), ...ym.keys(), ...nm.keys()])].filter((d) => d >= first && d <= last).sort();
   const anchors = dates.map((d, i) => ({ i, ...control(ym.get(d), nm.get(d), yahoo.splits) })).filter((a) => a.date);
+  // v3: 가격만 일치한 기준 봉. 거래량 비율은 주변에서 따로 확인한다.
+  const priceAnchors = dates.map((d, i) => ({ i, ...priceControl(ym.get(d), nm.get(d)) })).filter((a) => a.date)
+    .map((a) => ({ ...a, volumeFactor: a.yVolume / a.nVolume }));
   const corrections = [], sourceRefresh = [], unresolved = [], omittedNonTrading = [], missingCandidates = [], removedNonTrading = [];
   const result = [];
   for (let i = 0; i < dates.length; i++) {
@@ -78,6 +106,12 @@ export function recoverStock(original, yahoo, naver) {
         reason: CLOSED_SESSIONS.has(d) ? 'official-market-closure' : 'both-providers-non-trading', source: CLOSED_SESSIONS.get(d) || '보존된 Yahoo/Naver 원문' });
       continue;
     }
+    // v3: 두 공급자 모두 거래량 0이고 가격이 한 값으로 고정된 봉 = 거래정지. 가격을 만들어 넣지 않고 계산에서 뺀다.
+    if (base?.volume === 0 && PRICE.every((k) => base[k] === base.close) && n?.volume === 0 && positive(n.close)
+      && PRICE.every((k) => n[k] === n.close)) {
+      removedNonTrading.push({ date: d, before: base, original: old || null, naver: n, reason: 'both-providers-halt-flat', source: '보존된 Yahoo/Naver 원문' });
+      continue;
+    }
     if (!base && (!n || n.volume === 0)) { omittedNonTrading.push(d); continue; }
     if (!n || candleProblems(n).length || !positive(n.volume)) {
       if (base) result.push(base);
@@ -85,18 +119,21 @@ export function recoverStock(original, yahoo, naver) {
       else if (base.volume === 0) unresolved.push({ date: d, reason: '거래량 0 봉의 무거래 여부 미확인' });
       continue;
     }
-    const candidates = anchors.filter((a) => a.date !== d && Math.abs(a.i - i) <= 60);
-    const before = candidates.filter((a) => a.i < i).slice(-5);
-    const after = candidates.filter((a) => a.i > i).slice(0, 5);
-    const controls = [...before, ...after];
-    const enough = controls.length >= 8 && before.length >= 3 && after.length >= 3;
     // 데이터 양끝은 앞/뒤 한쪽에 8개 이상이 있는 경우만 허용한다.
-    const edgeControls = i < 8 ? candidates.filter((a) => a.i > i).slice(0, 10)
-      : i >= dates.length - 8 ? candidates.filter((a) => a.i < i).slice(-10) : [];
-    const selected = enough ? controls : edgeControls;
-    const scale = median(selected.map((a) => a.priceFactor));
-    const volumeFactor = splitVolumeFactor(yahoo.splits, d);
-    const stable = selected.length >= 8 && positive(scale) && selected.every((a) => Math.abs(a.priceFactor / scale - 1) <= 0.0002 && Math.abs(a.volumeFactor / volumeFactor - 1) < 0.000001);
+    let selected = selectControls(anchors, i, d, dates.length);
+    let scale = median(selected.map((a) => a.priceFactor));
+    let volumeFactor = splitVolumeFactor(yahoo.splits, d);
+    let volumeBasis = 'yahoo-split';
+    let stable = selected.length >= 8 && positive(scale) && selected.every((a) => Math.abs(a.priceFactor / scale - 1) <= 0.0002 && Math.abs(a.volumeFactor / volumeFactor - 1) < 0.000001);
+    if (!stable) {
+      // v3: 주변 가격 일치 봉의 거래량 비율이 모두 0.1% 안이면 그 비율을 거래량 배율로 쓴다.
+      const local = selectControls(priceAnchors, i, d, dates.length);
+      const localScale = median(local.map((a) => a.priceFactor)), localVolume = median(local.map((a) => a.volumeFactor));
+      if (local.length >= 8 && positive(localScale) && positive(localVolume)
+        && local.every((a) => Math.abs(a.priceFactor / localScale - 1) <= 0.0002 && Math.abs(a.volumeFactor / localVolume - 1) <= 0.001)) {
+        selected = local; scale = localScale; volumeFactor = localVolume; volumeBasis = 'local-volume-ratio'; stable = true;
+      }
+    }
     const replacement = scale == null ? null : { date: d, ...Object.fromEntries(PRICE.map((k) => [k, Math.round(n[k] * scale)])), volume: Math.round(n.volume * volumeFactor) };
     const mismatch = !base || (replacement && (PRICE.some((k) => !priceNear(base[k], replacement[k])) || !volumeNear(base.volume, replacement.volume)));
     if (mismatch || (base && candleProblems(base).length)) {
@@ -106,7 +143,9 @@ export function recoverStock(original, yahoo, naver) {
       const matchingFields = base && replacement ? PRICE.filter((k) => priceNear(base[k], replacement[k])) : [];
       if (stable && (!base || placeholder || matchingFields.length >= 2) && !candleProblems(replacement).length) {
         corrections.push({ date: d, reason: !base ? 'missing-session' : placeholder ? 'zero-volume-placeholder' : 'cross-source-disagreement', before: base || null, after: replacement,
-          original: old || null, naver: n, priceFactor: scale, volumeFactor, matchingFields, controls: selected.map(({ i, ...a }) => a) });
+          original: old || null, naver: n, priceFactor: scale, volumeFactor, matchingFields,
+          ...(volumeBasis === 'yahoo-split' ? {} : { volumeBasis }),
+          controls: selected.map(({ i, yVolume, nVolume, ...a }) => a) });
         base = replacement;
       } else if (base && candleProblems(base).length) {
         unresolved.push({ date: d, reason: stable ? '당일 가격 일치 부족' : '주변 조정 단위 검증 부족' });

@@ -25,7 +25,7 @@
   - **일반 신호 탐지**: 공개된 조건에 맞으면 이후 등락과 무관하게 검출한다.
   - **입문 사례 480개**: 당시 관찰 상태로 고른다. 이후 수익률은 선별에 쓰지 않는다.
     상태를 고르게 구성했으므로 시장 발생 비율 추정용이 아니다.
-  - **비교 285쌍**: 결과가 다른 사례를 일부러 짝지은 교재다. 승률 표본으로 쓰지 않는다.
+  - **비교 278쌍**: 결과가 다른 사례를 일부러 짝지은 교재다. 승률 표본으로 쓰지 않는다.
 - 관찰 마감일 뒤의 봉을 차트·지표·정답 판정에 섞지 않는다.
   계산용 과거 이력은 충분히 두되 미래는 막는다.
 - 신호 발생일과 확인일을 구분한다.
@@ -41,7 +41,7 @@
 
 ```
 node --test tests/*.test.mjs
-node tools/build-patterns.mjs --date=2026-09-27 --check
+node tools/build-patterns.mjs --date=2026-11-18 --check
 node tools/build-course.mjs --check
 node tools/recover-data.mjs --check
 git diff --check

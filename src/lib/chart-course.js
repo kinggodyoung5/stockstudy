@@ -9,7 +9,7 @@ import { PATTERNS } from './patterns.js';
 import { uniform } from './hash.js';
 import { TOPIC_BUILDERS } from './course-topics/index.js';
 
-export const COURSE_VERSION = '2026-11-17.2';
+export const COURSE_VERSION = '2026-11-18.1';
 export const COURSE_STEPS = [
   { title: '가격과 시간', intro: '봉의 색과 전일 대비 등락은 비교하는 가격이 다릅니다. 실제 숫자로 확인해봅니다.', ids: ['candle', 'wick', 'timeframe'] },
   { title: '추세와 가격대', intro: '관찰 범위를 정하고 고점·저점을 비교합니다. 선을 잠깐 넘는 것과 종가로 넘는 것도 구별합니다.', ids: ['trend', 'level'] },

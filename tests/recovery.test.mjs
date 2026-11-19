@@ -95,8 +95,31 @@ test('공식 공지로 확인한 휴장일은 공급자 행이 없어도 무거�
   assert.equal(r.candidate.candles.length, 39);
 });
 
+test('v3: 분할 기록이 없어도 주변 거래량 비율이 안정적이면 그 비율로 결측을 복원한다', () => {
+  const f = fixture(); f.naver = f.naver.map((c) => ({ ...c, volume: c.volume * 1.25 }));
+  const absent = f.yahoo.candles[20];
+  f.original.candles.splice(20, 1); f.yahoo.candles.splice(20, 1);
+  const r = run(f);
+  assert.equal(r.corrections.length, 1);
+  assert.equal(r.corrections[0].volumeBasis, 'local-volume-ratio');
+  assert.equal(r.corrections[0].volumeFactor, 0.8);
+  assert.deepEqual(r.candidate.candles[20], absent);
+  assert.equal(r.afterQuality.eligible, true);
+});
+
+test('v3: 두 공급자 모두 거래량 0이고 가격이 한 값으로 고정된 거래정지 봉은 계산에서 뺀다', () => {
+  const f = fixture();
+  for (const cs of [f.original.candles, f.yahoo.candles, f.naver]) Object.assign(cs[20], { open: 12000, high: 12000, low: 12000, close: 12000, volume: 0 });
+  const r = run(f);
+  assert.equal(r.removedNonTrading.length, 1);
+  assert.equal(r.removedNonTrading[0].reason, 'both-providers-halt-flat');
+  assert.equal(r.candidate.candles.length, 39);
+  assert.equal(r.afterQuality.eligible, true);
+});
+
 test('조정 단위를 확인 못한 결측은 가격을 추정하지 않고 종목 전체를 격리', () => {
-  const f = fixture(); f.naver = f.naver.map((c) => ({ ...c, volume: c.volume * 1.23 }));
+  // 거래량 비율이 날마다 흔들리면(0.1% 넘게) v3 에서도 배율을 정하지 않는다.
+  const f = fixture(); f.naver = f.naver.map((c, i) => ({ ...c, volume: Math.round(c.volume * (i % 2 ? 1.23 : 1.3)) }));
   f.original.candles.splice(20, 1); f.yahoo.candles.splice(20, 1);
   const r = run(f);
   assert.equal(r.corrections.length, 0);
