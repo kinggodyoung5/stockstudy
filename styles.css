@@ -678,3 +678,9 @@ select optgroup option { color: var(--text); font-weight: 400; }
 .journal-item summary { cursor: pointer; }
 .journal-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .journal-add input { flex: 1 1 200px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+
+/* 내 기준 점검 */
+.rule-crit { border-top: 1px solid rgba(38,44,57,.7); padding: 10px 0; }
+.rule-cond { margin: 6px 0 6px 12px; }
+.rule-cond label, .rule-crit label { font-size: 13.5px; }
+.rule-verdict { font-size: 17px; margin: 8px 0; }

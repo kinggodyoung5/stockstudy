@@ -46,6 +46,7 @@ export async function renderRecords(app) {
         el('dt', { text: '종합 관찰지' }), el('dd', { text: `${c.capstone}개` }),
         el('dt', { text: '학습 일지' }), el('dd', { text: `${c.journal}개` }),
         el('dt', { text: '직접 짚기' }), el('dd', { text: `${c.pick}개 사례` }),
+        el('dt', { text: '내 기준 점검' }), el('dd', { text: `기준 묶음 ${c.ruleSets}개 · 보유 ${c.holdings}개 · 판정 기록 ${c.ruleLog}개 (학습 기록과 따로 셈)` }),
         c.conflicts ? el('dt', { text: '가져오기 충돌 보관' }) : null, c.conflicts ? el('dd', { text: `${c.conflicts}건` }) : null,
         el('dt', { text: '저장 용량(대략)' }), el('dd', { text: `${Math.ceil(size * 2 / 1024)}KB` }),
       ].filter(Boolean)),

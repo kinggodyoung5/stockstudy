@@ -12,6 +12,7 @@ import { renderQuiz, destroyQuiz } from './views/quiz.js';
 import { renderStats, destroyStats } from './views/stats.js';
 import { renderHome, destroyHome } from './views/home.js';
 import { renderPractice, destroyPractice } from './views/practice.js';
+import { renderRules, destroyRules } from './views/rules.js';
 
 const ROUTES = [
   { id: 'home', label: '시작하기', render: renderHome },
@@ -21,6 +22,7 @@ const ROUTES = [
   { id: 'stats', label: '과거 통계', render: renderStats },
   { id: 'sandbox', label: '가상 차트', render: renderSandbox },
   { id: 'quiz', label: '방향 예측 실험', render: renderQuiz },
+  { id: 'rules', label: '내 기준 점검', render: renderRules },
 ];
 
 const app = document.getElementById('app');
@@ -36,9 +38,9 @@ function parseHash() {
 function renderNav(activeId, params = []) {
   clear(nav);
   const group = activeId === 'practice' && ['review', 'records'].includes(params[0]) ? params[0]
-    : ['viewer', 'stats', 'sandbox', 'quiz'].includes(activeId) ? 'explore' : 'study';
+    : ['viewer', 'stats', 'sandbox', 'quiz'].includes(activeId) ? 'explore' : activeId === 'rules' ? 'rules' : 'study';
   const primary = [['study', '학습하기', '#/practice/chart'], ['explore', '차트 탐색', '#/viewer'],
-    ['review', '복습', '#/practice/review'], ['records', '내 기록', '#/practice/records']];
+    ['review', '복습', '#/practice/review'], ['records', '내 기록', '#/practice/records'], ['rules', '내 기준 점검', '#/rules']];
   for (const [id, text, href] of primary) nav.append(el('a', { href, text, class: group === id ? 'on' : '', 'aria-current': group === id ? 'true' : null }));
   const items = group === 'explore'
     ? [['데이터 뷰어', '#/viewer'], ['과거 통계', '#/stats'], ['가상 차트', '#/sandbox'], ['방향 예측 실험', '#/quiz']]
@@ -46,7 +48,7 @@ function renderNav(activeId, params = []) {
       ['기초 문제', '#/practice'], ['사례 비교', '#/practice/real'], ['직접 짚기', '#/practice/pick'], ['종합 읽기', '#/practice/plan'], ['새 구간 평가', '#/practice/check']];
   const secondary = document.getElementById('section-nav');
   clear(secondary);
-  secondary.hidden = ['review', 'records'].includes(group);
+  secondary.hidden = ['review', 'records', 'rules'].includes(group);
   for (const [text, href] of items) {
     const selected = href === location.hash || (activeId === 'learn' && href.startsWith('#/learn/'))
       || (href === '#/practice/chart' && params[0] === 'chart');
@@ -62,6 +64,7 @@ function teardown() {
   destroyStats();
   destroyHome();
   destroyPractice();
+  destroyRules();
 }
 
 let renderToken = 0;
